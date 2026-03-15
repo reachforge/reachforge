@@ -1,0 +1,22 @@
+# Article Adaptation Status Tracking Template
+article: "example-article"
+publish_date: "2026-03-14"
+
+# Specify distribution platforms and their status
+platforms:
+  x:
+    status: "pending"    # Options: pending, success, failed
+    method: "auto"       # Automatic (API)
+    url: ""
+  wechat:
+    status: "pending"
+    method: "manual"     # Manual (Reminder)
+    url: ""
+  zhihu:
+    status: "pending"
+    method: "manual"
+    url: ""
+
+# Editor's Notes
+notes: "Add thread split markers for X"
+status: "scheduled"

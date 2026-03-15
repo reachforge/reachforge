@@ -1,0 +1,7 @@
+node_modules/
+dist/
+bin/
+.env
+credentials.yaml
+*.log
+.DS_Store
