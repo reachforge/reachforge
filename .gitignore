@@ -5,3 +5,11 @@ bin/
 credentials.yaml
 *.log
 .DS_Store
+
+# Pipeline directories (created at runtime by initPipeline)
+01_inbox/
+02_drafts/
+03_master/
+04_adapted/
+05_scheduled/
+06_sent/
