@@ -6,7 +6,8 @@ import { serve } from 'apcore-mcp';
 import { PipelineEngine } from './core/pipeline.js';
 import { ConfigManager } from './core/config.js';
 import { LLMFactory } from './llm/factory.js';
-import { sanitizePath } from './utils/path.js';
+import { WorkspaceResolver } from './core/workspace.js';
+import type { WorkspaceContext } from './core/workspace.js';
 
 import { statusCommand } from './commands/status.js';
 import { draftCommand } from './commands/draft.js';
@@ -16,9 +17,11 @@ import { publishCommand } from './commands/publish.js';
 import { rollbackCommand } from './commands/rollback.js';
 import { watchCommand } from './commands/watch.js';
 import { mcpCommand } from './commands/mcp.js';
+import { initCommand } from './commands/init.js';
+import { newProjectCommand } from './commands/new-project.js';
+import { workspaceInfoCommand } from './commands/workspace-info.js';
 
 const program = new Command();
-const engine = new PipelineEngine(process.cwd());
 
 // Error handler wrapper for CLI commands
 function withErrorHandler(fn: (...args: any[]) => Promise<void>) {
@@ -33,35 +36,64 @@ function withErrorHandler(fn: (...args: any[]) => Promise<void>) {
   };
 }
 
-// Lazy LLM provider (only created when needed)
+// Resolve workspace context lazily
+let _context: WorkspaceContext | undefined;
+async function getContext(): Promise<WorkspaceContext> {
+  if (!_context) {
+    const opts = program.opts();
+    _context = await WorkspaceResolver.resolve(process.cwd(), {
+      workspace: opts.workspace,
+      project: opts.project,
+    });
+  }
+  return _context;
+}
+
+async function getEngine(): Promise<PipelineEngine> {
+  const ctx = await getContext();
+  return new PipelineEngine(ctx.projectDir);
+}
+
 async function getLLM() {
-  const config = await ConfigManager.load(process.cwd());
+  const ctx = await getContext();
+  const config = await ConfigManager.load(ctx.projectDir, ctx.workspaceRoot);
   return LLMFactory.create(config);
+}
+
+async function getConfig() {
+  const ctx = await getContext();
+  return ConfigManager.load(ctx.projectDir, ctx.workspaceRoot);
 }
 
 // APCore registration for MCP/programmatic access
 const apcore = new APCore();
-apcore.register('aphype.status', { execute: () => engine.getStatus() });
+apcore.register('aphype.status', {
+  execute: async () => {
+    const engine = await getEngine();
+    return engine.getStatus();
+  },
+});
 apcore.register('aphype.draft', {
   execute: async (inputs: { source: string }) => {
-    const llm = await getLLM();
+    const [engine, llm] = await Promise.all([getEngine(), getLLM()]);
     await draftCommand(engine, llm, inputs.source);
   },
 });
 apcore.register('aphype.adapt', {
   execute: async (inputs: { article: string }) => {
-    const llm = await getLLM();
+    const [engine, llm] = await Promise.all([getEngine(), getLLM()]);
     await adaptCommand(engine, llm, inputs.article);
   },
 });
 apcore.register('aphype.schedule', {
   execute: async (inputs: { article: string; date: string }) => {
+    const engine = await getEngine();
     await scheduleCommand(engine, inputs.article, inputs.date);
   },
 });
 apcore.register('aphype.publish', {
   execute: async () => {
-    const config = await ConfigManager.load(process.cwd());
+    const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await publishCommand(engine, { config: config.getConfig() });
   },
 });
@@ -70,20 +102,25 @@ apcore.register('aphype.publish', {
 program
   .name('aphype')
   .description('AI PartnerUp Hype: The Social Influence Engine')
-  .version('0.1.0');
+  .version('0.1.0')
+  .option('-w, --workspace <path>', 'Workspace root directory')
+  .option('-P, --project <name>', 'Project name within workspace');
 
 program
   .command('status')
-  .description('Check the dashboard status of the current content pipeline')
-  .action(withErrorHandler(async () => {
-    await statusCommand(engine);
+  .description('Check the dashboard status of the content pipeline')
+  .option('-a, --all', 'Show status across all projects in workspace')
+  .action(withErrorHandler(async (options: { all?: boolean }) => {
+    const ctx = await getContext();
+    const engine = new PipelineEngine(ctx.projectDir);
+    await statusCommand(engine, options, ctx);
   }));
 
 program
   .command('draft <source>')
   .description('Generate an AI draft from an inbox source')
   .action(withErrorHandler(async (source: string) => {
-    const llm = await getLLM();
+    const [engine, llm] = await Promise.all([getEngine(), getLLM()]);
     await draftCommand(engine, llm, source);
   }));
 
@@ -93,7 +130,7 @@ program
   .option('-p, --platforms <list>', 'Comma-separated platform list (e.g., x,devto,wechat)')
   .option('-f, --force', 'Overwrite existing platform versions')
   .action(withErrorHandler(async (article: string, options: { platforms?: string; force?: boolean }) => {
-    const llm = await getLLM();
+    const [engine, llm] = await Promise.all([getEngine(), getLLM()]);
     await adaptCommand(engine, llm, article, options);
   }));
 
@@ -102,6 +139,7 @@ program
   .description('Schedule an article for publishing (date: YYYY-MM-DD)')
   .option('-n, --dry-run', 'Preview without moving files')
   .action(withErrorHandler(async (article: string, date: string, options: { dryRun?: boolean }) => {
+    const engine = await getEngine();
     await scheduleCommand(engine, article, date, options);
   }));
 
@@ -110,7 +148,7 @@ program
   .description('Publish all scheduled content due for today')
   .option('-n, --dry-run', 'Preview what would be published')
   .action(withErrorHandler(async (options: { dryRun?: boolean }) => {
-    const config = await ConfigManager.load(process.cwd());
+    const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await publishCommand(engine, { ...options, config: config.getConfig() });
   }));
 
@@ -118,6 +156,7 @@ program
   .command('rollback <project>')
   .description('Move a project back one pipeline stage')
   .action(withErrorHandler(async (project: string) => {
+    const engine = await getEngine();
     await rollbackCommand(engine, project);
   }));
 
@@ -126,6 +165,7 @@ program
   .description('Start the aphype daemon to watch for due content')
   .option('-i, --interval <minutes>', 'Check interval in minutes (min: 1)', '60')
   .action(withErrorHandler(async (options: { interval?: string }) => {
+    const engine = await getEngine();
     await watchCommand(engine, options);
   }));
 
@@ -135,7 +175,32 @@ program
   .option('-p, --port <number>', 'Port for SSE transport', '8000')
   .option('-t, --transport <type>', 'Transport type (stdio, sse)', 'stdio')
   .action(withErrorHandler(async (options: { port?: string; transport?: string }) => {
+    const engine = await getEngine();
     await mcpCommand(engine, apcore, serve, options);
+  }));
+
+// Workspace management commands
+program
+  .command('init [path]')
+  .description('Initialize a new aphype workspace')
+  .action(withErrorHandler(async (targetPath?: string) => {
+    await initCommand(targetPath);
+  }));
+
+program
+  .command('new <project-name>')
+  .description('Create a new project in the current workspace')
+  .action(withErrorHandler(async (projectName: string) => {
+    const ctx = await getContext();
+    await newProjectCommand(projectName, ctx);
+  }));
+
+program
+  .command('workspace')
+  .description('Show workspace info and project list')
+  .action(withErrorHandler(async () => {
+    const ctx = await getContext();
+    await workspaceInfoCommand(ctx);
   }));
 
 program.parse();

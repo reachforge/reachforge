@@ -32,3 +32,7 @@ export const RECEIPT_FILENAME = 'receipt.yaml';
 export const MASTER_FILENAME = 'master.md';
 export const DRAFT_FILENAME = 'draft.md';
 export const PLATFORM_VERSIONS_DIR = 'platform_versions';
+
+export const WORKSPACE_CONFIG_DIR = '.aphype';
+export const WORKSPACE_CONFIG_FILE = 'config.yaml';
+export const PROJECT_CONFIG_FILE = 'project.yaml';

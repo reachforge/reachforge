@@ -1,11 +1,19 @@
+import * as path from 'path';
 import chalk from 'chalk';
-import type { PipelineEngine } from '../core/pipeline.js';
+import { PipelineEngine } from '../core/pipeline.js';
 import { STAGES } from '../core/constants.js';
+import { WorkspaceResolver } from '../core/workspace.js';
+import type { WorkspaceContext } from '../core/workspace.js';
 
-export async function statusCommand(engine: PipelineEngine): Promise<void> {
+async function printProjectStatus(engine: PipelineEngine, projectName?: string): Promise<number> {
   const status = await engine.getStatus();
 
-  console.log(chalk.blue.bold('\n🚀 aphype Content Factory Dashboard\n'));
+  if (projectName) {
+    console.log(chalk.blue.bold(`\n📁 ${projectName}`));
+  } else {
+    console.log(chalk.blue.bold('\n🚀 aphype Content Factory Dashboard'));
+  }
+  console.log('');
 
   for (const stage of STAGES) {
     const data = status.stages[stage];
@@ -21,4 +29,40 @@ export async function statusCommand(engine: PipelineEngine): Promise<void> {
   }
 
   console.log('');
+  return status.totalProjects;
+}
+
+export async function statusCommand(
+  engine: PipelineEngine,
+  options: { all?: boolean } = {},
+  context?: WorkspaceContext,
+): Promise<void> {
+  // --all mode: show all projects in workspace
+  if (options.all && context?.workspaceRoot) {
+    const projects = await WorkspaceResolver.listProjects(context.workspaceRoot);
+
+    if (projects.length === 0) {
+      console.log(chalk.yellow('No projects found in workspace. Run `aphype new <name>` to create one.'));
+      return;
+    }
+
+    console.log(chalk.blue.bold(`\n🏗 Workspace: ${context.workspaceRoot}`));
+    console.log(chalk.dim(`   ${projects.length} project(s)`));
+
+    let totalItems = 0;
+    for (const proj of projects) {
+      try {
+        const projEngine = new PipelineEngine(path.join(context.workspaceRoot, proj.name));
+        totalItems += await printProjectStatus(projEngine, proj.name);
+      } catch {
+        console.log(chalk.red(`\n📁 ${proj.name} — error reading status\n`));
+      }
+    }
+
+    console.log(chalk.blue.bold(`📊 Total across all projects: ${totalItems} items\n`));
+    return;
+  }
+
+  // Single project mode
+  await printProjectStatus(engine, context?.projectName);
 }
