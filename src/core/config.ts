@@ -5,7 +5,7 @@ import yaml from 'js-yaml';
 import dotenv from 'dotenv';
 import type { AphypeConfig } from '../types/index.js';
 import { CredentialsSchema } from '../types/index.js';
-import { DEFAULT_LLM_MODEL } from './constants.js';
+import { DEFAULT_LLM_MODEL, WORKSPACE_CONFIG_DIR } from './constants.js';
 import { readWorkspaceConfig } from './project-config.js';
 
 export class ConfigManager {
@@ -22,7 +22,7 @@ export class ConfigManager {
     let mergedCreds: Record<string, string | undefined> = {};
 
     // Layer 4: global ~/.aphype/config.yaml credentials
-    const globalDir = path.join(os.homedir(), '.aphype');
+    const globalDir = path.join(os.homedir(), WORKSPACE_CONFIG_DIR);
     const globalWsConfig = await readWorkspaceConfig(globalDir);
     if (globalWsConfig?.credentials) {
       mergedCreds = { ...mergedCreds, ...globalWsConfig.credentials };

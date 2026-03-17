@@ -7,7 +7,7 @@ import { newProjectCommand } from '../../../src/commands/new-project.js';
 import { workspaceInfoCommand } from '../../../src/commands/workspace-info.js';
 import { WorkspaceResolver } from '../../../src/core/workspace.js';
 import { writeWorkspaceConfig, writeProjectConfig } from '../../../src/core/project-config.js';
-import { STAGES } from '../../../src/core/constants.js';
+import { STAGES, DEFAULT_WORKSPACE_NAME } from '../../../src/core/constants.js';
 
 let tmpDir: string;
 
@@ -42,6 +42,20 @@ describe('initCommand', () => {
     await initCommand(newDir);
 
     expect(await fs.pathExists(path.join(newDir, '.aphype', 'config.yaml'))).toBe(true);
+  });
+
+  test('defaults to ~/aphype-workspace when no path given', async () => {
+    const defaultDir = path.join(os.homedir(), DEFAULT_WORKSPACE_NAME);
+    const existed = await fs.pathExists(defaultDir);
+
+    await initCommand(); // no args
+
+    expect(await fs.pathExists(path.join(defaultDir, '.aphype', 'config.yaml'))).toBe(true);
+
+    // Clean up only if we created it
+    if (!existed) {
+      await fs.remove(defaultDir);
+    }
   });
 });
 

@@ -3,9 +3,10 @@ import * as os from 'os';
 import fs from 'fs-extra';
 import { readProjectConfig, readWorkspaceConfig } from './project-config.js';
 import type { ProjectConfig } from './project-config.js';
-import { WORKSPACE_CONFIG_DIR, WORKSPACE_CONFIG_FILE, PROJECT_CONFIG_FILE } from './constants.js';
+import { WORKSPACE_CONFIG_DIR, WORKSPACE_CONFIG_FILE, PROJECT_CONFIG_FILE, DEFAULT_WORKSPACE_NAME } from './constants.js';
 
 const GLOBAL_CONFIG_DIR = path.join(os.homedir(), WORKSPACE_CONFIG_DIR);
+const DEFAULT_WORKSPACE_DIR = path.join(os.homedir(), DEFAULT_WORKSPACE_NAME);
 
 export interface WorkspaceContext {
   workspaceRoot: string | undefined;
@@ -17,10 +18,10 @@ export interface WorkspaceContext {
 export class WorkspaceResolver {
   /**
    * 5-step context resolution:
-   * 1. APHYPE_WORKSPACE env var
+   * 1. APHYPE_WORKSPACE env var or --workspace CLI flag
    * 2. Walk up from cwd looking for .aphype/
    * 3. cwd contains project.yaml → cwd is project, parent is workspace
-   * 4. ~/.aphype/config.yaml default_workspace
+   * 4. ~/.aphype/config.yaml default_workspace, or ~/aphype-workspace as fallback
    * 5. Fallback: cwd as project root (backward compatible)
    */
   static async resolve(cwd: string, overrides?: { workspace?: string; project?: string }): Promise<WorkspaceContext> {
@@ -80,13 +81,13 @@ export class WorkspaceResolver {
       };
     }
 
-    // Step 4: global config default_workspace
+    // Step 4: global config default_workspace or ~/aphype-workspace
     const globalConfig = await readWorkspaceConfig(GLOBAL_CONFIG_DIR);
-    if (globalConfig?.default_workspace) {
-      const wsRoot = path.resolve(globalConfig.default_workspace);
-      if (await fs.pathExists(path.join(wsRoot, WORKSPACE_CONFIG_DIR))) {
-        return { workspaceRoot: wsRoot, projectDir: wsRoot, projectName: undefined, isWorkspace: true };
-      }
+    const defaultWsPath = globalConfig?.default_workspace
+      ? path.resolve(globalConfig.default_workspace)
+      : DEFAULT_WORKSPACE_DIR;
+    if (await fs.pathExists(path.join(defaultWsPath, WORKSPACE_CONFIG_DIR))) {
+      return { workspaceRoot: defaultWsPath, projectDir: defaultWsPath, projectName: undefined, isWorkspace: true };
     }
 
     // Step 5: fallback — cwd as single-project root (backward compatible)
@@ -126,7 +127,7 @@ export class WorkspaceResolver {
   }
 
   static async isWorkspace(dir: string): Promise<boolean> {
-    return fs.pathExists(path.join(dir, WORKSPACE_CONFIG_DIR, 'config.yaml'));
+    return fs.pathExists(path.join(dir, WORKSPACE_CONFIG_DIR, WORKSPACE_CONFIG_FILE));
   }
 
   static async isProject(dir: string): Promise<boolean> {

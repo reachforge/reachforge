@@ -1,4 +1,7 @@
+import * as path from 'path';
+import * as os from 'os';
 import { Command } from 'commander';
+import * as readline from 'readline';
 import chalk from 'chalk';
 import { APCore } from 'apcore-js';
 import { serve } from 'apcore-mcp';
@@ -8,6 +11,7 @@ import { ConfigManager } from './core/config.js';
 import { LLMFactory } from './llm/factory.js';
 import { WorkspaceResolver } from './core/workspace.js';
 import type { WorkspaceContext } from './core/workspace.js';
+import { DEFAULT_WORKSPACE_NAME } from './core/constants.js';
 
 import { statusCommand } from './commands/status.js';
 import { draftCommand } from './commands/draft.js';
@@ -182,7 +186,7 @@ program
 // Workspace management commands
 program
   .command('init [path]')
-  .description('Initialize a new aphype workspace')
+  .description('Initialize a new aphype workspace (default: ~/aphype-workspace)')
   .action(withErrorHandler(async (targetPath?: string) => {
     await initCommand(targetPath);
   }));
@@ -202,5 +206,49 @@ program
     const ctx = await getContext();
     await workspaceInfoCommand(ctx);
   }));
+
+// Default action: when no command is given, check for workspace or show help
+program.action(withErrorHandler(async () => {
+  const ctx = await getContext();
+  if (ctx.isWorkspace) {
+    program.outputHelp();
+    return;
+  }
+
+  // No workspace found
+  const defaultPath = path.join(os.homedir(), DEFAULT_WORKSPACE_NAME);
+
+  if (!process.stdin.isTTY) {
+    // Non-interactive: show instructions without prompting
+    console.log(`No workspace found. Initialize one with:`);
+    console.log(chalk.dim(`  aphype init [path]`));
+    console.log(chalk.dim(`\nRun ${chalk.white('aphype --help')} for all available commands.`));
+    return;
+  }
+
+  // Interactive: prompt user to create workspace
+  const answer = await confirm(
+    `No workspace found. Create one at ${chalk.cyan(defaultPath)}? [Y/n] `,
+  );
+
+  if (answer) {
+    await initCommand(defaultPath);
+  } else {
+    console.log(chalk.dim('\nYou can initialize a workspace manually:'));
+    console.log(chalk.dim('  aphype init [path]'));
+  }
+
+  console.log(chalk.dim(`\nRun ${chalk.white('aphype --help')} for all available commands.`));
+}));
+
+function confirm(prompt: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(prompt, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase() !== 'n');
+    });
+  });
+}
 
 program.parse();

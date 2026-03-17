@@ -5,6 +5,7 @@ bin/
 credentials.yaml
 *.log
 .DS_Store
+.aphype/
 
 # Pipeline directories (created at runtime by initPipeline)
 01_inbox/
