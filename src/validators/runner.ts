@@ -1,12 +1,16 @@
 import type { ValidationResult } from '../providers/types.js';
 import { validateXContent } from './x.js';
 import { validateDevtoContent } from './devto.js';
+import { validateHashnodeContent } from './hashnode.js';
+import { validateGitHubContent } from './github.js';
 
 type ValidatorFn = (content: string) => ValidationResult;
 
 const VALIDATORS: Record<string, ValidatorFn> = {
   x: validateXContent,
   devto: validateDevtoContent,
+  hashnode: validateHashnodeContent,
+  github: validateGitHubContent,
 };
 
 export interface AggregateValidationResult {

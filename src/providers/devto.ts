@@ -15,12 +15,16 @@ export class DevtoProvider implements PlatformProvider {
     const errors: string[] = [];
 
     if (!content || content.trim().length === 0) {
-      errors.push('Content is empty');
+      return { valid: false, errors: ['Dev.to article content is empty.'] };
     }
 
-    // Dev.to requires a title (first # heading or frontmatter)
-    if (content && !content.match(/^#\s+.+/m) && !content.match(/^---[\s\S]*?title:/m)) {
-      errors.push('Dev.to article must have a title (# heading or frontmatter title field)');
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) {
+      return { valid: false, errors: ['Dev.to article missing required frontmatter block (---...--).' ] };
+    }
+
+    if (!content.match(/^---[\s\S]*?title:/m)) {
+      errors.push('Dev.to article missing required frontmatter field: title.');
     }
 
     return { valid: errors.length === 0, errors };
