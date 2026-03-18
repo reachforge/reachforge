@@ -1,0 +1,20 @@
+{
+  "feature": "cli-adapter-core",
+  "spec": "docs/features/cli-adapter-core.md",
+  "status": "completed",
+  "createdAt": "2026-03-17",
+  "completedAt": "2026-03-18",
+  "tasks": [
+    { "id": "T01", "title": "Types & error classes", "status": "completed" },
+    { "id": "T02", "title": "Parser utilities", "status": "completed" },
+    { "id": "T03", "title": "Claude stream-json parser", "status": "completed" },
+    { "id": "T04", "title": "Gemini JSONL parser", "status": "completed" },
+    { "id": "T05", "title": "Codex JSONL parser", "status": "completed" },
+    { "id": "T06", "title": "ProcessRunner (runCLIProcess)", "status": "completed" },
+    { "id": "T07", "title": "ClaudeAdapter implementation", "status": "completed" },
+    { "id": "T08", "title": "GeminiAdapter implementation", "status": "completed" },
+    { "id": "T09", "title": "CodexAdapter implementation", "status": "completed" },
+    { "id": "T10", "title": "AdapterFactory", "status": "completed" },
+    { "id": "T11", "title": "Public exports & index", "status": "completed" }
+  ]
+}

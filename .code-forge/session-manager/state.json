@@ -1,0 +1,13 @@
+{
+  "feature": "session-manager",
+  "spec": "docs/features/session-manager.md",
+  "status": "completed",
+  "createdAt": "2026-03-18",
+  "completedAt": "2026-03-18",
+  "tasks": [
+    { "id": "T01", "title": "SessionData type & SessionValidationError", "status": "completed" },
+    { "id": "T02", "title": "SessionManager core: save, load, getSessionPath", "status": "completed" },
+    { "id": "T03", "title": "SessionManager: delete, deleteAll, list", "status": "completed" },
+    { "id": "T04", "title": "Exports", "status": "completed" }
+  ]
+}

@@ -38,3 +38,66 @@ export const PLATFORM_PROMPTS: Record<string, string> = {
 };
 
 export const DEFAULT_DRAFT_PROMPT = 'You are an expert content strategist. Expand the following idea into a comprehensive, high-quality long-form article. Output in Markdown format.';
+
+// --- CLI Adapter types ---
+
+export interface CLIAdapter {
+  readonly name: "claude" | "gemini" | "codex";
+  readonly command: string;
+  execute(options: AdapterExecuteOptions): Promise<AdapterResult>;
+  probe(): Promise<AdapterProbeResult>;
+}
+
+export interface AdapterExecuteOptions {
+  prompt: string;
+  cwd: string;
+  skillPaths: string[];
+  sessionId: string | null;
+  timeoutSec: number;
+  extraArgs: string[];
+}
+
+export interface AdapterResult {
+  success: boolean;
+  content: string;
+  sessionId: string | null;
+  usage: TokenUsage;
+  costUsd: number | null;
+  model: string;
+  errorMessage: string | null;
+  errorCode: AdapterErrorCode | null;
+  exitCode: number | null;
+  timedOut: boolean;
+}
+
+export type AdapterErrorCode =
+  | "auth_required"
+  | "command_not_found"
+  | "timeout"
+  | "parse_error"
+  | "session_expired"
+  | "unknown";
+
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cachedTokens: number;
+}
+
+export interface AdapterProbeResult {
+  available: boolean;
+  authenticated: boolean;
+  version: string | null;
+  errorMessage: string | null;
+}
+
+// --- Session types ---
+
+export interface SessionData {
+  sessionId: string;
+  adapter: 'claude' | 'gemini' | 'codex';
+  stage: string;
+  cwd: string;
+  createdAt: string;
+  lastUsedAt: string;
+}

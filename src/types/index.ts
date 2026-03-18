@@ -44,4 +44,11 @@ export {
   ProviderError,
   ValidationFailedError,
   MetadataParseError,
+  AdapterNotFoundError,
+  AdapterNotInstalledError,
+  AdapterAuthError,
+  AdapterTimeoutError,
+  AdapterEmptyResponseError,
+  AdapterValidationError,
+  SessionValidationError,
 } from './errors.js';

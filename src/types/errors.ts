@@ -84,3 +84,74 @@ export class MetadataParseError extends AphypeError {
     this.name = 'MetadataParseError';
   }
 }
+
+// --- CLI Adapter errors ---
+
+export class AdapterNotFoundError extends AphypeError {
+  constructor(name: string) {
+    super(
+      `Unknown LLM adapter: '${name}'. Supported: claude, gemini, codex`,
+      'Adapter name is not recognized',
+      'Set APHYPE_LLM_ADAPTER to one of: claude, gemini, codex',
+    );
+    this.name = 'AdapterNotFoundError';
+  }
+}
+
+export class AdapterNotInstalledError extends AphypeError {
+  constructor(name: string, installUrl: string) {
+    super(
+      `${name} CLI is not installed or not in PATH.`,
+      `Command '${name}' could not be found`,
+      `Install from ${installUrl}`,
+    );
+    this.name = 'AdapterNotInstalledError';
+  }
+}
+
+export class AdapterAuthError extends AphypeError {
+  constructor(name: string, command: string) {
+    super(
+      `${name} requires authentication.`,
+      'CLI reported authentication failure',
+      `Run '${command} login' first.`,
+    );
+    this.name = 'AdapterAuthError';
+  }
+}
+
+export class AdapterTimeoutError extends AphypeError {
+  constructor(timeoutSec: number) {
+    super(
+      `LLM generation timed out after ${timeoutSec}s.`,
+      'CLI process exceeded timeout',
+      'Increase with APHYPE_LLM_TIMEOUT environment variable.',
+    );
+    this.name = 'AdapterTimeoutError';
+  }
+}
+
+export class AdapterEmptyResponseError extends AphypeError {
+  constructor(name: string) {
+    super(
+      `${name} returned an empty response.`,
+      'CLI completed but produced no content',
+      'Try again or check your input.',
+    );
+    this.name = 'AdapterEmptyResponseError';
+  }
+}
+
+export class AdapterValidationError extends AphypeError {
+  constructor(message: string) {
+    super(message, 'Input validation failed');
+    this.name = 'AdapterValidationError';
+  }
+}
+
+export class SessionValidationError extends AphypeError {
+  constructor(message: string) {
+    super(message, 'Session validation failed');
+    this.name = 'SessionValidationError';
+  }
+}
