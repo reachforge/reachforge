@@ -13,6 +13,10 @@ export class PipelineEngine {
     this.metadata = new MetadataManager(workingDir);
   }
 
+  get projectDir(): string {
+    return this.workingDir;
+  }
+
   async initPipeline(): Promise<void> {
     await Promise.all(
       STAGES.map(stage => fs.ensureDir(path.join(this.workingDir, stage)))

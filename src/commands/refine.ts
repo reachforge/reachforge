@@ -1,0 +1,274 @@
+import * as readline from 'readline';
+import chalk from 'chalk';
+import fs from 'fs-extra';
+import type { PipelineEngine } from '../core/pipeline.js';
+import type { CLIAdapter, AdapterResult, ResolvedSkill } from '../llm/types.js';
+import { AdapterFactory } from '../llm/factory.js';
+import { SessionManager } from '../llm/session.js';
+import { sanitizePath } from '../utils/path.js';
+import { DRAFT_FILENAME, MASTER_FILENAME } from '../core/constants.js';
+import type { PipelineStage } from '../types/index.js';
+
+export async function refineCommand(
+  engine: PipelineEngine,
+  article: string,
+  options?: {
+    /** Override stdin for non-TTY/testing. If provided, runs one turn and saves. */
+    inputLines?: string[];
+  },
+): Promise<void> {
+  const safeName = sanitizePath(article);
+  if (!safeName) throw new Error('Article name is required');
+
+  await engine.initPipeline();
+
+  // Locate article: prefer 02_drafts, fallback to 03_master
+  const { stage, filename, filePath } = await locateArticle(engine, safeName);
+
+  // Read current content
+  const currentContent = await fs.readFile(filePath, 'utf-8');
+  const originalContent = currentContent;
+
+  // Derive project dir (needed for adapter, resolver, and session)
+  const projectDir = engine.projectDir;
+
+  // Create adapter and resolver (built-in skills dir wired automatically)
+  const { adapter, resolver } = AdapterFactory.create('draft', { projectDir });
+
+  // Resolve skills
+  const skills = await resolver.resolve('draft');
+
+  // Load session
+  const sessionManager = new SessionManager(projectDir);
+  let session = await sessionManager.load(safeName, 'draft');
+
+  if (session && session.adapter !== adapter.name) {
+    console.log(chalk.yellow(
+      `Previous session was with ${session.adapter}. Starting fresh session with ${adapter.name}.`,
+    ));
+    // Archive old session
+    const oldPath = sessionManager.getSessionPath(safeName, 'draft');
+    await fs.copy(oldPath, oldPath + '.bak').catch(() => {});
+    await sessionManager.delete(safeName, 'draft');
+    session = null;
+  }
+
+  if (session) {
+    console.log(chalk.dim(`Resuming session ${session.sessionId} (last used: ${session.lastUsedAt})`));
+  } else {
+    console.log(chalk.dim(`Starting new refinement session with ${adapter.name}.`));
+  }
+
+  // Display preview
+  printContentPreview(currentContent);
+
+  // State
+  let turnCount = 0;
+  let sessionId = session?.sessionId ?? null;
+  let latestContent = currentContent;
+
+  // Non-TTY / test mode: single turn
+  if (options?.inputLines) {
+    const feedback = options.inputLines.join('\n').trim();
+    if (feedback && feedback !== '/quit' && feedback !== '/save') {
+      turnCount++;
+      const prompt = buildRefinePrompt(latestContent, feedback);
+      const result = await adapter.execute({
+        prompt,
+        cwd: projectDir,
+        skillPaths: skills.map(s => s.path),
+        sessionId,
+        timeoutSec: 300,
+        extraArgs: [],
+      });
+      if (result.success && result.content) {
+        latestContent = result.content;
+        sessionId = result.sessionId ?? sessionId;
+      }
+    }
+    if (feedback !== '/quit') {
+      await saveContent(engine, stage, safeName, filename, latestContent);
+      if (sessionId) {
+        await saveSession(sessionManager, safeName, adapter.name, sessionId, session, projectDir);
+      }
+    }
+    return;
+  }
+
+  // Interactive TTY mode
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+  try {
+    while (true) {
+      const feedback = await promptUser(rl, 'Feedback (/save, /quit, /status, /diff): ');
+      const trimmed = feedback.trim();
+
+      if (trimmed === '/quit') {
+        console.log('Exiting without saving.');
+        break;
+      }
+
+      if (trimmed === '/save') {
+        await saveContent(engine, stage, safeName, filename, latestContent);
+        console.log(chalk.green(`Draft saved to ${stage}/${safeName}/${filename}`));
+        break;
+      }
+
+      if (trimmed === '/status') {
+        printStatus(adapter.name, sessionId, turnCount, safeName);
+        continue;
+      }
+
+      if (trimmed === '/diff') {
+        printDiff(originalContent, latestContent);
+        continue;
+      }
+
+      if (!trimmed) {
+        console.log('Please enter feedback or a command.');
+        continue;
+      }
+
+      // Send feedback to LLM
+      turnCount++;
+      console.log(chalk.dim(`Sending feedback to ${adapter.name}... (turn ${turnCount})`));
+
+      const prompt = buildRefinePrompt(latestContent, trimmed);
+      const result = await adapter.execute({
+        prompt,
+        cwd: projectDir,
+        skillPaths: skills.map(s => s.path),
+        sessionId,
+        timeoutSec: 300,
+        extraArgs: [],
+      });
+
+      if (!result.success) {
+        console.error(chalk.red(`Error: ${result.errorMessage ?? 'Unknown error'}`));
+        if (result.errorCode === 'auth_required') {
+          console.error(`Run '${adapter.command} login' to authenticate.`);
+          break;
+        }
+        if (result.errorCode === 'timeout') {
+          console.error('Try again with a shorter prompt or increase APHYPE_LLM_TIMEOUT.');
+        }
+        continue;
+      }
+
+      sessionId = result.sessionId ?? sessionId;
+      latestContent = result.content || latestContent;
+      printContentPreview(latestContent);
+
+      // Save session after each successful turn
+      if (sessionId) {
+        await saveSession(sessionManager, safeName, adapter.name, sessionId, session, projectDir);
+      }
+
+      if (result.usage.inputTokens > 0 || result.usage.outputTokens > 0) {
+        console.log(chalk.dim(
+          `  Tokens: ${result.usage.inputTokens} in / ${result.usage.outputTokens} out` +
+          (result.costUsd != null ? ` ($${result.costUsd.toFixed(4)})` : ''),
+        ));
+      }
+    }
+  } finally {
+    rl.close();
+  }
+}
+
+// --- Exported helpers (for testing) ---
+
+export function buildRefinePrompt(currentContent: string, feedback: string): string {
+  return (
+    'You are helping refine a draft article. ' +
+    'Apply the user\'s feedback to improve the draft. ' +
+    'Output the COMPLETE revised article (not just the changed parts).\n\n' +
+    `## Current Draft\n\n${currentContent}\n\n` +
+    `## User Feedback\n\n${feedback}`
+  );
+}
+
+export function printStatus(adapterName: string, sessionId: string | null, turnCount: number, article: string): void {
+  console.log(`Adapter: ${adapterName}`);
+  console.log(`Article: ${article}`);
+  console.log(`Session: ${sessionId ?? '(none - new session)'}`);
+  console.log(`Turns completed: ${turnCount}`);
+}
+
+export function printDiff(original: string, current: string): void {
+  if (original === current) {
+    console.log('No changes from original.');
+    return;
+  }
+  const originalLines = original.split('\n');
+  const currentLines = current.split('\n');
+  const delta = current.length - original.length;
+  console.log(`Original: ${originalLines.length} lines, ${original.length} chars`);
+  console.log(`Current:  ${currentLines.length} lines, ${current.length} chars`);
+  console.log(`Delta:    ${delta > 0 ? '+' : ''}${delta} chars`);
+}
+
+export function printContentPreview(content: string): void {
+  const preview = content.length > 500 ? content.slice(0, 500) + '...' : content;
+  console.log('\n--- Updated Draft Preview ---');
+  console.log(preview);
+  console.log(`--- (${content.length} characters total) ---\n`);
+}
+
+// --- Internal helpers ---
+
+async function locateArticle(engine: PipelineEngine, safeName: string) {
+  const draftPath = `${engine.getProjectPath('02_drafts', safeName)}/${DRAFT_FILENAME}`;
+  if (await fs.pathExists(draftPath)) {
+    return { stage: '02_drafts' as PipelineStage, filename: DRAFT_FILENAME, filePath: draftPath };
+  }
+
+  const masterPath = `${engine.getProjectPath('03_master', safeName)}/${MASTER_FILENAME}`;
+  if (await fs.pathExists(masterPath)) {
+    return { stage: '03_master' as PipelineStage, filename: MASTER_FILENAME, filePath: masterPath };
+  }
+
+  throw new Error(`Article '${safeName}' not found in 02_drafts or 03_master`);
+}
+
+function promptUser(rl: readline.Interface, prompt: string): Promise<string> {
+  return new Promise((resolve) => {
+    rl.question(prompt, (answer) => resolve(answer));
+  });
+}
+
+async function saveContent(
+  engine: PipelineEngine,
+  stage: PipelineStage,
+  article: string,
+  filename: string,
+  content: string,
+): Promise<void> {
+  await engine.writeProjectFile(stage, article, filename, content);
+  await engine.metadata.writeMeta(stage, article, {
+    status: stage === '02_drafts' ? 'drafted' : 'master',
+    updated_at: new Date().toISOString(),
+  });
+}
+
+async function saveSession(
+  sessionManager: SessionManager,
+  article: string,
+  adapterName: 'claude' | 'gemini' | 'codex',
+  sessionId: string,
+  existingSession: { createdAt: string } | null,
+  projectDir: string,
+): Promise<void> {
+  try {
+    await sessionManager.save(article, 'draft', {
+      sessionId,
+      adapter: adapterName,
+      stage: 'draft',
+      cwd: projectDir,
+      createdAt: existingSession?.createdAt ?? new Date().toISOString(),
+      lastUsedAt: new Date().toISOString(),
+    });
+  } catch {
+    console.warn('Warning: Failed to save session.');
+  }
+}

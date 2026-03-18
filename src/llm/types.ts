@@ -91,6 +91,17 @@ export interface AdapterProbeResult {
   errorMessage: string | null;
 }
 
+// --- Skill types ---
+
+export interface ResolvedSkill {
+  /** Relative skill path (e.g., "stages/draft.md", "platforms/x.md"). */
+  name: string;
+  /** Absolute path to the resolved skill file. */
+  path: string;
+  /** Which layer provided this skill. */
+  source: 'built-in' | 'workspace' | 'project';
+}
+
 // --- Session types ---
 
 export interface SessionData {

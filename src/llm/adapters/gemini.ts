@@ -105,7 +105,7 @@ export class GeminiAdapter implements CLIAdapter {
       success: proc.exitCode === 0 && parsed.summary.length > 0,
       content: parsed.summary,
       sessionId: parsed.sessionId,
-      usage: parsed.usage,
+      usage: { inputTokens: parsed.usage.inputTokens, outputTokens: parsed.usage.outputTokens, cachedTokens: parsed.usage.cachedInputTokens },
       costUsd: parsed.costUsd,
       model: 'gemini',
       errorMessage: proc.exitCode === 0 ? null : (parsed.errorMessage || proc.stderr.trim() || null),

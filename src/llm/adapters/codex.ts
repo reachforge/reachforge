@@ -106,7 +106,7 @@ export class CodexAdapter implements CLIAdapter {
       success: proc.exitCode === 0 && parsed.summary.length > 0,
       content: parsed.summary,
       sessionId: parsed.sessionId,
-      usage: parsed.usage,
+      usage: { inputTokens: parsed.usage.inputTokens, outputTokens: parsed.usage.outputTokens, cachedTokens: parsed.usage.cachedInputTokens },
       costUsd: null, // Codex does not report cost
       model: 'codex',
       errorMessage: proc.exitCode === 0 ? null : (parsed.errorMessage || proc.stderr.trim() || null),

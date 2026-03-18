@@ -3,8 +3,6 @@ import * as path from 'path';
 import * as os from 'os';
 import fs from 'fs-extra';
 import { PipelineEngine } from '../../../src/core/pipeline.js';
-import type { LLMProvider, GenerateOptions, AdaptOptions, LLMResult } from '../../../src/llm/types.js';
-import { DEFAULT_DRAFT_PROMPT, PLATFORM_PROMPTS } from '../../../src/llm/types.js';
 
 import { draftCommand } from '../../../src/commands/draft.js';
 import { adaptCommand } from '../../../src/commands/adapt.js';
@@ -12,24 +10,31 @@ import { scheduleCommand } from '../../../src/commands/schedule.js';
 import { publishCommand } from '../../../src/commands/publish.js';
 import { rollbackCommand } from '../../../src/commands/rollback.js';
 
+const mockExecute = vi.fn();
+
+vi.mock('../../../src/llm/factory.js', () => ({
+  AdapterFactory: {
+    create: () => ({
+      adapter: { name: 'claude', command: 'claude', execute: mockExecute, probe: vi.fn() },
+      resolver: { resolve: vi.fn().mockResolvedValue([]) },
+    }),
+  },
+  LLMFactory: { create: vi.fn(), createFromApiKey: vi.fn() },
+}));
+
+function mockSuccess(content: string) {
+  return { success: true, content, sessionId: null, usage: { inputTokens: 0, outputTokens: 0, cachedTokens: 0 }, costUsd: null, model: 'mock', errorMessage: null, errorCode: null, exitCode: 0, timedOut: false };
+}
+
 let tmpDir: string;
 let engine: PipelineEngine;
-
-class MockLLM implements LLMProvider {
-  readonly name = 'mock';
-  async generate(content: string, options: GenerateOptions = {}): Promise<LLMResult> {
-    return { content: `Draft: ${content.substring(0, 50)}`, model: 'mock', provider: 'mock', tokenUsage: { prompt: 0, completion: 0 } };
-  }
-  async adapt(content: string, options: AdaptOptions): Promise<LLMResult> {
-    return { content: `Adapted for ${options.platform}: ${content.substring(0, 30)}`, model: 'mock', provider: 'mock', tokenUsage: { prompt: 0, completion: 0 } };
-  }
-}
 
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-cmd-'));
   engine = new PipelineEngine(tmpDir);
   await engine.initPipeline();
-  // Suppress console output in tests
+  // Default mock: echo prompt so content-based assertions see input text
+  mockExecute.mockImplementation(async ({ prompt }: any) => mockSuccess(prompt));
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -42,9 +47,8 @@ afterEach(async () => {
 describe('draftCommand', () => {
   test('generates draft from inbox file', async () => {
     await fs.writeFile(path.join(tmpDir, '01_inbox', 'my-idea.md'), 'Build a CLI tool with Bun');
-    const llm = new MockLLM();
 
-    await draftCommand(engine, llm, 'my-idea.md');
+    await draftCommand(engine, 'my-idea.md');
 
     const draftExists = await fs.pathExists(path.join(tmpDir, '02_drafts', 'my-idea', 'draft.md'));
     expect(draftExists).toBe(true);
@@ -59,16 +63,15 @@ describe('draftCommand', () => {
     await fs.writeFile(path.join(dir, 'main.md'), 'main content');
     await fs.writeFile(path.join(dir, 'other.md'), 'other content');
 
-    const llm = new MockLLM();
-    await draftCommand(engine, llm, 'multi-file');
+    await draftCommand(engine, 'multi-file');
 
+    // mock echoes prompt which contains the selected file content
     const draft = await fs.readFile(path.join(tmpDir, '02_drafts', 'multi-file', 'draft.md'), 'utf-8');
-    expect(draft).toContain('main content'); // main.md should be selected first
+    expect(draft).toContain('main content'); // main.md selected first, included in prompt
   });
 
   test('rejects path traversal in source name', async () => {
-    const llm = new MockLLM();
-    await expect(draftCommand(engine, llm, '../etc/passwd')).rejects.toThrow('Unsafe path');
+    await expect(draftCommand(engine, '../etc/passwd')).rejects.toThrow('Unsafe path');
   });
 });
 
@@ -78,8 +81,7 @@ describe('adaptCommand', () => {
     await fs.ensureDir(masterDir);
     await fs.writeFile(path.join(masterDir, 'master.md'), '# Great Article\n\nContent here.');
 
-    const llm = new MockLLM();
-    await adaptCommand(engine, llm, 'my-article');
+    await adaptCommand(engine, 'my-article');
 
     const xExists = await fs.pathExists(path.join(tmpDir, '04_adapted', 'my-article', 'platform_versions', 'x.md'));
     const wechatExists = await fs.pathExists(path.join(tmpDir, '04_adapted', 'my-article', 'platform_versions', 'wechat.md'));
@@ -94,8 +96,7 @@ describe('adaptCommand', () => {
     await fs.ensureDir(masterDir);
     await fs.writeFile(path.join(masterDir, 'draft.md'), 'Forgot to rename');
 
-    const llm = new MockLLM();
-    await expect(adaptCommand(engine, llm, 'forgot-rename'))
+    await expect(adaptCommand(engine, 'forgot-rename'))
       .rejects.toThrow('Did you mean to rename draft.md to master.md?');
   });
 
@@ -104,8 +105,7 @@ describe('adaptCommand', () => {
     await fs.ensureDir(masterDir);
     await fs.writeFile(path.join(masterDir, 'master.md'), 'Content');
 
-    const llm = new MockLLM();
-    await adaptCommand(engine, llm, 'custom-platforms', { platforms: 'x,devto' });
+    await adaptCommand(engine, 'custom-platforms', { platforms: 'x,devto' });
 
     expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'custom-platforms', 'platform_versions', 'x.md'))).toBe(true);
     expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'custom-platforms', 'platform_versions', 'devto.md'))).toBe(true);

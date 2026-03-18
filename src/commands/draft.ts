@@ -2,11 +2,12 @@ import chalk from 'chalk';
 import fs from 'fs-extra';
 import * as path from 'path';
 import type { PipelineEngine } from '../core/pipeline.js';
-import type { LLMProvider } from '../llm/types.js';
+import { AdapterFactory } from '../llm/factory.js';
+import { DEFAULT_DRAFT_PROMPT } from '../llm/types.js';
 import { sanitizePath } from '../utils/path.js';
-import { DRAFT_FILENAME, META_FILENAME } from '../core/constants.js';
+import { DRAFT_FILENAME } from '../core/constants.js';
 
-export async function draftCommand(engine: PipelineEngine, llm: LLMProvider, source: string): Promise<void> {
+export async function draftCommand(engine: PipelineEngine, source: string): Promise<void> {
   const safeName = sanitizePath(source);
   console.log(chalk.cyan(`✍️ Generating AI draft for "${safeName}"...`));
 
@@ -41,7 +42,23 @@ export async function draftCommand(engine: PipelineEngine, llm: LLMProvider, sou
   }
   if (!content) content = safeName;
 
-  const result = await llm.generate(content);
+  const projectDir = engine.projectDir;
+  const { adapter, resolver } = AdapterFactory.create('draft', { projectDir });
+  const skills = await resolver.resolve('draft');
+
+  const prompt = `${DEFAULT_DRAFT_PROMPT}\n\n${content}`;
+  const result = await adapter.execute({
+    prompt,
+    cwd: projectDir,
+    skillPaths: skills.map(s => s.path),
+    sessionId: null,
+    timeoutSec: 120,
+    extraArgs: [],
+  });
+
+  if (!result.success) {
+    throw new Error(result.errorMessage ?? 'Draft generation failed');
+  }
 
   const draftName = safeName.replace(/\.[^/.]+$/, '');
   await engine.writeProjectFile('02_drafts', draftName, DRAFT_FILENAME, result.content);

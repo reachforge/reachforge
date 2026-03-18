@@ -8,7 +8,6 @@ import { serve } from 'apcore-mcp';
 
 import { PipelineEngine } from './core/pipeline.js';
 import { ConfigManager } from './core/config.js';
-import { LLMFactory } from './llm/factory.js';
 import { WorkspaceResolver } from './core/workspace.js';
 import type { WorkspaceContext } from './core/workspace.js';
 import { DEFAULT_WORKSPACE_NAME } from './core/constants.js';
@@ -24,6 +23,7 @@ import { mcpCommand } from './commands/mcp.js';
 import { initCommand } from './commands/init.js';
 import { newProjectCommand } from './commands/new-project.js';
 import { workspaceInfoCommand } from './commands/workspace-info.js';
+import { refineCommand } from './commands/refine.js';
 
 const program = new Command();
 
@@ -58,12 +58,6 @@ async function getEngine(): Promise<PipelineEngine> {
   return new PipelineEngine(ctx.projectDir);
 }
 
-async function getLLM() {
-  const ctx = await getContext();
-  const config = await ConfigManager.load(ctx.projectDir, ctx.workspaceRoot);
-  return LLMFactory.create(config);
-}
-
 async function getConfig() {
   const ctx = await getContext();
   return ConfigManager.load(ctx.projectDir, ctx.workspaceRoot);
@@ -79,14 +73,14 @@ apcore.register('aphype.status', {
 });
 apcore.register('aphype.draft', {
   execute: async (inputs: { source: string }) => {
-    const [engine, llm] = await Promise.all([getEngine(), getLLM()]);
-    await draftCommand(engine, llm, inputs.source);
+    const engine = await getEngine();
+    await draftCommand(engine, inputs.source);
   },
 });
 apcore.register('aphype.adapt', {
   execute: async (inputs: { article: string }) => {
-    const [engine, llm] = await Promise.all([getEngine(), getLLM()]);
-    await adaptCommand(engine, llm, inputs.article);
+    const engine = await getEngine();
+    await adaptCommand(engine, inputs.article);
   },
 });
 apcore.register('aphype.schedule', {
@@ -124,8 +118,8 @@ program
   .command('draft <source>')
   .description('Generate an AI draft from an inbox source')
   .action(withErrorHandler(async (source: string) => {
-    const [engine, llm] = await Promise.all([getEngine(), getLLM()]);
-    await draftCommand(engine, llm, source);
+    const engine = await getEngine();
+    await draftCommand(engine, source);
   }));
 
 program
@@ -134,8 +128,8 @@ program
   .option('-p, --platforms <list>', 'Comma-separated platform list (e.g., x,devto,wechat)')
   .option('-f, --force', 'Overwrite existing platform versions')
   .action(withErrorHandler(async (article: string, options: { platforms?: string; force?: boolean }) => {
-    const [engine, llm] = await Promise.all([getEngine(), getLLM()]);
-    await adaptCommand(engine, llm, article, options);
+    const engine = await getEngine();
+    await adaptCommand(engine, article, options);
   }));
 
 program
@@ -205,6 +199,14 @@ program
   .action(withErrorHandler(async () => {
     const ctx = await getContext();
     await workspaceInfoCommand(ctx);
+  }));
+
+program
+  .command('refine <article>')
+  .description('Interactively refine a draft article with AI feedback')
+  .action(withErrorHandler(async (article: string) => {
+    const engine = await getEngine();
+    await refineCommand(engine, article);
   }));
 
 // Default action: when no command is given, check for workspace or show help

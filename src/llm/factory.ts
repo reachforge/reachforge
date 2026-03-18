@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'url';
+import * as path from 'path';
 import type { LLMProvider, CLIAdapter } from './types.js';
 import { GeminiProvider } from './gemini.js';
 import { LLMNotConfiguredError, AdapterNotFoundError } from '../types/index.js';
@@ -5,6 +7,7 @@ import type { ConfigManager } from '../core/config.js';
 import { ClaudeAdapter } from './adapters/claude.js';
 import { GeminiAdapter } from './adapters/gemini.js';
 import { CodexAdapter } from './adapters/codex.js';
+import { SkillResolver } from './skills.js';
 
 const VALID_ADAPTERS = ['claude', 'gemini', 'codex'] as const;
 type AdapterName = (typeof VALID_ADAPTERS)[number];
@@ -14,6 +17,11 @@ const DEFAULT_COMMANDS: Record<AdapterName, string> = {
   gemini: 'gemini',
   codex: 'codex',
 };
+
+const _builtInSkillsDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../skills',
+);
 
 /** @deprecated Use AdapterFactory instead */
 export class LLMFactory {
@@ -34,7 +42,10 @@ export class LLMFactory {
 }
 
 export class AdapterFactory {
-  static create(stage: string): { adapter: CLIAdapter } {
+  static create(
+    stage: string,
+    opts?: { workspaceDir?: string; projectDir?: string },
+  ): { adapter: CLIAdapter; resolver: SkillResolver } {
     const name = AdapterFactory.resolveAdapterName(stage);
 
     if (!VALID_ADAPTERS.includes(name as AdapterName)) {
@@ -59,7 +70,13 @@ export class AdapterFactory {
         throw new AdapterNotFoundError(name);
     }
 
-    return { adapter };
+    const resolver = new SkillResolver(
+      _builtInSkillsDir,
+      opts?.workspaceDir ?? '',
+      opts?.projectDir ?? '',
+    );
+
+    return { adapter, resolver };
   }
 
   private static resolveAdapterName(stage: string): string {

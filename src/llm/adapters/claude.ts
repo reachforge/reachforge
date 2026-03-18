@@ -33,7 +33,7 @@ export class ClaudeAdapter implements CLIAdapter {
       // Handle session expiry — retry without resume
       if (
         options.sessionId &&
-        result.exitCode !== 0 &&
+        result.proc.exitCode !== 0 &&
         isClaudeUnknownSessionError(result.parsed.resultJson ?? {})
       ) {
         const retry = await this.runAttempt(options, skillsDir, null);

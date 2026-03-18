@@ -1,0 +1,14 @@
+{
+  "feature": "skill-resolver",
+  "spec": "docs/features/skill-resolver.md",
+  "status": "completed",
+  "createdAt": "2026-03-18",
+  "completedAt": "2026-03-18",
+  "tasks": [
+    { "id": "T01", "title": "ResolvedSkill type", "status": "completed" },
+    { "id": "T02", "title": "Built-in skill files", "status": "completed" },
+    { "id": "T03", "title": "SkillResolver: resolve()", "status": "completed" },
+    { "id": "T04", "title": "SkillResolver: listAll() and readSkillContent()", "status": "completed" },
+    { "id": "T05", "title": "Exports", "status": "completed" }
+  ]
+}

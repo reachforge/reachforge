@@ -1,7 +1,8 @@
 import chalk from 'chalk';
 import fs from 'fs-extra';
 import type { PipelineEngine } from '../core/pipeline.js';
-import type { LLMProvider } from '../llm/types.js';
+import { AdapterFactory } from '../llm/factory.js';
+import { PLATFORM_PROMPTS } from '../llm/types.js';
 import { sanitizePath } from '../utils/path.js';
 import { MASTER_FILENAME, PLATFORM_VERSIONS_DIR } from '../core/constants.js';
 
@@ -9,7 +10,6 @@ const DEFAULT_PLATFORMS = ['x', 'wechat', 'zhihu'];
 
 export async function adaptCommand(
   engine: PipelineEngine,
-  llm: LLMProvider,
   article: string,
   options: { platforms?: string; force?: boolean } = {},
 ): Promise<void> {
@@ -36,7 +36,10 @@ export async function adaptCommand(
     ? options.platforms.split(',').map(p => p.trim())
     : DEFAULT_PLATFORMS;
 
-  // Parallel adaptation via Promise.all (fixes Major: sequential API calls)
+  const projectDir = engine.projectDir;
+  const { adapter, resolver } = AdapterFactory.create('adapt', { projectDir });
+
+  // Parallel adaptation via Promise.all
   const results = await Promise.all(
     platforms.map(async (platform) => {
       const versionPath = `${engine.getProjectPath('04_adapted', safeName)}/${PLATFORM_VERSIONS_DIR}/${platform}.md`;
@@ -47,7 +50,23 @@ export async function adaptCommand(
         return { platform, skipped: true };
       }
 
-      const result = await llm.adapt(content, { platform });
+      const skills = await resolver.resolve('adapt', platform);
+      const platformPrompt = PLATFORM_PROMPTS[platform] ?? `Adapt this article for the ${platform} platform.`;
+      const prompt = `${platformPrompt}\n\n${content}`;
+
+      const result = await adapter.execute({
+        prompt,
+        cwd: projectDir,
+        skillPaths: skills.map(s => s.path),
+        sessionId: null,
+        timeoutSec: 120,
+        extraArgs: [],
+      });
+
+      if (!result.success) {
+        throw new Error(`Adaptation for ${platform} failed: ${result.errorMessage ?? 'Unknown error'}`);
+      }
+
       await engine.writeProjectFile('04_adapted', `${safeName}/${PLATFORM_VERSIONS_DIR}`, `${platform}.md`, result.content);
       console.log(chalk.dim(`  ✔ ${platform} adaptation complete`));
       return { platform, skipped: false };

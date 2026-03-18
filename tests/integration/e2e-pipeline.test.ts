@@ -3,9 +3,6 @@ import * as path from 'path';
 import * as os from 'os';
 import fs from 'fs-extra';
 import { PipelineEngine } from '../../src/core/pipeline.js';
-import type { LLMProvider, GenerateOptions, AdaptOptions, LLMResult } from '../../src/llm/types.js';
-import { DEFAULT_DRAFT_PROMPT, PLATFORM_PROMPTS } from '../../src/llm/types.js';
-import { LLMError } from '../../src/types/index.js';
 
 import { draftCommand } from '../../src/commands/draft.js';
 import { adaptCommand } from '../../src/commands/adapt.js';
@@ -14,35 +11,36 @@ import { publishCommand } from '../../src/commands/publish.js';
 import { statusCommand } from '../../src/commands/status.js';
 import { rollbackCommand } from '../../src/commands/rollback.js';
 
+const mockExecute = vi.fn();
+
+// Return platform-appropriate content so content-based assertions pass
+function makeAdapterResult(prompt: string) {
+  let content = `# Generated Article\n\n${prompt}`;
+  if (prompt.includes('Twitter/X thread')) content = 'Thread about the topic.\n---\nSecond tweet with details.\n---\nFinal tweet with CTA.';
+  else if (prompt.includes('Dev.to')) content = '# Dev.to Article\n\nContent about the topic.';
+  else if (prompt.includes('WeChat')) content = '# WeChat 文章\n\nContent.';
+  else if (prompt.includes('Zhihu')) content = '## Zhihu 深度分析\n\nContent.';
+  return { success: true, content, sessionId: null, usage: { inputTokens: 0, outputTokens: 0, cachedTokens: 0 }, costUsd: null, model: 'mock', errorMessage: null, errorCode: null, exitCode: 0, timedOut: false };
+}
+
+vi.mock('../../src/llm/factory.js', () => ({
+  AdapterFactory: {
+    create: () => ({
+      adapter: { name: 'claude', command: 'claude', execute: mockExecute, probe: vi.fn() },
+      resolver: { resolve: vi.fn().mockResolvedValue([]) },
+    }),
+  },
+  LLMFactory: { create: vi.fn(), createFromApiKey: vi.fn() },
+}));
+
 let tmpDir: string;
 let engine: PipelineEngine;
-
-class MockLLM implements LLMProvider {
-  readonly name = 'mock';
-  async generate(content: string, options: GenerateOptions = {}): Promise<LLMResult> {
-    return {
-      content: `# Generated Article\n\n${content}\n\nThis is an AI-generated draft about the topic.`,
-      model: 'mock', provider: 'mock', tokenUsage: { prompt: 0, completion: 0 },
-    };
-  }
-  async adapt(content: string, options: AdaptOptions): Promise<LLMResult> {
-    const platformContent: Record<string, string> = {
-      x: `Thread about the topic.\n---\nSecond tweet with details.\n---\nFinal tweet with CTA.`,
-      wechat: `# WeChat 文章\n\n${content.substring(0, 100)}`,
-      zhihu: `## Zhihu 深度分析\n\n${content.substring(0, 100)}`,
-      devto: `# Dev.to Article\n\n${content.substring(0, 100)}`,
-    };
-    return {
-      content: platformContent[options.platform] || `Adapted for ${options.platform}`,
-      model: 'mock', provider: 'mock', tokenUsage: { prompt: 0, completion: 0 },
-    };
-  }
-}
 
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-e2e-'));
   engine = new PipelineEngine(tmpDir);
   await engine.initPipeline();
+  mockExecute.mockImplementation(async ({ prompt }: any) => makeAdapterResult(prompt));
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -55,7 +53,6 @@ afterEach(async () => {
 
 describe('E2E: Full Pipeline (inbox → sent)', () => {
   test('complete lifecycle: inbox → draft → master → adapt → schedule → publish → sent', async () => {
-    const llm = new MockLLM();
     const today = new Date().toISOString().split('T')[0];
 
     // 1. Create inbox content
@@ -67,7 +64,7 @@ describe('E2E: Full Pipeline (inbox → sent)', () => {
     expect(status.totalProjects).toBe(1);
 
     // 2. Generate draft
-    await draftCommand(engine, llm, 'bun-vs-node.md');
+    await draftCommand(engine, 'bun-vs-node.md');
 
     expect(await fs.pathExists(path.join(tmpDir, '02_drafts', 'bun-vs-node', 'draft.md'))).toBe(true);
     expect(await fs.pathExists(path.join(tmpDir, '02_drafts', 'bun-vs-node', 'meta.yaml'))).toBe(true);
@@ -83,7 +80,7 @@ describe('E2E: Full Pipeline (inbox → sent)', () => {
     expect(await fs.pathExists(path.join(masterDir, 'master.md'))).toBe(true);
 
     // 4. Adapt for multiple platforms
-    await adaptCommand(engine, llm, 'bun-vs-node', { platforms: 'x,devto' });
+    await adaptCommand(engine, 'bun-vs-node', { platforms: 'x,devto' });
 
     const xContent = await fs.readFile(
       path.join(tmpDir, '04_adapted', 'bun-vs-node', 'platform_versions', 'x.md'), 'utf-8'
@@ -122,7 +119,6 @@ describe('E2E: Full Pipeline (inbox → sent)', () => {
   });
 
   test('rollback flow: schedule → rollback → re-schedule', async () => {
-    const llm = new MockLLM();
 
     // Setup: create an adapted article
     const adaptedDir = path.join(tmpDir, '04_adapted', 'rollback-article');
@@ -180,14 +176,10 @@ describe('E2E: Error & Edge Cases', () => {
     // Create inbox source
     await fs.writeFile(path.join(tmpDir, '01_inbox', 'fail-test.md'), 'Content that will fail');
 
-    // LLM that always fails
-    const failingLLM: LLMProvider = {
-      name: 'failing-mock',
-      async generate() { throw new LLMError('API connection refused'); },
-      async adapt() { throw new LLMError('API connection refused'); },
-    };
+    // Adapter that always fails
+    mockExecute.mockRejectedValueOnce(new Error('API connection refused'));
 
-    await expect(draftCommand(engine, failingLLM, 'fail-test.md')).rejects.toThrow('API connection refused');
+    await expect(draftCommand(engine, 'fail-test.md')).rejects.toThrow('API connection refused');
 
     // No residual directory in 02_drafts
     const drafts = await engine.listProjects('02_drafts');
@@ -198,12 +190,10 @@ describe('E2E: Error & Edge Cases', () => {
   });
 
   test('draft with non-existent source throws descriptive error', async () => {
-    const llm = new MockLLM();
-    await expect(draftCommand(engine, llm, 'ghost-file.md')).rejects.toThrow('not found in 01_inbox');
+    await expect(draftCommand(engine, 'ghost-file.md')).rejects.toThrow('not found in 01_inbox');
   });
 
   test('future date schedule does not publish today', async () => {
-    const llm = new MockLLM();
 
     // Create adapted article and schedule for far future
     const adaptedDir = path.join(tmpDir, '04_adapted', 'future-post');
@@ -223,28 +213,26 @@ describe('E2E: Error & Edge Cases', () => {
   });
 
   test('--force flag overwrites existing platform versions', async () => {
-    const llm = new MockLLM();
-
     // Create master
     const masterDir = path.join(tmpDir, '03_master', 'force-test');
     await fs.ensureDir(masterDir);
     await fs.writeFile(path.join(masterDir, 'master.md'), '# Original Article\n\nOriginal content.');
 
     // First adapt
-    await adaptCommand(engine, llm, 'force-test', { platforms: 'x' });
+    await adaptCommand(engine, 'force-test', { platforms: 'x' });
     const firstContent = await fs.readFile(
       path.join(tmpDir, '04_adapted', 'force-test', 'platform_versions', 'x.md'), 'utf-8'
     );
 
     // Second adapt without --force should skip
-    await adaptCommand(engine, llm, 'force-test', { platforms: 'x' });
+    await adaptCommand(engine, 'force-test', { platforms: 'x' });
     const unchangedContent = await fs.readFile(
       path.join(tmpDir, '04_adapted', 'force-test', 'platform_versions', 'x.md'), 'utf-8'
     );
     expect(unchangedContent).toBe(firstContent);
 
     // Third adapt with --force should overwrite
-    await adaptCommand(engine, llm, 'force-test', { platforms: 'x', force: true });
+    await adaptCommand(engine, 'force-test', { platforms: 'x', force: true });
     const overwrittenContent = await fs.readFile(
       path.join(tmpDir, '04_adapted', 'force-test', 'platform_versions', 'x.md'), 'utf-8'
     );
@@ -302,17 +290,16 @@ describe('E2E: Error & Edge Cases', () => {
   });
 
   test('inbox directory input with multiple files selects main.md first', async () => {
-    const llm = new MockLLM();
     const inboxDir = path.join(tmpDir, '01_inbox', 'dir-input');
     await fs.ensureDir(inboxDir);
     await fs.writeFile(path.join(inboxDir, 'notes.txt'), 'Just notes');
     await fs.writeFile(path.join(inboxDir, 'main.md'), 'Main content for draft');
     await fs.writeFile(path.join(inboxDir, 'other.md'), 'Other content');
 
-    await draftCommand(engine, llm, 'dir-input');
+    await draftCommand(engine, 'dir-input');
 
     const draft = await fs.readFile(path.join(tmpDir, '02_drafts', 'dir-input', 'draft.md'), 'utf-8');
-    // MockLLM echoes input — should contain main.md content
+    // mock echoes prompt — main.md content is included in prompt, notes.txt is not
     expect(draft).toContain('Main content for draft');
     expect(draft).not.toContain('Just notes');
   });

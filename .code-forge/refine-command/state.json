@@ -1,0 +1,13 @@
+{
+  "feature": "refine-command",
+  "spec": "docs/features/refine-command.md",
+  "status": "completed",
+  "createdAt": "2026-03-18",
+  "completedAt": "2026-03-18",
+  "tasks": [
+    { "id": "T01", "title": "Helper functions", "status": "completed" },
+    { "id": "T02", "title": "refineCommand core: article lookup + session load", "status": "completed" },
+    { "id": "T03", "title": "Interactive loop + slash commands", "status": "completed" },
+    { "id": "T04", "title": "CLI registration + non-TTY handling", "status": "completed" }
+  ]
+}

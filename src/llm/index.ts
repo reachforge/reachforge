@@ -20,6 +20,10 @@ export { CodexAdapter } from './adapters/codex.js';
 export { runCLIProcess } from './process.js';
 export type { ProcessOptions, ProcessResult } from './process.js';
 
+// Skill resolution
+export type { ResolvedSkill } from './types.js';
+export { SkillResolver } from './skills.js';
+
 // Session management
 export type { SessionData } from './types.js';
 export { SessionManager, SessionDataSchema } from './session.js';
