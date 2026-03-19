@@ -11,7 +11,7 @@
 
 ## 1. Purpose and Scope
 
-The watcher daemon is a long-running background process that periodically checks `05_scheduled` for due items and auto-publishes them. It reuses the same publish logic as `reachforge publish` but runs continuously with configurable intervals, signal handling, and file logging.
+The watcher daemon is a long-running background process that periodically checks `05_scheduled` for due items and auto-publishes them. It reuses the same publish logic as `reach publish` but runs continuously with configurable intervals, signal handling, and file logging.
 
 ## 2. Files
 
@@ -96,7 +96,7 @@ function setupSignalHandlers(state: WatchState, logger: Logger): void;
    };
    ```
 2. Call `setupSignalHandlers(state, logger)` to register SIGTERM/SIGINT handlers
-3. Log: "[timestamp] INFO: reachforge watcher started. Check interval: {intervalMinutes} minutes."
+3. Log: "[timestamp] INFO: reach watcher started. Check interval: {intervalMinutes} minutes."
 4. Execute first `tick()` immediately
 5. Set interval: `state.intervalHandle = setInterval(() => tick(ctx, state, logger), intervalMinutes * 60 * 1000)`
 6. Block indefinitely (watcher runs until signal received)
@@ -156,7 +156,7 @@ Log file: `{workingDir}/reachforge-watcher.log`
 
 Each entry is one line with format:
 ```
-[2026-03-14T10:00:00.000Z] INFO: reachforge watcher started. Check interval: 60 minutes.
+[2026-03-14T10:00:00.000Z] INFO: reach watcher started. Check interval: 60 minutes.
 [2026-03-14T11:00:00.000Z] INFO: Check cycle #1 starting.
 [2026-03-14T11:00:00.050Z] INFO: Found 2 due items.
 [2026-03-14T11:00:05.123Z] INFO: Published 2026-03-14-my-article to devto: https://dev.to/user/post-123

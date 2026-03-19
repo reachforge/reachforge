@@ -24,7 +24,7 @@ describe('MockProvider', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const result = await mock.publish('content', {});
     expect(result.status).toBe('success');
-    expect(result.url).toContain('mock.reachforge.dev');
+    expect(result.url).toContain('mock.reach.dev');
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('MOCK MODE'));
     vi.restoreAllMocks();
   });

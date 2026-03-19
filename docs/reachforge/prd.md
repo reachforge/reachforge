@@ -14,7 +14,7 @@
 
 Today, independent developers and content creators face a fragmented, manual workflow when distributing content across platforms. A single blog post destined for Dev.to, X (Twitter), and WeChat requires separate rewrites, separate logins, separate formatting, and separate scheduling. The result: creators either under-distribute (limiting reach) or spend hours on repetitive adaptation work that adds no creative value.
 
-**reachforge** is an AI-native Social Influence Engine that eliminates this friction. It transforms a single raw idea into platform-optimized, publication-ready assets through a six-stage file-based pipeline. Users drop an idea into an inbox folder; AI generates a long-form draft; AI adapts that draft for each target platform; the user schedules it; and reachforge publishes automatically via direct APIs or SaaS bridges. No database, no complex setup --- directories are states, filenames are timestamps, YAML files are metadata.
+**reachforge** is an AI-native Social Influence Engine that eliminates this friction. It transforms a single raw idea into platform-optimized, publication-ready assets through a six-stage file-based pipeline. Users drop an idea into an inbox folder; AI generates a long-form draft; AI adapts that draft for each target platform; the user schedules it; and reach publishes automatically via direct APIs or SaaS bridges. No database, no complex setup --- directories are states, filenames are timestamps, YAML files are metadata.
 
 reachforge is part of the **aipartnerup** ecosystem (alongside apcore and apflow), designed for developers who think in files and terminals. The MVP targets two publishing paths --- native API integration with Dev.to and SaaS-bridged publishing to X via Postiz --- to validate the hybrid distribution architecture before expanding to additional platforms.
 
@@ -175,10 +175,10 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 > As Mei, I want to schedule an adapted article for next Tuesday and have reachforge automatically publish to all configured platforms on that date, so that I do not need to remember to publish manually.
 
 ### US-003: AI-Powered Adaptation
-> As Jordan, I want to run `reachforge adapt my-article` and get platform-optimized versions (an X thread, a Dev.to article, a WeChat post) without writing any of them myself, so that I can focus on creating the original content.
+> As Jordan, I want to run `reach adapt my-article` and get platform-optimized versions (an X thread, a Dev.to article, a WeChat post) without writing any of them myself, so that I can focus on creating the original content.
 
 ### US-004: Dashboard Overview
-> As Alex, I want to run `reachforge status` and see how many items are in each pipeline stage, which items are due for publishing today, so that I can manage my content queue at a glance.
+> As Alex, I want to run `reach status` and see how many items are in each pipeline stage, which items are due for publishing today, so that I can manage my content queue at a glance.
 
 ### US-005: MCP Agent Integration
 > As Mei, I want to connect reachforge to Claude Desktop via MCP, so that I can say "publish my latest article to all platforms" and have the AI agent operate the pipeline on my behalf.
@@ -308,7 +308,7 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 #### FEAT-013: Analytics & Receipts Dashboard
 - **Description**: Aggregate `receipt.yaml` data from `06_sent` to show publishing history, success rates, and platform-level metrics.
 - **Acceptance Criteria**:
-  - `reachforge analytics` command shows total publishes by platform, success/failure rates.
+  - `reach analytics` command shows total publishes by platform, success/failure rates.
   - Supports date range filtering.
 
 #### FEAT-014: Template System
@@ -330,9 +330,9 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 ## 10. Non-Functional Requirements
 
 ### Performance
-- **NFR-001**: `reachforge status` must complete in under 500ms for pipelines containing up to 100 items.
-- **NFR-002**: `reachforge draft` and `reachforge adapt` latency is bounded by LLM API response time (typically 5-30 seconds). The CLI must show progress indication during AI calls.
-- **NFR-003**: `reachforge publish` must handle up to 10 simultaneous platform publications without failure.
+- **NFR-001**: `reach status` must complete in under 500ms for pipelines containing up to 100 items.
+- **NFR-002**: `reach draft` and `reach adapt` latency is bounded by LLM API response time (typically 5-30 seconds). The CLI must show progress indication during AI calls.
+- **NFR-003**: `reach publish` must handle up to 10 simultaneous platform publications without failure.
 - **NFR-004**: Compiled binary size must remain under 50MB.
 
 ### Security
@@ -446,7 +446,7 @@ reachforge solves a real but not urgent problem. Developers can and do cross-pos
 | 3  | Should `03_master` require explicit user sign-off (e.g., a flag in `meta.yaml`), or is moving the file sufficient? | Product      | Open   |
 | 4  | How should credentials be managed --- `.env` only, or also support `credentials.yaml` with encryption via apcore? | Engineering  | Open   |
 | 5  | Is the current single-file architecture (`src/index.ts`) acceptable for v0.2, or must refactoring happen first? | Engineering  | Open   |
-| 6  | Should reachforge publish content as "draft" by default on platforms that support it (Dev.to), requiring manual approval? | Product      | Open   |
+| 6  | Should reach publish content as "draft" by default on platforms that support it (Dev.to), requiring manual approval? | Product      | Open   |
 | 7  | What is the commercialization strategy? Open-source core + premium features? SaaS? Or pure open-source? | Business     | Open (deliberately deferred) |
 | 8  | Should the Python-era artifacts (`pyproject.toml`, `scripts/adapt.py`) be removed or archived before v0.2? | Engineering  | Open   |
 | 9  | What is the minimum set of platforms needed for the tool to be compelling to the target audience? | Product      | Open   |

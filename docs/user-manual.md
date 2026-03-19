@@ -63,18 +63,18 @@ bun run build:win      # Windows x64
 
 ```bash
 # 1. Create a workspace
-reachforge init ~/my-workspace
+reach init ~/my-workspace
 cd ~/my-workspace
 
 # 2. Create a project
-reachforge new my-blog
+reach new my-blog
 cd my-blog
 
 # 3. Drop an idea into the inbox
 echo "Why AI pair programming changes everything..." > 01_inbox/ai-pairing.md
 
 # 4. Generate a draft
-reachforge draft ai-pairing.md
+reach draft ai-pairing.md
 
 # 5. Refine interactively
 reachforge refine ai-pairing
@@ -83,13 +83,13 @@ reachforge refine ai-pairing
 cp 02_drafts/ai-pairing/draft.md 03_master/ai-pairing/master.md
 
 # 7. Adapt for platforms
-reachforge adapt ai-pairing --platforms devto,hashnode,x
+reach adapt ai-pairing --platforms devto,hashnode,x
 
 # 8. Schedule
-reachforge schedule ai-pairing 2026-04-01
+reach schedule ai-pairing 2026-04-01
 
 # 9. Publish
-reachforge publish
+reach publish
 ```
 
 ---
@@ -115,7 +115,7 @@ Each project contains six stage directories. Content flows left to right:
 
 ```
 ~/my-workspace/
-├── .reachforge/
+├── .reach/
 │   └── config.yaml            # Workspace config
 ├── project-a/
 │   ├── 01_inbox/
@@ -146,45 +146,45 @@ Each project contains six stage directories. Content flows left to right:
 
 ---
 
-### `reachforge init [path]`
+### `reach init [path]`
 
 Initialize a new workspace.
 
 ```bash
-reachforge init                    # Interactive — defaults to ~/reachforge-workspace
-reachforge init ~/my-workspace     # Explicit path
+reach init                    # Interactive — defaults to ~/reach-workspace
+reach init ~/my-workspace     # Explicit path
 ```
 
-Creates the `.reachforge/config.yaml` directory structure.
+Creates the `.reach/config.yaml` directory structure.
 
 ---
 
-### `reachforge new <project-name>`
+### `reach new <project-name>`
 
 Create a new project in the current workspace.
 
 ```bash
-reachforge new my-blog
+reach new my-blog
 ```
 
 Scaffolds all six stage directories and a `project.yaml`.
 
 ---
 
-### `reachforge status`
+### `reach status`
 
 Show pipeline dashboard for the current project.
 
 ```bash
-reachforge status           # Current project
-reachforge status --all     # All projects in workspace
+reach status           # Current project
+reach status --all     # All projects in workspace
 ```
 
 Displays item counts per stage and items due today.
 
 ---
 
-### `reachforge workspace`
+### `reach workspace`
 
 Show workspace info and list all projects.
 
@@ -194,12 +194,12 @@ reachforge workspace
 
 ---
 
-### `reachforge draft <source>`
+### `reach draft <source>`
 
 Generate an AI draft from an inbox source.
 
 ```bash
-reachforge draft my-idea.md
+reach draft my-idea.md
 ```
 
 - **Input:** File or directory in `01_inbox/`.
@@ -209,7 +209,7 @@ reachforge draft my-idea.md
 
 ---
 
-### `reachforge refine <article>`
+### `reach refine <article>`
 
 Interactively refine a draft or master article with AI feedback.
 
@@ -229,20 +229,20 @@ Opens an interactive session with these commands:
 
 **Features:**
 
-- Sessions are persisted in `.reachforge/sessions/` and automatically resumed.
+- Sessions are persisted in `.reach/sessions/` and automatically resumed.
 - Works on articles in both `02_drafts` and `03_master`.
 - Non-TTY mode: single-turn refinement from piped input.
 
 ---
 
-### `reachforge adapt <article>`
+### `reach adapt <article>`
 
 Generate platform-specific versions from a master article.
 
 ```bash
-reachforge adapt my-idea                              # Default platforms
-reachforge adapt my-idea --platforms x,devto,hashnode  # Specific platforms
-reachforge adapt my-idea --force                       # Overwrite existing
+reach adapt my-idea                              # Default platforms
+reach adapt my-idea --platforms x,devto,hashnode  # Specific platforms
+reach adapt my-idea --force                       # Overwrite existing
 ```
 
 | Option | Description |
@@ -259,13 +259,13 @@ reachforge adapt my-idea --force                       # Overwrite existing
 
 ---
 
-### `reachforge schedule <article> <date>`
+### `reach schedule <article> <date>`
 
 Move an adapted article to the scheduled stage.
 
 ```bash
-reachforge schedule my-idea 2026-04-01
-reachforge schedule my-idea 2026-04-01 --dry-run
+reach schedule my-idea 2026-04-01
+reach schedule my-idea 2026-04-01 --dry-run
 ```
 
 | Option | Description |
@@ -277,14 +277,14 @@ reachforge schedule my-idea 2026-04-01 --dry-run
 
 ---
 
-### `reachforge publish`
+### `reach publish`
 
 Publish all scheduled content that is due (date <= today).
 
 ```bash
-reachforge publish
-reachforge publish --dry-run
-reachforge publish --draft
+reach publish
+reach publish --dry-run
+reach publish --draft
 ```
 
 | Option | Description |
@@ -302,29 +302,29 @@ reachforge publish --draft
 6. On success, moves the item to `06_sent/`.
 7. Releases the lock.
 
-**Resumable:** If the process crashes mid-publish, re-running `reachforge publish` picks up from where it left off using the receipt file.
+**Resumable:** If the process crashes mid-publish, re-running `reach publish` picks up from where it left off using the receipt file.
 
 ---
 
-### `reachforge rollback <article>`
+### `reach rollback <article>`
 
 Move an article back one pipeline stage.
 
 ```bash
-reachforge rollback my-idea
+reach rollback my-idea
 ```
 
 Moves the article to the previous stage (e.g., `05_scheduled` -> `04_adapted`). Cannot roll back from `01_inbox`.
 
 ---
 
-### `reachforge watch`
+### `reach watch`
 
 Start a daemon that auto-publishes due content at intervals.
 
 ```bash
-reachforge watch                  # Check every 60 minutes (default)
-reachforge watch --interval 30    # Check every 30 minutes
+reach watch                  # Check every 60 minutes (default)
+reach watch --interval 30    # Check every 30 minutes
 ```
 
 | Option | Description |
@@ -335,13 +335,13 @@ Gracefully shuts down on `SIGINT` / `SIGTERM`.
 
 ---
 
-### `reachforge mcp`
+### `reach mcp`
 
 Launch reachforge as an MCP (Model Context Protocol) server.
 
 ```bash
-reachforge mcp                             # stdio transport, port 8000
-reachforge mcp --transport sse --port 8001
+reach mcp                             # stdio transport, port 8000
+reach mcp --transport sse --port 8001
 ```
 
 | Option | Description |
@@ -361,8 +361,8 @@ Exposes these MCP tools: `reachforge_status`, `reachforge_draft`, `reachforge_ad
 2. **Project `.env`** — `{project}/.env`
 3. **Project `credentials.yaml`** — `{project}/credentials.yaml`
 4. **Workspace `.env`** — `{workspace}/.env`
-5. **Workspace `config.yaml`** — `{workspace}/.reachforge/config.yaml`
-6. **Global config** — `~/.reachforge/config.yaml`
+5. **Workspace `config.yaml`** — `{workspace}/.reach/config.yaml`
+6. **Global config** — `~/.reach/config.yaml`
 
 ### LLM Settings
 
@@ -416,9 +416,9 @@ default_tags: [tech, ai]
 When you run any command, reachforge resolves the workspace in this order:
 
 1. `--workspace` flag or `REACHFORGE_WORKSPACE` env var.
-2. Walk up from `cwd` looking for a `.reachforge/` directory.
+2. Walk up from `cwd` looking for a `.reach/` directory.
 3. Check `cwd` for `project.yaml` (treat parent as workspace).
-4. Fall back to `~/reachforge-workspace`.
+4. Fall back to `~/reach-workspace`.
 
 ---
 
@@ -525,10 +525,10 @@ reachforge can run as an MCP server, making its pipeline available to AI agents 
 
 ```bash
 # stdio (for Claude Desktop, etc.)
-reachforge mcp
+reach mcp
 
 # SSE (for networked access)
-reachforge mcp --transport sse --port 8001
+reach mcp --transport sse --port 8001
 ```
 
 ### Available MCP Tools
@@ -591,14 +591,14 @@ rm 05_scheduled/{item}/.publish.lock
 
 ### Session issues with `refine`
 
-If a session becomes stale or the adapter changed, reachforge automatically archives the old session and starts fresh. Archived sessions are saved as `.bak` files in `.reachforge/sessions/`.
+If a session becomes stale or the adapter changed, reachforge automatically archives the old session and starts fresh. Archived sessions are saved as `.bak` files in `.reach/sessions/`.
 
 ### Validation failures
 
 Use `--dry-run` to preview issues before publishing:
 
 ```bash
-reachforge publish --dry-run
+reach publish --dry-run
 ```
 
 Common validation issues:

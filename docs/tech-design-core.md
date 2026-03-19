@@ -12,11 +12,11 @@ The system operates on six strictly ordered directories:
 5. `05_scheduled` -> `06_sent` (Automatic distribution)
 
 ## 3. Command Definition
-### `reachforge status`
+### `reach status`
 - **Logic**: Iterates over `01_inbox` through `06_sent`.
 - **Output**: Visual representation of project counts and today's scheduled tasks.
 
-### `reachforge schedule <article> <date>`
+### `reach schedule <article> <date>`
 - **Logic**: Validates the date format (YYYY-MM-DD), moves the folder from `04_adapted` to `05_scheduled`, and prepends the date to the folder name.
 - **Validation**: Ensures a `master.md` or equivalent exists.
 

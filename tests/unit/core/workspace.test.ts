@@ -8,7 +8,7 @@ import { writeProjectConfig, writeWorkspaceConfig } from '../../../src/core/proj
 let tmpDir: string;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-ws-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-ws-'));
   delete process.env.REACHFORGE_WORKSPACE;
 });
 
@@ -52,7 +52,7 @@ describe('WorkspaceResolver.resolve', () => {
     expect(ctx.projectName).toBe('news');
   });
 
-  test('Step 2: walks up from cwd to find .reachforge/', async () => {
+  test('Step 2: walks up from cwd to find .reach/', async () => {
     await createWorkspace(tmpDir, ['blog']);
     const deepDir = path.join(tmpDir, 'blog', '01_inbox');
     await fs.ensureDir(deepDir);
@@ -63,7 +63,7 @@ describe('WorkspaceResolver.resolve', () => {
     expect(ctx.isWorkspace).toBe(true);
   });
 
-  test('Step 3: cwd contains project.yaml, parent has .reachforge/', async () => {
+  test('Step 3: cwd contains project.yaml, parent has .reach/', async () => {
     await createWorkspace(tmpDir, ['my-project']);
 
     const ctx = await WorkspaceResolver.resolve(path.join(tmpDir, 'my-project'));
@@ -129,7 +129,7 @@ describe('WorkspaceResolver.listProjects', () => {
 });
 
 describe('WorkspaceResolver.isWorkspace / isProject', () => {
-  test('isWorkspace returns true when .reachforge/config.yaml exists', async () => {
+  test('isWorkspace returns true when .reach/config.yaml exists', async () => {
     await createWorkspace(tmpDir);
     expect(await WorkspaceResolver.isWorkspace(tmpDir)).toBe(true);
   });

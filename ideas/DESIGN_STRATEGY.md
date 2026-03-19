@@ -2,12 +2,12 @@
 
 > **reachforge: The Social Influence Engine for AI-Native Content.**
 
-This document records the core architectural decisions, technical selection criteria, and integration paths within the `aipartnerup` ecosystem for `reachforge` (formerly `apforge`).
+This document records the core architectural decisions, technical selection criteria, and integration paths within the `aipartnerup` ecosystem for `reach` (formerly `apforge`).
 
 ## 1. Naming & Positioning
 - **Positioning**: AI-native Social Influence Engine, responsible for transforming inspiration fragments into multi-platform viral assets.
 - **Naming Rationale**:
-  - Renamed to **`reachforge`** to perfectly fit the "4-letter component" sequence of the `aipartnerup` ecosystem (`apcore`, `apflow`).
+  - Renamed to **`reach`** to perfectly fit the "4-letter component" sequence of the `aipartnerup` ecosystem (`apcore`, `apflow`).
   - **Hype** directly points to the ultimate goal of content production: building influence and buzz.
   - Avoids naming conflicts with external development toolkits (`*-forge`).
 
@@ -16,16 +16,16 @@ This document records the core architectural decisions, technical selection crit
 - **Programming Language**: **TypeScript (TS)** (Perfectly fits VSCode plugin environments and the MCP SDK).
 
 ## 3. Plugin Architecture: Hybrid Publishing Strategy
-`reachforge` supports two modes: "Local Direct Publishing" and "Cloud Bridging", which are completely transparent to the user.
+`reach` supports two modes: "Local Direct Publishing" and "Cloud Bridging", which are completely transparent to the user.
 
 ### 3.1 Native Providers
 - **Scenario**: For developer-friendly platforms like Dev.to, Hashnode, and GitHub.
-- **Implementation**: `reachforge` -> Platform Official API (user-provided API Key).
+- **Implementation**: `reach` -> Platform Official API (user-provided API Key).
 - **Advantages**: Completely free, data stays local.
 
 ### 3.2 Bridge/SaaS Providers
 - **Scenario**: For platforms like Instagram, TikTok, and X where API application is difficult or premium services are involved.
-- **Implementation**: `reachforge` -> **Postiz Cloud / Third-party SaaS API** -> Target platform.
+- **Implementation**: `reach` -> **Postiz Cloud / Third-party SaaS API** -> Target platform.
 - **Advantages**: Eliminates tedious OAuth applications, supports centralized management of multiple accounts, and provides more robust task retries.
 
 ## 4. Core Industrial Design
@@ -39,7 +39,7 @@ This document records the core architectural decisions, technical selection crit
 - **Publishing Lock**: Marks the execution state as `publishing` to prevent multi-process conflicts.
 
 ### 4.3 Automated Watcher Mode
-- **Command**: `reachforge watch`.
+- **Command**: `reach watch`.
 - **Function**: Uses Bun's `fs.watch` to monitor the `05_scheduled` directory in real-time. Once the date arrives, it automatically triggers publishing, achieving fully automated operation.
 
 ### 4.4 Security & Configuration Management
@@ -49,7 +49,7 @@ This document records the core architectural decisions, technical selection crit
 - **Encryption Integration**: Prioritizes calling `apcore`'s encryption module to store sensitive information.
 
 ## 5. Core Workflow: Folders as Projects
-`reachforge` strictly follows the principle of "Everything is a File" and "User Visible, Controllable, and Repairable".
+`reach` strictly follows the principle of "Everything is a File" and "User Visible, Controllable, and Repairable".
 
 ### 📁 Unified Project Anatomy
 - `content.md`: Raw inspiration, materials, or outlines.
@@ -77,7 +77,7 @@ This document records the core architectural decisions, technical selection crit
 - [ ] **Phase 2**: Migrate `dev.to` (Native) and `postiz-bridge` (SaaS) plugins.
 - [ ] **Phase 3**: Launch MCP Server mode to support Claude collaborative creation.
 - [ ] **Phase 4**: Release VSCode extension version.
-- [ ] **Phase 5**: Implement `reachforge watch` automated daemon process.
+- [ ] **Phase 5**: Implement `reach watch` automated daemon process.
 
 ---
 *Last Updated: 2026-03-14*

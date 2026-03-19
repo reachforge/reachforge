@@ -10,7 +10,7 @@ let engine: PipelineEngine;
 let logOutput: string[];
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-status-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-status-'));
   engine = new PipelineEngine(tmpDir);
   await engine.initPipeline();
   logOutput = [];

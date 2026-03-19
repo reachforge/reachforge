@@ -10,7 +10,7 @@ let tmpDir: string;
 let engine: PipelineEngine;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-test-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-test-'));
   engine = new PipelineEngine(tmpDir);
 });
 

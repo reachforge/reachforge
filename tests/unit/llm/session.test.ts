@@ -19,7 +19,7 @@ const validSession: SessionData = {
 };
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-session-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-session-'));
   manager = new SessionManager(tmpDir);
 });
 
@@ -135,12 +135,12 @@ describe('SessionManager.save & load', () => {
 describe('SessionManager.getSessionPath', () => {
   test('returns correct path for draft stage', () => {
     const p = manager.getSessionPath('my-article', 'draft');
-    expect(p).toBe(path.join(tmpDir, '.reachforge', 'sessions', 'my-article', 'draft.json'));
+    expect(p).toBe(path.join(tmpDir, '.reach', 'sessions', 'my-article', 'draft.json'));
   });
 
   test('returns correct path for adapt-x stage', () => {
     const p = manager.getSessionPath('my-article', 'adapt-x');
-    expect(p).toBe(path.join(tmpDir, '.reachforge', 'sessions', 'my-article', 'adapt-x.json'));
+    expect(p).toBe(path.join(tmpDir, '.reach', 'sessions', 'my-article', 'adapt-x.json'));
   });
 });
 

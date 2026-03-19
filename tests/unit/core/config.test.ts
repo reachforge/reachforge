@@ -7,7 +7,7 @@ import { ConfigManager } from '../../../src/core/config.js';
 let tmpDir: string;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-config-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-config-'));
   // Clear relevant env vars for test isolation
   delete process.env.GEMINI_API_KEY;
   delete process.env.DEVTO_API_KEY;

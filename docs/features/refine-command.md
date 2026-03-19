@@ -13,7 +13,7 @@
 
 ## 1. Purpose and Scope
 
-The `reachforge refine <article>` command provides an interactive multi-turn conversation loop for iteratively improving a draft article. The user gives feedback, the LLM revises the draft, and the cycle repeats until the user saves or quits. This command is the primary use case for session resumption: the draft session persists across multiple `refine` invocations, so the LLM retains context from all previous feedback rounds.
+The `reach refine <article>` command provides an interactive multi-turn conversation loop for iteratively improving a draft article. The user gives feedback, the LLM revises the draft, and the cycle repeats until the user saves or quits. This command is the primary use case for session resumption: the draft session persists across multiple `refine` invocations, so the LLM retains context from all previous feedback rounds.
 
 The module provides:
 - `refineCommand()` function implementing the interactive loop

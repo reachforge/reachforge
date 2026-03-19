@@ -37,7 +37,7 @@ let tmpDir: string;
 let engine: PipelineEngine;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-e2e-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-e2e-'));
   engine = new PipelineEngine(tmpDir);
   await engine.initPipeline();
   mockExecute.mockImplementation(async ({ prompt }: any) => makeAdapterResult(prompt));
@@ -432,7 +432,7 @@ describe('E2E: Content format conversion', () => {
         validate: () => ({ valid: true, errors: [] }),
         publish: async (content: string) => {
           capturedContent = content;
-          return { platform: 'x', status: 'success' as const, url: 'https://mock.reachforge.dev/post/1' };
+          return { platform: 'x', status: 'success' as const, url: 'https://mock.reach.dev/post/1' };
         },
         formatContent: (c: string) => c,
       };

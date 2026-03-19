@@ -13,22 +13,22 @@ export class ConfigManager {
 
   /**
    * 4-layer config loading:
-   *   Layer 4 (lowest):  ~/.reachforge/config.yaml (global)
-   *   Layer 3:           {workspaceRoot}/.reachforge/config.yaml (workspace shared)
+   *   Layer 4 (lowest):  ~/.reach/config.yaml (global)
+   *   Layer 3:           {workspaceRoot}/.reach/config.yaml (workspace shared)
    *   Layer 2:           {projectDir}/.env + {projectDir}/credentials.yaml (project)
    *   Layer 1 (highest): environment variables
    */
   static async load(projectDir: string, workspaceRoot?: string): Promise<ConfigManager> {
     let mergedCreds: Record<string, string | undefined> = {};
 
-    // Layer 4: global ~/.reachforge/config.yaml credentials
+    // Layer 4: global ~/.reach/config.yaml credentials
     const globalDir = path.join(os.homedir(), WORKSPACE_CONFIG_DIR);
     const globalWsConfig = await readWorkspaceConfig(globalDir);
     if (globalWsConfig?.credentials) {
       mergedCreds = { ...mergedCreds, ...globalWsConfig.credentials };
     }
 
-    // Layer 3: workspace .reachforge/config.yaml credentials
+    // Layer 3: workspace .reach/config.yaml credentials
     if (workspaceRoot) {
       const wsConfig = await readWorkspaceConfig(workspaceRoot);
       if (wsConfig?.credentials) {

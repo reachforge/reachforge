@@ -470,7 +470,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: Pipeline with 2 items in `01_inbox`, 1 in `02_drafts`, 0 in others
 - **Test Steps**:
   1. Create `01_inbox/idea-a/`, `01_inbox/idea-b/`, `02_drafts/article-c/`
-  2. Run `reachforge status`
+  2. Run `reach status`
   3. Capture stdout output
 - **Expected Result**: Output contains all 6 stage names. `01_inbox` shows count 2 with names `idea-a`, `idea-b`. `02_drafts` shows count 1 with name `article-c`. Other stages show count 0. Exit code 0.
 - **Automation**: Yes
@@ -481,7 +481,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: Empty working directory (no pipeline dirs)
 - **Test Steps**:
-  1. Run `reachforge status` in empty temp directory
+  1. Run `reach status` in empty temp directory
   2. Check stdout and filesystem
 - **Expected Result**: Six pipeline directories are auto-created. Output shows all stages with count 0. Exit code 0.
 - **Automation**: Yes
@@ -493,7 +493,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: `04_adapted/my-article/meta.yaml` exists with `status: "adapted"`
 - **Test Steps**:
   1. Create adapted project with meta.yaml and platform_versions/
-  2. Run `reachforge schedule my-article 2026-03-20`
+  2. Run `reach schedule my-article 2026-03-20`
   3. Check filesystem state
 - **Expected Result**: `04_adapted/my-article/` is gone. `05_scheduled/2026-03-20-my-article/` exists. `meta.yaml` inside contains `status: "scheduled"` and `publish_date: "2026-03-20"`. Exit code 0.
 - **Automation**: Yes
@@ -504,9 +504,9 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `04_adapted/my-article/` exists
 - **Test Steps**:
-  1. Run `reachforge schedule my-article 03-20-2026`
-  2. Run `reachforge schedule my-article not-a-date`
-  3. Run `reachforge schedule my-article 2026-02-30` (invalid calendar date)
+  1. Run `reach schedule my-article 03-20-2026`
+  2. Run `reach schedule my-article not-a-date`
+  3. Run `reach schedule my-article 2026-02-30` (invalid calendar date)
 - **Expected Result**: All three commands output error containing `"Date must be in YYYY-MM-DD format"` (or `"valid calendar date"` for the third). Exit code 1. No files moved.
 - **Automation**: Yes
 - **Traces**: FR-LIFE-002
@@ -516,7 +516,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: Pipeline initialized but `04_adapted/ghost/` does not exist
 - **Test Steps**:
-  1. Run `reachforge schedule ghost 2026-03-20`
+  1. Run `reach schedule ghost 2026-03-20`
 - **Expected Result**: Stderr contains `"Article 'ghost' not found in 04_adapted"` or equivalent. Exit code 1.
 - **Automation**: Yes
 - **Traces**: FR-LIFE-001
@@ -527,7 +527,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: `01_inbox/my-idea.md` exists. `GEMINI_API_KEY` is unset.
 - **Test Steps**:
   1. Unset `GEMINI_API_KEY` from environment
-  2. Run `reachforge draft my-idea.md`
+  2. Run `reach draft my-idea.md`
 - **Expected Result**: Stderr contains `"GEMINI_API_KEY is not set"`. Exit code 1. No files created in `02_drafts/`.
 - **Automation**: Yes
 - **Traces**: FR-DRAFT-005
@@ -537,7 +537,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `01_inbox/` is empty
 - **Test Steps**:
-  1. Run `reachforge draft nonexistent`
+  1. Run `reach draft nonexistent`
 - **Expected Result**: Stderr contains `'Source "nonexistent" not found in 01_inbox'`. Exit code non-zero.
 - **Automation**: Yes
 - **Traces**: FR-DRAFT-006
@@ -547,9 +547,9 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `03_master/my-article/master.md` exists. `04_adapted/my-article/platform_versions/x.md` already exists with content `"old content"`.
 - **Test Steps**:
-  1. Run `reachforge adapt my-article` (without --force)
+  1. Run `reach adapt my-article` (without --force)
   2. Verify `x.md` still contains `"old content"`
-  3. Run `reachforge adapt my-article --force`
+  3. Run `reach adapt my-article --force`
   4. Verify `x.md` now contains new AI-generated content
 - **Expected Result**: Step 1 skips existing `x.md` with informational message. Step 3 overwrites `x.md` with new content.
 - **Automation**: Yes
@@ -560,7 +560,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `03_master/my-article/master.md` exists
 - **Test Steps**:
-  1. Run `reachforge adapt my-article --platforms x,devto`
+  1. Run `reach adapt my-article --platforms x,devto`
   2. List files in `04_adapted/my-article/platform_versions/`
 - **Expected Result**: Only `x.md` and `devto.md` exist in `platform_versions/`. No `wechat.md` or `zhihu.md`. `meta.yaml` contains `adapted_platforms: ["x", "devto"]`.
 - **Automation**: Yes
@@ -571,7 +571,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `05_scheduled/` contains only `2026-12-31-future-article/`
 - **Test Steps**:
-  1. Run `reachforge publish` (system date is 2026-03-14)
+  1. Run `reach publish` (system date is 2026-03-14)
 - **Expected Result**: Stdout contains `"No content due for publishing today."`. Exit code 1. No items moved.
 - **Automation**: Yes
 - **Traces**: FR-PUB-001
@@ -1283,8 +1283,8 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `01_inbox/my-idea.md` exists
 - **Test Steps**:
-  1. Run `reachforge draft my-idea.md` (creates `02_drafts/my-idea/`)
-  2. Run `reachforge draft my-idea.md` again
+  1. Run `reach draft my-idea.md` (creates `02_drafts/my-idea/`)
+  2. Run `reach draft my-idea.md` again
   3. List contents of `02_drafts/`
 - **Expected Result**: Single `my-idea/` directory in `02_drafts/`. No `my-idea-1/` or similar duplicates. Second run either overwrites or displays message about existing draft.
 - **Automation**: Yes
@@ -1319,7 +1319,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `06_sent/` contains 3 published projects each with a valid `receipt.yaml` recording publishes to x, devto, wechat
 - **Test Steps**:
-  1. Run `reachforge analytics`
+  1. Run `reach analytics`
   2. Parse stdout output
 - **Test Data**: 3 receipt files: 2 with all-success, 1 with x=success, devto=failed
 - **Expected Result**: Output displays: `Total publishes: 3`, `devto: 2 success / 1 failed`, `x: 3 success / 0 failed`, `wechat: 2 success / 0 failed`. Exit code 0.
@@ -1331,7 +1331,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Unit
 - **Preconditions**: `06_sent/` contains projects published on 2026-01-15, 2026-02-10, 2026-03-05
 - **Test Steps**:
-  1. Run `reachforge analytics --from 2026-02-01 --to 2026-02-28`
+  1. Run `reach analytics --from 2026-02-01 --to 2026-02-28`
 - **Expected Result**: Only the 2026-02-10 project is included in counts. Exit code 0.
 - **Automation**: Yes
 - **Traces**: FR-ANAL-002
@@ -1341,7 +1341,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Unit
 - **Preconditions**: `06_sent/` is empty
 - **Test Steps**:
-  1. Run `reachforge analytics`
+  1. Run `reach analytics`
 - **Expected Result**: Output displays "No publishing history found." Exit code 0.
 - **Automation**: Yes
 - **Traces**: FR-ANAL-003
@@ -1354,7 +1354,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: `templates/tech-blog.yaml` exists with content: `prompt: "Write a detailed technical blog post about: {{topic}}"`. Mock LLM configured.
 - **Test Steps**:
   1. Create `01_inbox/my-idea/idea.md` with content "Bun vs Deno"
-  2. Run `reachforge draft my-idea --template tech-blog`
+  2. Run `reach draft my-idea --template tech-blog`
 - **Test Data**: Template file at `templates/tech-blog.yaml`, inbox content "Bun vs Deno"
 - **Expected Result**: The LLM is called with a prompt containing "Write a detailed technical blog post about:" instead of the default prompt. Draft saved to `02_drafts/my-idea/draft.md`.
 - **Automation**: Yes
@@ -1375,7 +1375,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Unit
 - **Preconditions**: No file at `templates/nonexistent.yaml`
 - **Test Steps**:
-  1. Run `reachforge draft my-idea --template nonexistent`
+  1. Run `reach draft my-idea --template nonexistent`
 - **Expected Result**: Error message: `Template 'nonexistent' not found in templates/`. Exit code 1. No draft created.
 - **Automation**: Yes
 - **Traces**: FR-TMPL-003
@@ -1385,7 +1385,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `03_master/my-article/meta.yaml` contains `template: "tech-blog"`. `templates/tech-blog.yaml` exists. Mock LLM configured.
 - **Test Steps**:
-  1. Run `reachforge adapt my-article`
+  1. Run `reach adapt my-article`
 - **Expected Result**: Adaptation uses the tech-blog template prompts instead of defaults. Platform version files created in `04_adapted/my-article/platform_versions/`.
 - **Automation**: Yes
 - **Traces**: FR-TMPL-004
@@ -1428,14 +1428,14 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: Clean working directory. Mock LLM and mock platform APIs configured. All API keys set.
 - **Test Steps**:
   1. Create `01_inbox/e2e-test-article/idea.md` with content: `"Write about Bun runtime performance vs Node.js"`
-  2. Run `reachforge draft e2e-test-article`
+  2. Run `reach draft e2e-test-article`
   3. Verify `02_drafts/e2e-test-article/draft.md` exists and is non-empty
   4. Copy `02_drafts/e2e-test-article/` to `03_master/e2e-test-article/`, rename `draft.md` to `master.md`
-  5. Run `reachforge adapt e2e-test-article --platforms x,devto`
+  5. Run `reach adapt e2e-test-article --platforms x,devto`
   6. Verify `04_adapted/e2e-test-article/platform_versions/x.md` and `devto.md` exist
-  7. Run `reachforge schedule e2e-test-article 2026-03-14`
+  7. Run `reach schedule e2e-test-article 2026-03-14`
   8. Verify `05_scheduled/2026-03-14-e2e-test-article/` exists
-  9. Run `reachforge publish`
+  9. Run `reach publish`
   10. Verify `06_sent/2026-03-14-e2e-test-article/` exists with `receipt.yaml`
 - **Test Data**: Inbox content: `"Write about Bun runtime performance vs Node.js"`. Schedule date: `2026-03-14`.
 - **Expected Result**: Project traverses all 6 stages. Final `receipt.yaml` contains success entries for devto and x. No files remain in intermediate stages for this project.
@@ -1449,7 +1449,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Test Steps**:
   1. Follow steps 1-8 from TC-E2E-001
   2. Configure Postiz mock to fail
-  3. Run `reachforge publish`
+  3. Run `reach publish`
   4. Check final state
 - **Expected Result**: Project moved to `06_sent/`. `receipt.yaml` has `devto: success` and `x: failed`. Project is not stuck in `05_scheduled/`.
 - **Automation**: Yes
@@ -1481,7 +1481,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: 100 projects distributed across pipeline stages
 - **Test Steps**:
   1. Create 100 project directories (20 per stage for 5 stages)
-  2. Run `reachforge status` 10 times consecutively
+  2. Run `reach status` 10 times consecutively
   3. Measure wall clock time for each run
 - **Expected Result**: p95 latency is under 500ms.
 - **Automation**: Yes
@@ -1594,8 +1594,8 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Priority**: P1
 - **Type**: Compatibility
 - **Test Steps**:
-  1. Run `reachforge status` on Bun 1.0.0
-  2. Run `reachforge status` on latest Bun
+  1. Run `reach status` on Bun 1.0.0
+  2. Run `reach status` on latest Bun
 - **Expected Result**: Both produce identical correct output.
 - **Automation**: Partial (CI matrix)
 - **Traces**: NFR-COMPAT-002

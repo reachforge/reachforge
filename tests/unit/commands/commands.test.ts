@@ -30,7 +30,7 @@ let tmpDir: string;
 let engine: PipelineEngine;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-cmd-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-cmd-'));
   engine = new PipelineEngine(tmpDir);
   await engine.initPipeline();
   // Default mock: echo prompt so content-based assertions see input text

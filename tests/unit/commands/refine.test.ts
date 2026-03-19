@@ -38,7 +38,7 @@ beforeEach(async () => {
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-refine-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-refine-'));
   // Create pipeline stages
   for (const stage of STAGES) {
     await fs.ensureDir(path.join(tmpDir, stage));
@@ -205,7 +205,7 @@ describe('refineCommand slash commands', () => {
     const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art', DRAFT_FILENAME), 'utf-8');
     expect(saved).toBe('Updated content');
     // Session should be saved
-    const sessionPath = path.join(tmpDir, '.reachforge', 'sessions', 'art', 'draft.json');
+    const sessionPath = path.join(tmpDir, '.reach', 'sessions', 'art', 'draft.json');
     expect(await fs.pathExists(sessionPath)).toBe(true);
   });
 

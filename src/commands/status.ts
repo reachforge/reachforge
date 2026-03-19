@@ -11,7 +11,7 @@ async function printProjectStatus(engine: PipelineEngine, projectName?: string):
   if (projectName) {
     console.log(chalk.blue.bold(`\n📁 ${projectName}`));
   } else {
-    console.log(chalk.blue.bold('\n🚀 reachforge Content Factory Dashboard'));
+    console.log(chalk.blue.bold('\n🚀 reach Content Factory Dashboard'));
   }
   console.log('');
 
@@ -42,7 +42,7 @@ export async function statusCommand(
     const projects = await WorkspaceResolver.listProjects(context.workspaceRoot);
 
     if (projects.length === 0) {
-      console.log(chalk.yellow('No projects found in workspace. Run `reachforge new <name>` to create one.'));
+      console.log(chalk.yellow('No projects found in workspace. Run `reach new <name>` to create one.'));
       return;
     }
 

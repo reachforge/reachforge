@@ -14,7 +14,7 @@ import {
 let tmpDir: string;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-pc-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-pc-'));
 });
 
 afterEach(async () => {
@@ -114,12 +114,12 @@ describe('readWorkspaceConfig / writeWorkspaceConfig', () => {
     expect(read!.default_workspace).toBe('/home/user/ws');
   });
 
-  test('returns null for missing .reachforge/config.yaml', async () => {
+  test('returns null for missing .reach/config.yaml', async () => {
     expect(await readWorkspaceConfig(tmpDir)).toBeNull();
   });
 
-  test('creates .reachforge directory', async () => {
+  test('creates .reach directory', async () => {
     await writeWorkspaceConfig(tmpDir, {});
-    expect(await fs.pathExists(path.join(tmpDir, '.reachforge', 'config.yaml'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '.reach', 'config.yaml'))).toBe(true);
   });
 });

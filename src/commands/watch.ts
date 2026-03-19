@@ -17,7 +17,7 @@ export async function watchCommand(
   }
 
   const intervalMs = minutes * 60 * 1000;
-  console.log(chalk.blue.bold(`\n🕵️  reachforge Daemon is now watching (interval: ${minutes}m)...`));
+  console.log(chalk.blue.bold(`\n🕵️  reach Daemon is now watching (interval: ${minutes}m)...`));
 
   let intervalHandle: ReturnType<typeof setInterval> | null = null;
 

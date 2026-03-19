@@ -14,14 +14,14 @@
 
 ## 1. Executive Summary
 
-This document describes the design of the LLM Adapter Layer for reachforge, a multi-CLI adapter system that replaces the current Gemini SDK-only provider with child-process-based adapters for Claude Code, Gemini CLI, and Codex CLI. The adapter layer adds session resumption for multi-turn conversations (the `reachforge refine` command), a three-layer skill cascade for injecting stage-specific and platform-specific prompts, and a unified interface that decouples pipeline commands from any specific LLM tooling.
+This document describes the design of the LLM Adapter Layer for reachforge, a multi-CLI adapter system that replaces the current Gemini SDK-only provider with child-process-based adapters for Claude Code, Gemini CLI, and Codex CLI. The adapter layer adds session resumption for multi-turn conversations (the `reach refine` command), a three-layer skill cascade for injecting stage-specific and platform-specific prompts, and a unified interface that decouples pipeline commands from any specific LLM tooling.
 
 ### 1.1 Problem Statement
 
 The current `src/llm/` module has a single `GeminiProvider` that calls the `@google/generative-ai` SDK directly. This creates three problems:
 
 1. **Single-provider lock-in.** Users cannot choose their preferred AI CLI (Claude, Gemini, Codex). The LLMFactory only instantiates GeminiProvider.
-2. **No session continuity.** Each `reachforge draft` or `reachforge adapt` call is stateless. There is no way to refine a draft iteratively across multiple invocations, which is the primary user workflow for content improvement.
+2. **No session continuity.** Each `reach draft` or `reach adapt` call is stateless. There is no way to refine a draft iteratively across multiple invocations, which is the primary user workflow for content improvement.
 3. **No skill injection.** Prompts are hardcoded strings in `types.ts` (`PLATFORM_PROMPTS`, `DEFAULT_DRAFT_PROMPT`). Users cannot customize prompts per-project or per-workspace, and the system cannot provide rich, stage-specific instructions to the LLM.
 
 ### 1.2 Goals
@@ -29,9 +29,9 @@ The current `src/llm/` module has a single `GeminiProvider` that calls the `@goo
 | ID   | Goal                                                                 | SRS Requirement      |
 |------|----------------------------------------------------------------------|----------------------|
 | G-01 | Support Claude Code, Gemini CLI, and Codex CLI as adapter backends   | FR-DRAFT-002 (extended) |
-| G-02 | Enable per-stage session persistence and resumption                  | New (supports `reachforge refine`) |
+| G-02 | Enable per-stage session persistence and resumption                  | New (supports `reach refine`) |
 | G-03 | Implement three-layer skill cascade (built-in > workspace > project) | New (supports FEAT-014 direction) |
-| G-04 | Add `reachforge refine <article>` interactive multi-turn command         | New (US-003 enhanced) |
+| G-04 | Add `reach refine <article>` interactive multi-turn command         | New (US-003 enhanced) |
 | G-05 | Maintain backward compatibility with existing `draft` and `adapt` commands | FR-DRAFT-001 through FR-DRAFT-007, FR-ADAPT-001 through FR-ADAPT-007 |
 | G-06 | Replace the GeminiProvider SDK approach with CLI-spawning adapters   | Design decision Q1   |
 
@@ -50,7 +50,7 @@ The current `src/llm/` module has a single `GeminiProvider` that calls the `@goo
 | Child process spawning, stream-json parsing         | Real-time streaming to user terminal       |
 | Session manager (create, read, update, cleanup)     | Session migration between adapters          |
 | Skill resolver (3-layer cascade)                    | Skill authoring tools or generators         |
-| `reachforge refine` interactive command                 | Web-based refinement UI                     |
+| `reach refine` interactive command                 | Web-based refinement UI                     |
 | Built-in skill files for draft and adapt stages     | Platform-specific skill creation beyond MVP |
 | Config changes for adapter selection                | GUI config editor                           |
 
@@ -91,7 +91,7 @@ reachforge CLI Commands
                                      |
                                      +--> SessionManager.load(article, stage)
                                      |           |
-                                     |           +--> {project}/.reachforge/sessions/{article}/{stage}.json
+                                     |           +--> {project}/.reach/sessions/{article}/{stage}.json
                                      |
                                      +--> CLIAdapter (one of:)
                                               |
@@ -132,7 +132,7 @@ C4Container
     Container(session, "SessionManager", "TypeScript", "Per-stage session CRUD with file-based storage")
     Container(skills, "SkillResolver", "TypeScript", "3-layer cascade resolution for skill markdown files")
     Container(process, "ProcessRunner", "TypeScript", "Child process spawning, stream parsing, error detection")
-    ContainerDb(sessionStore, "Session Files", "JSON", "{project}/.reachforge/sessions/{article}/{stage}.json")
+    ContainerDb(sessionStore, "Session Files", "JSON", "{project}/.reach/sessions/{article}/{stage}.json")
     ContainerDb(skillFiles, "Skill Files", "Markdown", "Built-in + workspace + project skill directories")
 
     Rel(commands, factory, "Creates adapter")
@@ -550,7 +550,7 @@ export class SessionManager {
    * Load session for a given article and stage.
    * Returns null if no session exists or if the session file is corrupted.
    *
-   * Path: {projectDir}/.reachforge/sessions/{article}/{stage}.json
+   * Path: {projectDir}/.reach/sessions/{article}/{stage}.json
    * Where stage is "draft" or "adapt-{platform}".
    */
   async load(article: string, stage: string): Promise<SessionData | null>;
@@ -585,7 +585,7 @@ export class SessionManager {
 **File Layout:**
 ```
 {projectDir}/
-  .reachforge/
+  .reach/
     sessions/
       my-article/
         draft.json          <-- long-lived, survives multiple refine rounds
@@ -595,10 +595,10 @@ export class SessionManager {
 ```
 
 **Session Lifecycle:**
-1. `reachforge draft my-article` => creates `draft.json` with the session ID returned by the adapter.
-2. `reachforge refine my-article` => loads `draft.json`, resumes session, updates `lastUsedAt`.
-3. `reachforge refine my-article` (again) => same session, another round.
-4. `reachforge adapt my-article --platforms x,devto` => creates `adapt-x.json` and `adapt-devto.json` independently.
+1. `reach draft my-article` => creates `draft.json` with the session ID returned by the adapter.
+2. `reach refine my-article` => loads `draft.json`, resumes session, updates `lastUsedAt`.
+3. `reach refine my-article` (again) => same session, another round.
+4. `reach adapt my-article --platforms x,devto` => creates `adapt-x.json` and `adapt-devto.json` independently.
 5. User can use different adapters for draft vs adapt (e.g., Claude for draft, Gemini for adapt).
 
 **Cross-adapter validation:** When loading a session, the SessionManager checks if `data.adapter` matches the currently configured adapter. If mismatched, the session is not resumed (a new session starts), and the old session file is archived with a `.bak` suffix.
@@ -625,14 +625,14 @@ export class SkillResolver {
    * Resolve skills for a given stage and optional platform.
    * Returns deduplicated list where project > workspace > built-in.
    *
-   * Resolution order for "reachforge draft":
+   * Resolution order for "reach draft":
    *   1. Look for: stages/draft.md
    *   2. Check: {project}/skills/stages/draft.md (highest priority)
    *   3. Check: {workspace}/skills/stages/draft.md
    *   4. Check: {builtIn}/skills/stages/draft.md (lowest priority)
    *   5. Return the first match found.
    *
-   * Resolution order for "reachforge adapt --platform x":
+   * Resolution order for "reach adapt --platform x":
    *   1. Resolve stages/adapt.md (same cascade as above)
    *   2. Resolve platforms/x.md (same cascade)
    *   3. Return both resolved skills.
@@ -802,7 +802,7 @@ sequenceDiagram
     participant Process as ProcessRunner
     participant CLI as Claude/Gemini/Codex CLI
 
-    User->>DraftCmd: reachforge draft my-article
+    User->>DraftCmd: reach draft my-article
     DraftCmd->>Factory: create(config, "draft")
     Factory->>Skills: resolve("draft")
     Skills-->>Factory: [draft.md skill path]
@@ -1026,7 +1026,7 @@ skills/                 # Built-in skills (bundled with CLI)
 |---|----------|-------|-------------|------------------------|
 | 1 | Should skills be prepended to the prompt text or injected via CLI-native mechanisms only? | Engineering | 2026-03-24 | Prepend to prompt (simpler, works for all adapters) |
 | 2 | What is the maximum session age before automatic cleanup? | Product | 2026-03-24 | 30 days, configurable via `REACHFORGE_SESSION_TTL_DAYS` |
-| 3 | Should `reachforge refine` support adapt-stage sessions (refining platform-specific content)? | Product | 2026-03-31 | Phase 1: draft-only. Phase 2: adapt support. |
+| 3 | Should `reach refine` support adapt-stage sessions (refining platform-specific content)? | Product | 2026-03-31 | Phase 1: draft-only. Phase 2: adapt support. |
 | 4 | How should the system handle concurrent refine sessions (two terminals, same article)? | Engineering | 2026-03-24 | File locking via `.lock` file; second process waits or fails with message |
 
 ---

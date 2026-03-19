@@ -10,14 +10,14 @@ export async function mcpCommand(
   const port = parseInt(options.port || '8000', 10);
   const transport = options.transport || 'stdio';
 
-  console.log(chalk.blue.bold(`\n🔌 Launching reachforge MCP Server (Transport: ${transport})...`));
+  console.log(chalk.blue.bold(`\n🔌 Launching reach MCP Server (Transport: ${transport})...`));
 
   await serve(apcore, {
-    name: 'reachforge',
+    name: 'reach',
     version: '0.1.0',
     transport: transport as any,
     port,
     explorer: true,
-    explorerProjectName: 'reachforge',
+    explorerProjectName: 'reach',
   });
 }

@@ -1,7 +1,7 @@
 # Project Manifest: reachforge (Social Influence Engine)
 
 ## 🎯 Project Overview
-`reachforge` is an AI-native engine designed to transform raw ideas into multi-platform social media assets using a file-based pipeline.
+`reach` is an AI-native engine designed to transform raw ideas into multi-platform social media assets using a file-based pipeline.
 
 ## 📋 Feature Manifest
 

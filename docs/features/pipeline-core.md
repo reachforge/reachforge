@@ -223,12 +223,12 @@ class ConfigManager {
 | Stage | meta.yaml status | Trigger |
 |-------|-----------------|---------|
 | `01_inbox` | (no meta.yaml) | User creates content |
-| `02_drafts` | `drafted` | `reachforge draft` |
+| `02_drafts` | `drafted` | `reach draft` |
 | `03_master` | `master` | User manually moves |
-| `04_adapted` | `adapted` | `reachforge adapt` |
-| `05_scheduled` | `scheduled` | `reachforge schedule` |
-| `06_sent` | `published` | `reachforge publish` |
-| `05_scheduled` (on failure) | `failed` | `reachforge publish` (all platforms fail) |
+| `04_adapted` | `adapted` | `reach adapt` |
+| `05_scheduled` | `scheduled` | `reach schedule` |
+| `06_sent` | `published` | `reach publish` |
+| `05_scheduled` (on failure) | `failed` | `reach publish` (all platforms fail) |
 
 ### Config Key Mapping
 

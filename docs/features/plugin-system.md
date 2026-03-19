@@ -174,7 +174,7 @@ To be recognized by the plugin loader, a provider file must:
 1. Create `src/providers/linkedin.ts`
 2. Implement `PlatformProvider` interface with `manifest()` returning `{ id: 'linkedin', requiredCredentials: ['linkedin_api_key'], ... }`
 3. Add `linkedin_api_key` to `credentials.yaml` or set `LINKEDIN_API_KEY` env var
-4. Run `reachforge publish` — the loader discovers and loads LinkedIn provider automatically
+4. Run `reach publish` — the loader discovers and loads LinkedIn provider automatically
 5. No changes to `core/`, `commands/`, `index.ts`, or any other file
 
 ## 7. Error Handling

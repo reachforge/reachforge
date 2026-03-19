@@ -5,7 +5,7 @@
 | **Component**| Session Management                                 |
 | **Directory**| `src/llm/session.ts`                               |
 | **Priority** | P0                                                 |
-| **SRS Refs** | New (supports `reachforge refine` multi-turn)          |
+| **SRS Refs** | New (supports `reach refine` multi-turn)          |
 | **NFR Refs** | NFR-REL-002 (idempotent operations)                |
 | **Tech Design** | [LLM Adapter Tech Design](../llm-adapter/tech-design.md) |
 
@@ -13,7 +13,7 @@
 
 ## 1. Purpose and Scope
 
-The Session Manager provides file-based CRUD operations for per-stage LLM session data. Each pipeline stage (draft, adapt-per-platform) maintains an independent session that can be resumed across multiple CLI invocations. This is the foundation for the `reachforge refine` command, which allows iterative multi-turn conversations to improve draft content.
+The Session Manager provides file-based CRUD operations for per-stage LLM session data. Each pipeline stage (draft, adapt-per-platform) maintains an independent session that can be resumed across multiple CLI invocations. This is the foundation for the `reach refine` command, which allows iterative multi-turn conversations to improve draft content.
 
 The module provides:
 - `SessionManager` class for save/load/delete/list operations
@@ -24,7 +24,7 @@ The module provides:
 
 Sessions are stored as JSON files at:
 ```
-{projectDir}/.reachforge/sessions/{article}/{stage}.json
+{projectDir}/.reach/sessions/{article}/{stage}.json
 ```
 
 ## 2. Files
@@ -82,7 +82,7 @@ export const SessionDataSchema = z.object({
 export class SessionManager {
   /**
    * @param projectDir - Absolute path to the project directory.
-   *   Must be non-empty, absolute. Session files stored under {projectDir}/.reachforge/sessions/.
+   *   Must be non-empty, absolute. Session files stored under {projectDir}/.reach/sessions/.
    */
   constructor(projectDir: string);
 
@@ -111,7 +111,7 @@ export class SessionManager {
    * @param data - Session data. Must pass SessionDataSchema validation.
    * @throws SessionValidationError if data fails schema validation.
    *
-   * Creates parent directories (.reachforge/sessions/{article}/) if they don't exist.
+   * Creates parent directories (.reach/sessions/{article}/) if they don't exist.
    * Uses atomic write: writes to {path}.tmp then renames to {path}.
    */
   async save(article: string, stage: string, data: SessionData): Promise<void>;
@@ -132,7 +132,7 @@ export class SessionManager {
    *
    * @param article - Article name.
    *
-   * Removes the entire {article}/ directory under .reachforge/sessions/.
+   * Removes the entire {article}/ directory under .reach/sessions/.
    * No-op if the article directory does not exist.
    */
   async deleteAll(article: string): Promise<void>;
@@ -162,7 +162,7 @@ export class SessionManager {
 1. Validate `projectDir` is non-empty and is an absolute path.
    - If not absolute: throw `Error("projectDir must be an absolute path")`.
 2. Store `projectDir` as private field.
-3. Compute `sessionsDir = path.join(projectDir, ".reachforge", "sessions")`.
+3. Compute `sessionsDir = path.join(projectDir, ".reach", "sessions")`.
 
 ### SessionManager.load(article, stage)
 
@@ -264,7 +264,7 @@ if (session && session.adapter !== currentAdapter) {
 
 ```
 my-project/
-  .reachforge/
+  .reach/
     sessions/
       my-article/
         draft.json
@@ -280,7 +280,7 @@ my-project/
   "sessionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "adapter": "claude",
   "stage": "draft",
-  "cwd": "/Users/alex/reachforge-workspace/my-project",
+  "cwd": "/Users/alex/reach-workspace/my-project",
   "createdAt": "2026-03-17T10:00:00.000Z",
   "lastUsedAt": "2026-03-17T14:30:00.000Z"
 }
@@ -348,4 +348,4 @@ my-project/
 
 ---
 
-*SRS Traceability: NFR-REL-002 (idempotent operations - atomic writes prevent corruption), supports US-003 enhanced (iterative refinement workflow). Session management is new functionality not directly mapped to existing SRS requirements; it enables the `reachforge refine` command.*
+*SRS Traceability: NFR-REL-002 (idempotent operations - atomic writes prevent corruption), supports US-003 enhanced (iterative refinement workflow). Session management is new functionality not directly mapped to existing SRS requirements; it enables the `reach refine` command.*

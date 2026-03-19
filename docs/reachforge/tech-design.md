@@ -521,7 +521,7 @@ rollback(project: string) {
 }
 ```
 
-CLI syntax: `reachforge rollback <project>` — project name is matched against all stages.
+CLI syntax: `reach rollback <project>` — project name is matched against all stages.
 
 #### 4.1.5 MCP Module (`mcp/`)
 
@@ -1511,13 +1511,13 @@ export const CredentialsSchema = z.object({
 ```mermaid
 stateDiagram-v2
     [*] --> Inbox: User drops file/directory
-    Inbox --> Drafts: reachforge draft <source>
+    Inbox --> Drafts: reach draft <source>
     Drafts --> Master: User manually moves/copies
-    Master --> Adapted: reachforge adapt <article>
-    Adapted --> Scheduled: reachforge schedule <article> <date>
-    Scheduled --> Sent: reachforge publish (when due date <= today)
+    Master --> Adapted: reach adapt <article>
+    Adapted --> Scheduled: reach schedule <article> <date>
+    Scheduled --> Sent: reach publish (when due date <= today)
     Scheduled --> Scheduled: Publish partially fails (some platforms succeed, some fail)
-    Scheduled --> Adapted: reachforge rollback (FR-LIFE-005)
+    Scheduled --> Adapted: reach rollback (FR-LIFE-005)
     Sent --> [*]
 
     state Inbox {
@@ -1559,7 +1559,7 @@ stateDiagram-v2
 - Metadata: None (user-managed)
 
 **Stage 2: Drafts (02_drafts)**
-- Input: `reachforge draft <source>` reads from `01_inbox/<source>`
+- Input: `reach draft <source>` reads from `01_inbox/<source>`
 - Processing: Content sent to LLM provider (Gemini/Claude) with draft generation prompt
 - Output: `02_drafts/<project>/draft.md` (AI-generated article)
 - Metadata: `meta.yaml` created with `{ article, status: "drafted", created_at }`
@@ -1572,20 +1572,20 @@ stateDiagram-v2
 - Metadata: `meta.yaml` updated with `{ status: "master" }`
 
 **Stage 4: Adapted (04_adapted)**
-- Input: `reachforge adapt <article>` reads `03_master/<article>/master.md`
+- Input: `reach adapt <article>` reads `03_master/<article>/master.md`
 - Processing: For each target platform, content sent to LLM with platform-specific prompt
 - Output: `04_adapted/<article>/platform_versions/<platform>.md` per platform
 - Metadata: `meta.yaml` created with `{ article, status: "adapted", adapted_platforms: [...] }`
 - Error path: Partial adaptation failures recorded; successful adaptations preserved
 
 **Stage 5: Scheduled (05_scheduled)**
-- Input: `reachforge schedule <article> <date>` moves from `04_adapted`
+- Input: `reach schedule <article> <date>` moves from `04_adapted`
 - Processing: Directory renamed to `<date>-<article>`, meta updated
 - Output: `05_scheduled/<date>-<article>/` with all content from adapted stage
 - Metadata: `meta.yaml` updated with `{ status: "scheduled", publish_date }`
 
 **Stage 6: Sent (06_sent)**
-- Input: `reachforge publish` finds due items in `05_scheduled`
+- Input: `reach publish` finds due items in `05_scheduled`
 - Processing: Per provider: validate -> upload media -> publish -> record receipt
 - Output: `06_sent/<date>-<article>/` with `receipt.yaml` added
 - Metadata: `meta.yaml` updated with `{ status: "published" }`, `receipt.yaml` created
@@ -1604,7 +1604,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 
 #### 4.5.1 CLI Command Specifications
 
-**`reachforge status`**
+**`reach status`**
 
 | Property | Value |
 |----------|-------|
@@ -1615,7 +1615,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Exit code | 0 on success, 1 on filesystem error |
 | Performance | < 500ms for 100 projects (NFR-PERF-001) |
 
-**`reachforge draft <source>`**
+**`reach draft <source>`**
 
 | Property | Value |
 |----------|-------|
@@ -1627,7 +1627,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Exit code | 0 on success, 1 on error (missing API key, source not found, API failure) |
 | Error messages | "GEMINI_API_KEY is not set" / "Source '<source>' not found in 01_inbox" / "AI generation failed: <details>" |
 
-**`reachforge adapt <article>`**
+**`reach adapt <article>`**
 
 | Property | Value |
 |----------|-------|
@@ -1638,7 +1638,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Exit code | 0 on success (even partial), 1 on total failure |
 | Error messages | "Master article not found at 03_master/<article>/master.md" / "<platform>.md already exists, use --force to overwrite" |
 
-**`reachforge schedule <article> <date>`**
+**`reach schedule <article> <date>`**
 
 | Property | Value |
 |----------|-------|
@@ -1649,7 +1649,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Exit code | 0 on success, 1 on error |
 | Error messages | "Date must be in YYYY-MM-DD format" / "Date must be a valid calendar date" / "Article '<article>' not found in 04_adapted" |
 
-**`reachforge publish`**
+**`reach publish`**
 
 | Property | Value |
 |----------|-------|
@@ -1661,7 +1661,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Exit code | 0 if any publish succeeds, 1 if all fail or no due items |
 | Error messages | "No content due for publishing today." / Per-platform success/failure messages with URLs |
 
-**`reachforge watch`**
+**`reach watch`**
 
 | Property | Value |
 |----------|-------|
@@ -1671,7 +1671,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Signal handling | SIGTERM/SIGINT: completes in-progress publish, then exits with code 0 (FR-WATCH-005) |
 | Logging | Writes to stdout and `reachforge-watcher.log` in working directory (FR-WATCH-006) |
 
-**`reachforge mcp`**
+**`reach mcp`**
 
 | Property | Value |
 |----------|-------|
@@ -1679,7 +1679,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Options | `-t, --transport <type>` (enum: 'stdio' or 'sse', default: 'stdio'). `-p, --port <number>` (integer, 1024-65535, default: 8000): port for SSE transport. |
 | Behavior | Starts MCP server. In stdio mode, communicates via stdin/stdout. In SSE mode, starts HTTP server. |
 
-**`reachforge analytics`**
+**`reach analytics`**
 
 | Property | Value |
 |----------|-------|
@@ -2177,7 +2177,7 @@ The migration uses a **strangler fig pattern**: extract modules from the monolit
 4. Create `src/types/index.ts` re-exporting all types
 5. Create `src/core/constants.ts` with `STAGES`, regex patterns, defaults
 6. Update `src/index.ts` to import from new locations
-7. **Verify**: `reachforge status` works identically
+7. **Verify**: `reach status` works identically
 
 **Step 2: Extract Core Pipeline and Metadata** (isolate filesystem logic)
 1. Create `src/core/metadata.ts` with `MetadataManager` class
@@ -2191,7 +2191,7 @@ The migration uses a **strangler fig pattern**: extract modules from the monolit
 2. Create `src/llm/gemini.ts` with `GeminiProvider` class
 3. Create `src/llm/factory.ts` with `LLMFactory`
 4. Refactor `draft` and `adapt` in `ReachforgeLogic` to use `LLMProvider` interface
-5. **Verify**: `reachforge draft` and `reachforge adapt` work identically
+5. **Verify**: `reach draft` and `reach adapt` work identically
 
 **Step 4: Extract Command Handlers** (separate CLI from logic)
 1. Create `src/commands/status.ts`, `draft.ts`, `adapt.ts`, `schedule.ts`, `publish.ts`, `watch.ts`, `mcp.ts`
@@ -2205,7 +2205,7 @@ The migration uses a **strangler fig pattern**: extract modules from the monolit
 3. Create `src/providers/devto.ts` (first real provider, replacing mock)
 4. Create `src/providers/postiz.ts` (second real provider)
 5. Refactor `publish` command to use provider loader instead of hardcoded mock logic
-6. **Verify**: `reachforge publish` uses real Dev.to/Postiz APIs (with test API keys)
+6. **Verify**: `reach publish` uses real Dev.to/Postiz APIs (with test API keys)
 
 **Step 6: Add Validators and Media Manager** (new capabilities)
 1. Create `src/validators/` with platform-specific validation
@@ -2344,7 +2344,7 @@ The migration uses a **strangler fig pattern**: extract modules from the monolit
 | 1 | What is the exact Postiz API endpoint for X thread creation? | Blocks FEAT-007 implementation | Review Postiz documentation; create sandbox account for testing | Engineering | Before Sprint 2 |
 | 2 | Should `credentials.yaml` support apcore encryption? | Affects `ConfigManager` complexity | Start with plaintext YAML; add encryption as optional enhancement in v0.3 via apcore integration | Engineering | v0.3 |
 | 3 | Should the LLM provider be configurable per-article or only globally? | Affects `meta.yaml` schema and `AdaptOptions` | Global only for v0.2 (via `REACHFORGE_LLM_PROVIDER`); per-article in v0.3 via `meta.yaml` `llm` field | Product | v0.2 decision |
-| 4 | What is the Hashnode `publicationId` discovery mechanism? | Users need to know their publication ID | Add an `reachforge config hashnode` subcommand that queries the Hashnode API for the user's publications | Engineering | Sprint 4 |
+| 4 | What is the Hashnode `publicationId` discovery mechanism? | Users need to know their publication ID | Add an `reach config hashnode` subcommand that queries the Hashnode API for the user's publications | Engineering | Sprint 4 |
 | 5 | Should the watcher write logs to a file in the working directory or a system log location? | Affects `utils/logger.ts` path logic | Working directory (`./reachforge-watcher.log`) for simplicity; configurable via env var `REACHFORGE_LOG_PATH` | Engineering | Sprint 3 |
 | 6 | How should the system handle content that exists as adaptations but whose master was later edited? | Affects adapt flow integrity | Out of scope for v0.2; the user is responsible for re-running `adapt` after editing `master.md` | Product | Deferred |
 

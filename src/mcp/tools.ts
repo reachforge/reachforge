@@ -27,32 +27,32 @@ export const RollbackToolSchema = z.object({
 
 export const MCP_TOOL_DEFINITIONS = [
   {
-    name: 'reachforge_status',
+    name: 'reach_status',
     description: 'Check the dashboard status of the content pipeline — shows item counts per stage and due-today items',
     schema: StatusToolSchema,
   },
   {
-    name: 'reachforge_draft',
+    name: 'reach_draft',
     description: 'Generate an AI draft from a source in 01_inbox. The source can be a file or directory.',
     schema: DraftToolSchema,
   },
   {
-    name: 'reachforge_adapt',
+    name: 'reach_adapt',
     description: 'Generate multi-platform adapted versions from a master draft in 03_master',
     schema: AdaptToolSchema,
   },
   {
-    name: 'reachforge_schedule',
+    name: 'reach_schedule',
     description: 'Schedule an adapted article for publishing on a specific date',
     schema: ScheduleToolSchema,
   },
   {
-    name: 'reachforge_publish',
+    name: 'reach_publish',
     description: 'Publish all scheduled content due for today to configured platforms',
     schema: PublishToolSchema,
   },
   {
-    name: 'reachforge_rollback',
+    name: 'reach_rollback',
     description: 'Move a project back one pipeline stage (e.g., from scheduled to adapted)',
     schema: RollbackToolSchema,
   },

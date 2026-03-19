@@ -1,8 +1,8 @@
-# reachforge (ReachForge)
+# ReachForge (`reach`)
 
-> **reachforge: The Social Influence Engine for AI-Native Content.**
+> **ReachForge: The Social Influence Engine for AI-Native Content.**
 
-**reachforge** is an **AI-native Social Influence Engine** for end-users. It adopts a "File-as-State" design philosophy, transforming inspiration fragments into multi-platform viral assets through a lightweight six-stage pipeline.
+**ReachForge** is an **AI-native Social Influence Engine** for end-users. It adopts a "File-as-State" design philosophy, transforming inspiration fragments into multi-platform viral assets through a lightweight six-stage pipeline.
 
 ## Core Design Philosophy
 - **Directory-based Sync**: No database required. Folders represent states, filenames act as timestamps, and YAML files store metadata.
@@ -22,7 +22,7 @@
 
 ### 1. Install an LLM CLI
 
-reachforge uses local CLI tools for AI generation — no API keys needed. Install at least one:
+ReachForge uses local CLI tools for AI generation — no API keys needed. Install at least one:
 
 | Adapter | Install | Auth |
 |---------|---------|------|
@@ -33,14 +33,14 @@ reachforge uses local CLI tools for AI generation — no API keys needed. Instal
 ### 2. Initialize Workspace & Configure
 
 ```bash
-reachforge init ~/reachforge-workspace
-cd ~/reachforge-workspace
+reach init ~/reach-workspace
+cd ~/reach-workspace
 ```
 
 Create a `.env` file **in the workspace directory** with your API keys:
 
 ```bash
-# ~/reachforge-workspace/.env
+# ~/reach-workspace/.env
 
 # LLM adapter (claude, gemini, or codex)
 REACHFORGE_LLM_ADAPTER=claude
@@ -64,25 +64,25 @@ REACHFORGE_ADAPT_ADAPTER=claude   # Use Claude for platform adaptation
 | 1 | Environment variables | Session |
 | 2 | `{project}/.env` | Single project |
 | 3 | `{workspace}/.env` | All projects in workspace |
-| 4 | `~/.reachforge/config.yaml` | Global (all workspaces) |
+| 4 | `~/.reach/config.yaml` | Global (all workspaces) |
 
 ### 3. Create a Project & Run
 
 ```bash
-reachforge new my-tech-blog
+reach new my-tech-blog
 cd my-tech-blog
 
-reachforge status                          # View pipeline dashboard
-reachforge draft my-idea.md                # Generate draft from inbox
-reachforge adapt my-article                # Adapt for all platforms
-reachforge schedule my-article 2026-03-20  # Schedule for publishing
-reachforge publish                         # Publish due content
-reachforge watch                           # Daemon mode: auto-publish on schedule
+reach status                          # View pipeline dashboard
+reach draft my-idea.md                # Generate draft from inbox
+reach adapt my-article                # Adapt for all platforms
+reach schedule my-article 2026-03-20  # Schedule for publishing
+reach publish                         # Publish due content
+reach watch                           # Daemon mode: auto-publish on schedule
 ```
 
 ## Development
 
-**reachforge** recommends using [Bun](https://bun.sh/) for extreme performance and a single-file distribution experience.
+**ReachForge** recommends using [Bun](https://bun.sh/) for extreme performance and a single-file distribution experience.
 
 ```bash
 # Install dependencies

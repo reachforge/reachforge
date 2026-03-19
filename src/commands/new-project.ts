@@ -16,7 +16,7 @@ export async function newProjectCommand(
   const wsRoot = context?.workspaceRoot;
   if (!wsRoot) {
     throw new Error(
-      'Not in a workspace. Run `reachforge init` first to create a workspace, then `reachforge new <name>`.'
+      'Not in a workspace. Run `reach init` first to create a workspace, then `reach new <name>`.'
     );
   }
 
@@ -43,5 +43,5 @@ export async function newProjectCommand(
   console.log(chalk.dim('\nNext steps:'));
   console.log(chalk.dim(`  cd ${projectDir}`));
   console.log(chalk.dim(`  # Edit project.yaml to set platforms, language, tone`));
-  console.log(chalk.dim('  reachforge draft my-idea.md'));
+  console.log(chalk.dim('  reach draft my-idea.md'));
 }

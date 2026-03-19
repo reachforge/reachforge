@@ -28,9 +28,9 @@
 
 | ID       | Feature                          | Dependencies       | Effort | Description |
 |----------|----------------------------------|--------------------|--------|-------------|
-| WS-003   | `reachforge init` command            | WS-001             | S      | Create workspace: `.reachforge/config.yaml`, optional first project |
-| WS-004   | `reachforge new` command             | WS-001, WS-002     | S      | Create project: `project.yaml` + 6 pipeline dirs in workspace |
-| WS-005   | `reachforge workspace` command       | WS-001             | S      | Show workspace info: path, project list, active project |
+| WS-003   | `reach init` command            | WS-001             | S      | Create workspace: `.reach/config.yaml`, optional first project |
+| WS-004   | `reach new` command             | WS-001, WS-002     | S      | Create project: `project.yaml` + 6 pipeline dirs in workspace |
+| WS-005   | `reach workspace` command       | WS-001             | S      | Show workspace info: path, project list, active project |
 
 ### Layer 3: Integration (Needs Layer 1+2)
 
@@ -86,9 +86,9 @@ WS-001 + WS-002 (parallel) → WS-006 (integration) → WS-003 + WS-004 + WS-005
 ## Backward Compatibility Contract
 
 1. All 143 existing tests MUST pass without modification
-2. Running `reachforge status` in a directory without `.reachforge/` falls back to `cwd()` as project root
+2. Running `reach status` in a directory without `.reach/` falls back to `cwd()` as project root
 3. No existing CLI argument signatures change
-4. `reachforge init` is opt-in — never required
+4. `reach init` is opt-in — never required
 
 ---
 

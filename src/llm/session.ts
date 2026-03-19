@@ -23,7 +23,7 @@ export class SessionManager {
     if (!path.isAbsolute(projectDir)) {
       throw new Error('projectDir must be an absolute path');
     }
-    this.sessionsDir = path.join(projectDir, '.reachforge', 'sessions');
+    this.sessionsDir = path.join(projectDir, '.reach', 'sessions');
   }
 
   getSessionPath(article: string, stage: string): string {

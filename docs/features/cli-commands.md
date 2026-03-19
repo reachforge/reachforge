@@ -25,14 +25,14 @@ Command handlers do NOT contain business logic. All logic lives in `core/`, `llm
 
 | File | Command | Max Lines |
 |------|---------|-----------|
-| `commands/status.ts` | `reachforge status` | 80 |
-| `commands/draft.ts` | `reachforge draft <source>` | 100 |
-| `commands/adapt.ts` | `reachforge adapt <article>` | 120 |
-| `commands/schedule.ts` | `reachforge schedule <article> <date>` | 80 |
-| `commands/publish.ts` | `reachforge publish` | 120 |
-| `commands/watch.ts` | `reachforge watch` | 100 |
-| `commands/mcp.ts` | `reachforge mcp` | 60 |
-| `commands/analytics.ts` | `reachforge analytics` | 100 |
+| `commands/status.ts` | `reach status` | 80 |
+| `commands/draft.ts` | `reach draft <source>` | 100 |
+| `commands/adapt.ts` | `reach adapt <article>` | 120 |
+| `commands/schedule.ts` | `reach schedule <article> <date>` | 80 |
+| `commands/publish.ts` | `reach publish` | 120 |
+| `commands/watch.ts` | `reach watch` | 100 |
+| `commands/mcp.ts` | `reach mcp` | 60 |
+| `commands/analytics.ts` | `reach analytics` | 100 |
 
 ## 3. TypeScript Interfaces
 

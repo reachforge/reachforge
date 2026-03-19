@@ -51,7 +51,7 @@ describe('MCP_TOOL_DEFINITIONS', () => {
   test('all tools have name, description, and schema', () => {
     for (const tool of MCP_TOOL_DEFINITIONS) {
       expect(tool.name).toBeDefined();
-      expect(tool.name.startsWith('reachforge_')).toBe(true);
+      expect(tool.name.startsWith('reach_')).toBe(true);
       expect(tool.description.length).toBeGreaterThan(10);
       expect(tool.schema).toBeDefined();
     }
@@ -59,11 +59,11 @@ describe('MCP_TOOL_DEFINITIONS', () => {
 
   test('tool names match expected set', () => {
     const names = MCP_TOOL_DEFINITIONS.map(t => t.name);
-    expect(names).toContain('reachforge_status');
-    expect(names).toContain('reachforge_draft');
-    expect(names).toContain('reachforge_adapt');
-    expect(names).toContain('reachforge_schedule');
-    expect(names).toContain('reachforge_publish');
-    expect(names).toContain('reachforge_rollback');
+    expect(names).toContain('reach_status');
+    expect(names).toContain('reach_draft');
+    expect(names).toContain('reach_adapt');
+    expect(names).toContain('reach_schedule');
+    expect(names).toContain('reach_publish');
+    expect(names).toContain('reach_rollback');
   });
 });

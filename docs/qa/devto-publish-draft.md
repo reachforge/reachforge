@@ -61,7 +61,7 @@ reachforge provides three levels of control (highest priority first):
 
 | Control | Example | Scope |
 |---------|---------|-------|
-| CLI flag | `reachforge publish --draft` | All articles in this publish run |
+| CLI flag | `reach publish --draft` | All articles in this publish run |
 | Frontmatter | `published: false` in `devto.md` | Single article |
 | Default | (no setting) | Published (`true`) |
 
@@ -69,10 +69,10 @@ reachforge provides three levels of control (highest priority first):
 
 ```bash
 # Publish as draft for review
-reachforge publish --draft
+reach publish --draft
 
 # Publish live (default)
-reachforge publish
+reach publish
 
 # Per-article control: set in platform_versions/devto.md frontmatter
 # published: false  → draft
