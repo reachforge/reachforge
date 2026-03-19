@@ -1,10 +1,11 @@
 import * as path from 'path';
+import * as os from 'os';
 import fs from 'fs-extra';
 import yaml from 'js-yaml';
-import type { ProjectMeta, Receipt } from '../types/index.js';
+import type { ProjectMeta, Receipt, LockInfo } from '../types/index.js';
 import { ProjectMetaSchema, ReceiptSchema } from '../types/index.js';
 import { MetadataParseError } from '../types/index.js';
-import { META_FILENAME, RECEIPT_FILENAME } from './constants.js';
+import { META_FILENAME, RECEIPT_FILENAME, LOCK_FILENAME } from './constants.js';
 
 export class MetadataManager {
   constructor(private readonly workingDir: string) {}
@@ -60,5 +61,69 @@ export class MetadataManager {
   async writeReceipt(stage: string, project: string, receipt: Receipt): Promise<void> {
     const filePath = path.join(this.workingDir, stage, project, RECEIPT_FILENAME);
     await fs.writeFile(filePath, yaml.dump(receipt, { lineWidth: -1 }));
+  }
+
+  async lockProject(stage: string, project: string): Promise<boolean> {
+    const lockPath = path.join(this.workingDir, stage, project, LOCK_FILENAME);
+    const lockInfo: LockInfo = {
+      pid: process.pid,
+      started_at: new Date().toISOString(),
+      hostname: os.hostname(),
+    };
+
+    // Check for stale lock (process no longer running)
+    if (await fs.pathExists(lockPath)) {
+      try {
+        const raw = await fs.readFile(lockPath, 'utf-8');
+        const existing = yaml.load(raw) as LockInfo;
+        if (existing?.pid && this.isProcessAlive(existing.pid)) {
+          return false; // Lock is held by a running process
+        }
+        // Stale lock — process is dead, reclaim it
+      } catch {
+        // Corrupted lock file — reclaim it
+      }
+    }
+
+    await fs.writeFile(lockPath, yaml.dump(lockInfo, { lineWidth: -1 }));
+    return true;
+  }
+
+  async unlockProject(stage: string, project: string): Promise<void> {
+    const lockPath = path.join(this.workingDir, stage, project, LOCK_FILENAME);
+    await fs.remove(lockPath);
+  }
+
+  async isLocked(stage: string, project: string): Promise<boolean> {
+    const lockPath = path.join(this.workingDir, stage, project, LOCK_FILENAME);
+    if (!await fs.pathExists(lockPath)) return false;
+
+    try {
+      const raw = await fs.readFile(lockPath, 'utf-8');
+      const info = yaml.load(raw) as LockInfo;
+      return info?.pid ? this.isProcessAlive(info.pid) : false;
+    } catch {
+      return false;
+    }
+  }
+
+  async readLock(stage: string, project: string): Promise<LockInfo | null> {
+    const lockPath = path.join(this.workingDir, stage, project, LOCK_FILENAME);
+    if (!await fs.pathExists(lockPath)) return null;
+    try {
+      const raw = await fs.readFile(lockPath, 'utf-8');
+      return yaml.load(raw) as LockInfo;
+    } catch {
+      return null;
+    }
+  }
+
+  private isProcessAlive(pid: number): boolean {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

@@ -1,4 +1,4 @@
-import type { PlatformProvider, PublishMeta, PublishResult, ValidationResult } from './types.js';
+import type { PlatformProvider, PublishMeta, PublishResult, ValidationResult, ContentFormat } from './types.js';
 import { httpRequest } from '../utils/http.js';
 import { ProviderError } from '../types/index.js';
 
@@ -8,6 +8,7 @@ export class HashnodeProvider implements PlatformProvider {
   readonly id = 'hashnode';
   readonly name = 'Hashnode';
   readonly platforms = ['hashnode'];
+  readonly contentFormat: ContentFormat = 'markdown';
 
   constructor(
     private readonly apiKey: string,

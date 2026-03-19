@@ -63,6 +63,74 @@ describe('DevtoProvider', () => {
   test('formatContent returns content unchanged', () => {
     expect(devto.formatContent('# Test')).toBe('# Test');
   });
+
+  test('publish respects frontmatter published:false as draft', async () => {
+    const content = '---\ntitle: Test\npublished: false\ntags: [ai]\n---\nBody';
+    let capturedBody = '';
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+      capturedBody = opts.body;
+      return {
+        ok: true,
+        status: 201,
+        text: async () => JSON.stringify({ url: 'https://dev.to/user/test' }),
+      };
+    }));
+
+    await devto.publish(content, {});
+
+    const parsed = JSON.parse(capturedBody);
+    expect(parsed.article.published).toBe(false); // frontmatter says false, no CLI override
+    expect(parsed.article.body_markdown).not.toContain('published:');
+    expect(parsed.article.body_markdown).toContain('title: Test');
+
+    vi.unstubAllGlobals();
+  });
+
+  test('publish respects frontmatter published:true', async () => {
+    const content = '---\ntitle: Test\npublished: true\n---\nBody';
+    let capturedBody = '';
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+      capturedBody = opts.body;
+      return { ok: true, status: 201, text: async () => JSON.stringify({ url: 'https://dev.to/user/test' }) };
+    }));
+
+    await devto.publish(content, {});
+    expect(JSON.parse(capturedBody).article.published).toBe(true);
+
+    vi.unstubAllGlobals();
+  });
+
+  test('CLI --draft flag overrides frontmatter published:true', async () => {
+    const content = '---\ntitle: Test\npublished: true\n---\nBody';
+    let capturedBody = '';
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+      capturedBody = opts.body;
+      return { ok: true, status: 201, text: async () => JSON.stringify({ url: 'https://dev.to/user/test' }) };
+    }));
+
+    await devto.publish(content, { draft: true });
+    expect(JSON.parse(capturedBody).article.published).toBe(false); // CLI flag wins
+
+    vi.unstubAllGlobals();
+  });
+
+  test('defaults to published:true when no frontmatter published field', async () => {
+    const content = '---\ntitle: Test\n---\nBody';
+    let capturedBody = '';
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+      capturedBody = opts.body;
+      return { ok: true, status: 201, text: async () => JSON.stringify({ url: 'https://dev.to/user/test' }) };
+    }));
+
+    await devto.publish(content, {});
+    expect(JSON.parse(capturedBody).article.published).toBe(true); // default
+
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('PostizProvider', () => {

@@ -1,7 +1,10 @@
+export type ContentFormat = 'markdown' | 'html' | 'plaintext';
+
 export interface PlatformProvider {
   readonly id: string;
   readonly name: string;
   readonly platforms: string[];
+  readonly contentFormat: ContentFormat;
 
   validate(content: string): ValidationResult;
   publish(content: string, meta: PublishMeta): Promise<PublishResult>;

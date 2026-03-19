@@ -1,9 +1,10 @@
-import type { PlatformProvider, PublishMeta, PublishResult, ValidationResult } from './types.js';
+import type { PlatformProvider, PublishMeta, PublishResult, ValidationResult, ContentFormat } from './types.js';
 
 export class MockProvider implements PlatformProvider {
   readonly id = 'mock';
   readonly name = 'Mock Provider';
   readonly platforms = ['x', 'wechat', 'zhihu', 'devto', 'hashnode', 'github'];
+  readonly contentFormat: ContentFormat = 'markdown';
 
   validate(content: string): ValidationResult {
     if (!content || content.trim().length === 0) {

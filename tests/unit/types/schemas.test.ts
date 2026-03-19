@@ -65,6 +65,7 @@ describe('ProjectMetaSchema', () => {
 describe('ReceiptSchema', () => {
   test('validates a complete receipt', () => {
     const result = ReceiptSchema.safeParse({
+      status: 'completed',
       published_at: '2026-03-20T10:30:00Z',
       items: [
         { platform: 'devto', status: 'success', url: 'https://dev.to/user/post' },
@@ -74,17 +75,42 @@ describe('ReceiptSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  test('validates publishing status with pending/sending entries', () => {
+    const result = ReceiptSchema.safeParse({
+      status: 'publishing',
+      published_at: '2026-03-20T10:30:00Z',
+      items: [
+        { platform: 'devto', status: 'pending' },
+        { platform: 'x', status: 'sending' },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
   test('rejects receipt with no items', () => {
     const result = ReceiptSchema.safeParse({
+      status: 'completed',
       published_at: '2026-03-20T10:30:00Z',
     });
     expect(result.success).toBe(false);
   });
 
-  test('rejects invalid platform status', () => {
+  test('defaults status to completed when omitted (backward compat)', () => {
     const result = ReceiptSchema.safeParse({
       published_at: '2026-03-20T10:30:00Z',
-      items: [{ platform: 'devto', status: 'pending' }],
+      items: [{ platform: 'devto', status: 'success' }],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.status).toBe('completed');
+    }
+  });
+
+  test('rejects invalid platform status', () => {
+    const result = ReceiptSchema.safeParse({
+      status: 'completed',
+      published_at: '2026-03-20T10:30:00Z',
+      items: [{ platform: 'devto', status: 'unknown' }],
     });
     expect(result.success).toBe(false);
   });

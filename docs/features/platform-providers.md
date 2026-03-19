@@ -36,13 +36,31 @@ This module covers four providers:
 ```typescript
 // providers/types.ts
 
+export type ContentFormat = 'markdown' | 'html' | 'plaintext';
+
 export interface PlatformProvider {
-  manifest(): ProviderManifest;
-  validate(content: string): Promise<ValidationResult>;
-  publish(content: string, options: PublishOptions): Promise<PublishResult>;
+  readonly id: string;
+  readonly name: string;
+  readonly platforms: string[];
+  readonly contentFormat: ContentFormat;  // Declares what format publish() expects
+
+  validate(content: string): ValidationResult;
+  publish(content: string, meta: PublishMeta): Promise<PublishResult>;
   formatContent(content: string): string;
 }
+```
 
+**Content Format Conversion**: Platform version files are always stored as Markdown (`.md`).
+During publishing, the orchestrator checks `provider.contentFormat`:
+- `'markdown'` — content passed through as-is (Dev.to, Hashnode, GitHub)
+- `'plaintext'` — content passed through `formatContent()` (X/Postiz)
+- `'html'` — content auto-converted via `markdownToHtml()` from `src/utils/markdown.ts` (future: WeChat, Zhihu, Medium)
+
+```typescript
+// Removed — ProviderManifest is no longer part of the interface.
+// Providers declare their identity via readonly fields directly.
+
+// Historical reference only:
 export interface ProviderManifest {
   id: string;                         // e.g., 'devto', 'x', 'hashnode', 'github'
   name: string;                       // e.g., 'Dev.to', 'X (via Postiz)'

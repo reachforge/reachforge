@@ -1,4 +1,4 @@
-import type { PlatformProvider, PublishMeta, PublishResult, ValidationResult } from './types.js';
+import type { PlatformProvider, PublishMeta, PublishResult, ValidationResult, ContentFormat } from './types.js';
 import { httpRequest } from '../utils/http.js';
 import { ProviderError } from '../types/index.js';
 
@@ -8,6 +8,7 @@ export class GitHubProvider implements PlatformProvider {
   readonly id = 'github';
   readonly name = 'GitHub Discussions';
   readonly platforms = ['github'];
+  readonly contentFormat: ContentFormat = 'markdown';
 
   constructor(
     private readonly token: string,

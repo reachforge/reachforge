@@ -29,6 +29,7 @@ export const DEFAULT_MCP_TRANSPORT = 'stdio' as const;
 
 export const META_FILENAME = 'meta.yaml';
 export const RECEIPT_FILENAME = 'receipt.yaml';
+export const LOCK_FILENAME = '.publish.lock';
 export const MASTER_FILENAME = 'master.md';
 export const DRAFT_FILENAME = 'draft.md';
 export const PLATFORM_VERSIONS_DIR = 'platform_versions';

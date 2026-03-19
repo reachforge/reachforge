@@ -22,12 +22,13 @@ export const ProjectMetaSchema = z.object({
 
 export const ReceiptEntrySchema = z.object({
   platform: z.string().min(1),
-  status: z.enum(['success', 'failed']),
+  status: z.enum(['pending', 'sending', 'success', 'failed']),
   url: z.string().url().optional(),
   error: z.string().optional(),
 });
 
 export const ReceiptSchema = z.object({
+  status: z.enum(['publishing', 'completed', 'partial']).default('completed'),
   published_at: z.string(),
   items: z.array(ReceiptEntrySchema),
 });

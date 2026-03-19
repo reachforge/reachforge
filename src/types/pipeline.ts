@@ -45,14 +45,21 @@ export interface PipelineStatus {
 
 export interface ReceiptEntry {
   platform: string;
-  status: 'success' | 'failed';
+  status: 'pending' | 'sending' | 'success' | 'failed';
   url?: string;
   error?: string;
 }
 
 export interface Receipt {
+  status: 'publishing' | 'completed' | 'partial';
   published_at: string;
   items: ReceiptEntry[];
+}
+
+export interface LockInfo {
+  pid: number;
+  started_at: string;
+  hostname: string;
 }
 
 export interface PublishOptions {

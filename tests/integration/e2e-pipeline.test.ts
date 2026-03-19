@@ -334,6 +334,122 @@ describe('E2E: Receipt verification', () => {
   });
 });
 
+describe('E2E: Publishing state management', () => {
+  test('no .publish.lock file in 06_sent after successful publish', async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const dir = path.join(tmpDir, '05_scheduled', `${today}-lock-clean`);
+    await fs.ensureDir(path.join(dir, 'platform_versions'));
+    await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), 'Tweet.');
+    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: lock-clean\nstatus: scheduled\n');
+
+    await publishCommand(engine);
+
+    const sentDir = path.join(tmpDir, '06_sent', `${today}-lock-clean`);
+    expect(await fs.pathExists(sentDir)).toBe(true);
+    expect(await fs.pathExists(path.join(sentDir, '.publish.lock'))).toBe(false);
+  });
+
+  test('receipt status is completed when all platforms succeed', async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const dir = path.join(tmpDir, '05_scheduled', `${today}-all-ok`);
+    await fs.ensureDir(path.join(dir, 'platform_versions'));
+    await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), 'Tweet.');
+    await fs.writeFile(path.join(dir, 'platform_versions', 'wechat.md'), 'WeChat content');
+    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: all-ok\nstatus: scheduled\n');
+
+    await publishCommand(engine);
+
+    const receipt = await engine.metadata.readReceipt('06_sent', `${today}-all-ok`);
+    expect(receipt!.status).toBe('completed');
+  });
+
+  test('receipt status is partial when all platforms fail', async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const dir = path.join(tmpDir, '05_scheduled', `${today}-all-fail`);
+    await fs.ensureDir(path.join(dir, 'platform_versions'));
+    await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), 'Tweet content');
+    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: all-fail\nstatus: scheduled\n');
+
+    // Temporarily replace MockProvider.publish to always fail
+    const { MockProvider } = await import('../../src/providers/mock.js');
+    const origPublish = MockProvider.prototype.publish;
+    MockProvider.prototype.publish = async () => ({
+      platform: 'mock', status: 'failed' as const, error: 'Simulated failure',
+    });
+
+    await publishCommand(engine);
+
+    // Restore
+    MockProvider.prototype.publish = origPublish;
+
+    // Should remain in scheduled (all failed)
+    expect(await fs.pathExists(dir)).toBe(true);
+
+    const receipt = await engine.metadata.readReceipt('05_scheduled', `${today}-all-fail`);
+    expect(receipt).not.toBeNull();
+    expect(receipt!.status).toBe('partial');
+    expect(receipt!.items.every(i => i.status === 'failed')).toBe(true);
+  });
+
+  test('old receipt without status field parses with default completed', async () => {
+    // Simulate a legacy receipt (pre-status field)
+    const yamlMod = await import('js-yaml');
+    await fs.ensureDir(path.join(tmpDir, '06_sent', '2026-01-01-legacy'));
+    const legacyReceipt = {
+      published_at: '2026-01-01T00:00:00Z',
+      items: [
+        { platform: 'devto', status: 'success', url: 'https://dev.to/test' },
+      ],
+    };
+    await fs.writeFile(
+      path.join(tmpDir, '06_sent', '2026-01-01-legacy', 'receipt.yaml'),
+      yamlMod.dump(legacyReceipt),
+    );
+
+    const receipt = await engine.metadata.readReceipt('06_sent', '2026-01-01-legacy');
+    expect(receipt).not.toBeNull();
+    expect(receipt!.status).toBe('completed');
+  });
+});
+
+describe('E2E: Content format conversion', () => {
+  test('html contentFormat triggers markdown-to-html conversion', async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const dir = path.join(tmpDir, '05_scheduled', `${today}-html-fmt`);
+    await fs.ensureDir(path.join(dir, 'platform_versions'));
+    await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), '# Hello\n\n**Bold** text.');
+    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: html-fmt\nstatus: scheduled\n');
+
+    // Patch ProviderLoader to return a provider with contentFormat='html'
+    const { ProviderLoader } = await import('../../src/providers/loader.js');
+    const origGetProviderOrMock = ProviderLoader.prototype.getProviderOrMock;
+    let capturedContent = '';
+
+    ProviderLoader.prototype.getProviderOrMock = function () {
+      return {
+        id: 'mock-html', name: 'Mock HTML', platforms: ['x'],
+        contentFormat: 'html' as const,
+        validate: () => ({ valid: true, errors: [] }),
+        publish: async (content: string) => {
+          capturedContent = content;
+          return { platform: 'x', status: 'success' as const, url: 'https://mock.aphype.dev/post/1' };
+        },
+        formatContent: (c: string) => c,
+      };
+    };
+
+    await publishCommand(engine);
+
+    // Restore
+    ProviderLoader.prototype.getProviderOrMock = origGetProviderOrMock;
+
+    // The content should have been converted to HTML
+    expect(capturedContent).toContain('<h1>Hello</h1>');
+    expect(capturedContent).toContain('<strong>Bold</strong>');
+    expect(capturedContent).not.toContain('# Hello');
+  });
+});
+
 describe('E2E: Multi-project pipeline', () => {
   test('handles multiple projects at different stages', async () => {
     // Create projects at various stages

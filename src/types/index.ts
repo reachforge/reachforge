@@ -8,6 +8,7 @@ export type {
   PipelineStatus,
   ReceiptEntry,
   Receipt,
+  LockInfo,
   PublishOptions,
   PublishResult,
   LLMGenerateOptions,
@@ -17,6 +18,7 @@ export type {
 
 // PlatformProvider and ValidationResult are canonical in providers/types.ts
 export type {
+  ContentFormat,
   PlatformProvider,
   ValidationResult,
   PublishMeta,

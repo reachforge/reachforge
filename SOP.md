@@ -29,4 +29,4 @@ As the Editor-in-Chief of `aphype`, your task is to manage "file flow". AI is re
 
 ### 📁 File Standards
 - **Meta.yaml**: Must contain `platforms`, `status`, and `publish_date` fields.
-- **Receipt.json**: Automatically generated in `06_sent` after sending, recording publishing links and time taken.
+- **receipt.yaml**: Automatically generated during publishing (tracks per-platform progress), archived in `06_sent` after sending. Records publishing status, links, and timestamps.

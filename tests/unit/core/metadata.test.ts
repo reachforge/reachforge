@@ -72,6 +72,7 @@ describe('MetadataManager.writeMeta', () => {
 describe('MetadataManager.readReceipt / writeReceipt', () => {
   test('round-trips a receipt', async () => {
     const receipt = {
+      status: 'completed' as const,
       published_at: '2026-03-15T10:00:00Z',
       items: [
         { platform: 'devto', status: 'success' as const, url: 'https://dev.to/test' },
@@ -84,8 +85,97 @@ describe('MetadataManager.readReceipt / writeReceipt', () => {
     const read = await mm.readReceipt('06_sent', 'receipt-test');
 
     expect(read).not.toBeNull();
+    expect(read!.status).toBe('completed');
     expect(read!.items).toHaveLength(2);
     expect(read!.items[0].platform).toBe('devto');
     expect(read!.items[1].status).toBe('failed');
+  });
+
+  test('supports publishing and partial status', async () => {
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', 'progress-test'));
+
+    const receipt = {
+      status: 'publishing' as const,
+      published_at: '2026-03-19T10:00:00Z',
+      items: [
+        { platform: 'x', status: 'pending' as const },
+        { platform: 'devto', status: 'sending' as const },
+      ],
+    };
+
+    await mm.writeReceipt('05_scheduled', 'progress-test', receipt);
+    const read = await mm.readReceipt('05_scheduled', 'progress-test');
+
+    expect(read!.status).toBe('publishing');
+    expect(read!.items[0].status).toBe('pending');
+    expect(read!.items[1].status).toBe('sending');
+  });
+});
+
+describe('MetadataManager.lockProject / unlockProject / isLocked', () => {
+  test('acquires and releases lock', async () => {
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', 'lock-test'));
+
+    const acquired = await mm.lockProject('05_scheduled', 'lock-test');
+    expect(acquired).toBe(true);
+
+    const locked = await mm.isLocked('05_scheduled', 'lock-test');
+    expect(locked).toBe(true);
+
+    await mm.unlockProject('05_scheduled', 'lock-test');
+
+    const lockedAfter = await mm.isLocked('05_scheduled', 'lock-test');
+    expect(lockedAfter).toBe(false);
+  });
+
+  test('rejects second lock from same process', async () => {
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', 'double-lock'));
+
+    const first = await mm.lockProject('05_scheduled', 'double-lock');
+    expect(first).toBe(true);
+
+    // Same PID — process.kill(pid, 0) returns true for own process
+    const second = await mm.lockProject('05_scheduled', 'double-lock');
+    expect(second).toBe(false);
+  });
+
+  test('reclaims stale lock from dead process', async () => {
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', 'stale-lock'));
+
+    // Write a lock with a PID that definitely doesn't exist
+    const lockPath = path.join(tmpDir, '05_scheduled', 'stale-lock', '.publish.lock');
+    const yaml = await import('js-yaml');
+    await fs.writeFile(lockPath, yaml.dump({ pid: 999999, started_at: '2026-03-19T00:00:00Z', hostname: 'test' }));
+
+    // Should reclaim the stale lock
+    const acquired = await mm.lockProject('05_scheduled', 'stale-lock');
+    expect(acquired).toBe(true);
+  });
+
+  test('readLock returns lock info', async () => {
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', 'info-lock'));
+
+    await mm.lockProject('05_scheduled', 'info-lock');
+    const info = await mm.readLock('05_scheduled', 'info-lock');
+
+    expect(info).not.toBeNull();
+    expect(info!.pid).toBe(process.pid);
+    expect(info!.started_at).toBeDefined();
+    expect(info!.hostname).toBeDefined();
+  });
+
+  test('readLock returns null when no lock', async () => {
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', 'no-lock'));
+    const info = await mm.readLock('05_scheduled', 'no-lock');
+    expect(info).toBeNull();
+  });
+
+  test('isLocked returns false for corrupted lock file', async () => {
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', 'corrupt-lock'));
+    const lockPath = path.join(tmpDir, '05_scheduled', 'corrupt-lock', '.publish.lock');
+    await fs.writeFile(lockPath, 'not valid yaml: [[[');
+
+    const locked = await mm.isLocked('05_scheduled', 'corrupt-lock');
+    expect(locked).toBe(false);
   });
 });

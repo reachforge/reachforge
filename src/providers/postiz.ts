@@ -1,4 +1,4 @@
-import type { PlatformProvider, PublishMeta, PublishResult, ValidationResult } from './types.js';
+import type { PlatformProvider, PublishMeta, PublishResult, ValidationResult, ContentFormat } from './types.js';
 import { httpRequest } from '../utils/http.js';
 import { ProviderError } from '../types/index.js';
 
@@ -10,6 +10,7 @@ export class PostizProvider implements PlatformProvider {
   readonly id = 'postiz';
   readonly name = 'X/Twitter (via Postiz)';
   readonly platforms = ['x'];
+  readonly contentFormat: ContentFormat = 'plaintext';
 
   constructor(private readonly apiKey: string) {}
 

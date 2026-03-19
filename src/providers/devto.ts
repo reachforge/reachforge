@@ -1,4 +1,4 @@
-import type { PlatformProvider, PublishMeta, PublishResult, ValidationResult } from './types.js';
+import type { PlatformProvider, PublishMeta, PublishResult, ValidationResult, ContentFormat } from './types.js';
 import { httpRequest } from '../utils/http.js';
 import { ProviderError } from '../types/index.js';
 
@@ -8,6 +8,7 @@ export class DevtoProvider implements PlatformProvider {
   readonly id = 'devto';
   readonly name = 'Dev.to (Forem)';
   readonly platforms = ['devto'];
+  readonly contentFormat: ContentFormat = 'markdown';
 
   constructor(private readonly apiKey: string) {}
 
@@ -38,11 +39,28 @@ export class DevtoProvider implements PlatformProvider {
       title = match ? match[1].trim() : 'Untitled';
     }
 
+    // Determine published state:
+    //   Priority: meta.draft (CLI flag) > frontmatter `published` > default (true)
+    // Dev.to API uses frontmatter over body params, so we strip it from the
+    // markdown and pass a single consistent value via the API parameter.
+    let shouldPublish = true;
+    const fmPublishedMatch = content.match(/^---\n[\s\S]*?published:\s*(true|false)/m);
+    if (fmPublishedMatch) {
+      shouldPublish = fmPublishedMatch[1] === 'true';
+    }
+    if (meta.draft !== undefined) {
+      shouldPublish = !meta.draft;
+    }
+
+    const cleanedContent = content.replace(
+      /^(---\n[\s\S]*?)published:\s*(true|false)\n([\s\S]*?---)/, '$1$3'
+    );
+
     const body = JSON.stringify({
       article: {
         title,
-        body_markdown: content,
-        published: !meta.draft,
+        body_markdown: cleanedContent,
+        published: shouldPublish,
         tags: meta.tags || [],
         canonical_url: meta.canonical,
       },

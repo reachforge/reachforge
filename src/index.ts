@@ -145,7 +145,8 @@ program
   .command('publish')
   .description('Publish all scheduled content due for today')
   .option('-n, --dry-run', 'Preview what would be published')
-  .action(withErrorHandler(async (options: { dryRun?: boolean }) => {
+  .option('-d, --draft', 'Publish as draft (overrides frontmatter published field)')
+  .action(withErrorHandler(async (options: { dryRun?: boolean; draft?: boolean }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await publishCommand(engine, { ...options, config: config.getConfig() });
   }));
