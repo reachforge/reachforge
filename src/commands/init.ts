@@ -18,7 +18,7 @@ export async function initCommand(targetPath?: string): Promise<void> {
   console.log(chalk.green(`✅ Workspace initialized at ${wsRoot}`));
   console.log(chalk.dim('\nNext steps:'));
   console.log(chalk.dim(`  cd ${wsRoot}`));
-  console.log(chalk.dim('  aphype new my-tech-blog'));
+  console.log(chalk.dim('  reachforge new my-tech-blog'));
   console.log(chalk.dim('  cd my-tech-blog'));
-  console.log(chalk.dim('  aphype draft my-first-idea.md'));
+  console.log(chalk.dim('  reachforge draft my-first-idea.md'));
 }

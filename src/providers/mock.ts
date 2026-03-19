@@ -20,7 +20,7 @@ export class MockProvider implements PlatformProvider {
     return {
       platform: 'mock',
       status: 'success',
-      url: `https://mock.aphype.dev/post/${id}`,
+      url: `https://mock.reachforge.dev/post/${id}`,
     };
   }
 

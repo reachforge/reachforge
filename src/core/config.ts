@@ -3,32 +3,32 @@ import * as os from 'os';
 import fs from 'fs-extra';
 import yaml from 'js-yaml';
 import dotenv from 'dotenv';
-import type { AphypeConfig } from '../types/index.js';
+import type { ReachforgeConfig } from '../types/index.js';
 import { CredentialsSchema } from '../types/index.js';
 import { DEFAULT_LLM_MODEL, WORKSPACE_CONFIG_DIR } from './constants.js';
 import { readWorkspaceConfig } from './project-config.js';
 
 export class ConfigManager {
-  private constructor(private readonly config: AphypeConfig) {}
+  private constructor(private readonly config: ReachforgeConfig) {}
 
   /**
    * 4-layer config loading:
-   *   Layer 4 (lowest):  ~/.aphype/config.yaml (global)
-   *   Layer 3:           {workspaceRoot}/.aphype/config.yaml (workspace shared)
+   *   Layer 4 (lowest):  ~/.reachforge/config.yaml (global)
+   *   Layer 3:           {workspaceRoot}/.reachforge/config.yaml (workspace shared)
    *   Layer 2:           {projectDir}/.env + {projectDir}/credentials.yaml (project)
    *   Layer 1 (highest): environment variables
    */
   static async load(projectDir: string, workspaceRoot?: string): Promise<ConfigManager> {
     let mergedCreds: Record<string, string | undefined> = {};
 
-    // Layer 4: global ~/.aphype/config.yaml credentials
+    // Layer 4: global ~/.reachforge/config.yaml credentials
     const globalDir = path.join(os.homedir(), WORKSPACE_CONFIG_DIR);
     const globalWsConfig = await readWorkspaceConfig(globalDir);
     if (globalWsConfig?.credentials) {
       mergedCreds = { ...mergedCreds, ...globalWsConfig.credentials };
     }
 
-    // Layer 3: workspace .aphype/config.yaml credentials
+    // Layer 3: workspace .reachforge/config.yaml credentials
     if (workspaceRoot) {
       const wsConfig = await readWorkspaceConfig(workspaceRoot);
       if (wsConfig?.credentials) {
@@ -81,7 +81,7 @@ export class ConfigManager {
 
     // Layer 1 (highest): real environment variables override everything
     const env = process.env;
-    const config: AphypeConfig = {
+    const config: ReachforgeConfig = {
       geminiApiKey: env.GEMINI_API_KEY || mergedCreds.gemini_api_key || envVars.GEMINI_API_KEY,
       devtoApiKey: env.DEVTO_API_KEY || mergedCreds.devto_api_key || envVars.DEVTO_API_KEY,
       postizApiKey: env.POSTIZ_API_KEY || mergedCreds.postiz_api_key || envVars.POSTIZ_API_KEY,
@@ -91,14 +91,14 @@ export class ConfigManager {
       githubOwner: env.GITHUB_OWNER || mergedCreds.github_owner || envVars.GITHUB_OWNER,
       githubRepo: env.GITHUB_REPO || mergedCreds.github_repo || envVars.GITHUB_REPO,
       githubDiscussionCategory: env.GITHUB_DISCUSSION_CATEGORY || mergedCreds.github_discussion_category || envVars.GITHUB_DISCUSSION_CATEGORY,
-      llmModel: env.APHYPE_LLM_MODEL || envVars.APHYPE_LLM_MODEL || DEFAULT_LLM_MODEL,
+      llmModel: env.REACHFORGE_LLM_MODEL || envVars.REACHFORGE_LLM_MODEL || DEFAULT_LLM_MODEL,
       mcpAuthKey: env.MCP_AUTH_KEY || envVars.MCP_AUTH_KEY,
     };
 
     return new ConfigManager(config);
   }
 
-  getConfig(): AphypeConfig {
+  getConfig(): ReachforgeConfig {
     return { ...this.config };
   }
 

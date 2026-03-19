@@ -217,14 +217,14 @@ export class CodexAdapter implements CLIAdapter {
 ### AdapterFactory.create(config, stage, platform?)
 
 1. Determine adapter name:
-   - If `stage === "draft"`: check `process.env.APHYPE_DRAFT_ADAPTER`, then `config.getDraftAdapter()`, then fall through.
-   - If `stage === "adapt"`: check `process.env.APHYPE_ADAPT_ADAPTER`, then `config.getAdaptAdapter()`, then fall through.
-   - Fall through: check `process.env.APHYPE_LLM_ADAPTER`, then `config.getLLMAdapter()`, then default `"claude"`.
+   - If `stage === "draft"`: check `process.env.REACHFORGE_DRAFT_ADAPTER`, then `config.getDraftAdapter()`, then fall through.
+   - If `stage === "adapt"`: check `process.env.REACHFORGE_ADAPT_ADAPTER`, then `config.getAdaptAdapter()`, then fall through.
+   - Fall through: check `process.env.REACHFORGE_LLM_ADAPTER`, then `config.getLLMAdapter()`, then default `"claude"`.
 2. Validate adapter name is one of `["claude", "gemini", "codex"]`.
    - If invalid: throw `new AdapterNotFoundError("Unknown LLM adapter: ${name}. Supported: claude, gemini, codex")`.
 3. Determine command path:
    - Default commands: `{ claude: "claude", gemini: "gemini", codex: "codex" }`.
-   - Check `process.env.APHYPE_${name.toUpperCase()}_COMMAND` for custom command path.
+   - Check `process.env.REACHFORGE_${name.toUpperCase()}_COMMAND` for custom command path.
 4. Verify command exists in PATH by attempting to resolve it:
    - Search PATH directories for executable file.
    - On macOS/Linux: include `/usr/local/bin`, `/opt/homebrew/bin` in search.
@@ -238,7 +238,7 @@ export class CodexAdapter implements CLIAdapter {
 
 1. **Validate options**: (see Parameter Validation in tech design section 4.2.1).
 2. **Build skills directory**:
-   a. Create temp directory: `fs.mkdtemp(path.join(os.tmpdir(), "aphype-skills-"))`.
+   a. Create temp directory: `fs.mkdtemp(path.join(os.tmpdir(), "reachforge-skills-"))`.
    b. Create `.claude/skills/` inside temp dir.
    c. For each skill path in `options.skillPaths`:
       - Read skill file content.
@@ -466,10 +466,10 @@ export function isCodexUnknownSessionError(stdout: string, stderr: string): bool
 
 | Error Condition               | Error Class                  | User Message                                                           | Recovery |
 |-------------------------------|------------------------------|------------------------------------------------------------------------|----------|
-| Unknown adapter name          | `AdapterNotFoundError`       | "Unknown LLM adapter: '{name}'. Supported: claude, gemini, codex"      | User fixes APHYPE_LLM_ADAPTER |
+| Unknown adapter name          | `AdapterNotFoundError`       | "Unknown LLM adapter: '{name}'. Supported: claude, gemini, codex"      | User fixes REACHFORGE_LLM_ADAPTER |
 | CLI not installed             | `AdapterNotInstalledError`   | "{name} CLI is not installed or not in PATH. Install from {url}"       | User installs CLI |
 | CLI not authenticated         | `AdapterAuthError`           | "{name} requires authentication. Run '{command} login' first."         | User runs login |
-| Process timeout               | `AdapterTimeoutError`        | "LLM generation timed out after {n}s. Increase with APHYPE_LLM_TIMEOUT" | User increases timeout |
+| Process timeout               | `AdapterTimeoutError`        | "LLM generation timed out after {n}s. Increase with REACHFORGE_LLM_TIMEOUT" | User increases timeout |
 | Empty response                | `AdapterEmptyResponseError`  | "{name} returned an empty response. Try again."                        | User retries |
 | Session expired               | (handled internally)         | Warning: "Session {id} expired; starting fresh session."               | Automatic retry |
 | Process spawn ENOENT          | `AdapterNotInstalledError`   | "Failed to start '{command}'. Verify it is installed and in PATH."     | User fixes PATH |
@@ -486,8 +486,8 @@ export function isCodexUnknownSessionError(stdout: string, stderr: string): bool
 3. `create()` returns `CodexAdapter` when adapter is "codex" and codex is in PATH
 4. `create()` throws `AdapterNotFoundError` for "gpt4"
 5. `create()` throws `AdapterNotInstalledError` when command not in PATH
-6. `create()` respects `APHYPE_DRAFT_ADAPTER` for draft stage
-7. `create()` respects `APHYPE_ADAPT_ADAPTER` for adapt stage
+6. `create()` respects `REACHFORGE_DRAFT_ADAPTER` for draft stage
+7. `create()` respects `REACHFORGE_ADAPT_ADAPTER` for adapt stage
 8. `create()` defaults to "claude" when no config is set
 
 ### Unit Tests (`llm/__tests__/process.test.ts`)
@@ -565,7 +565,7 @@ export function isCodexUnknownSessionError(stdout: string, stderr: string): bool
 New config keys in `ConfigManager`:
 
 ```typescript
-// Added to AphypeConfig interface
+// Added to ReachforgeConfig interface
 llmAdapter?: string;       // "claude" | "gemini" | "codex". Default: "claude"
 llmTimeout?: number;       // 10-3600 seconds. Default: 300
 draftAdapter?: string;     // Override adapter for draft stage
@@ -576,13 +576,13 @@ Environment variable mapping:
 
 | Env Variable             | Config Key        | Default    |
 |--------------------------|-------------------|------------|
-| `APHYPE_LLM_ADAPTER`    | `llm_adapter`     | `"claude"` |
-| `APHYPE_LLM_TIMEOUT`    | `llm_timeout`     | `300`      |
-| `APHYPE_DRAFT_ADAPTER`  | `draft_adapter`   | (inherits) |
-| `APHYPE_ADAPT_ADAPTER`  | `adapt_adapter`   | (inherits) |
-| `APHYPE_CLAUDE_COMMAND`  | N/A (env only)    | `"claude"` |
-| `APHYPE_GEMINI_COMMAND`  | N/A (env only)    | `"gemini"` |
-| `APHYPE_CODEX_COMMAND`   | N/A (env only)    | `"codex"`  |
+| `REACHFORGE_LLM_ADAPTER`    | `llm_adapter`     | `"claude"` |
+| `REACHFORGE_LLM_TIMEOUT`    | `llm_timeout`     | `300`      |
+| `REACHFORGE_DRAFT_ADAPTER`  | `draft_adapter`   | (inherits) |
+| `REACHFORGE_ADAPT_ADAPTER`  | `adapt_adapter`   | (inherits) |
+| `REACHFORGE_CLAUDE_COMMAND`  | N/A (env only)    | `"claude"` |
+| `REACHFORGE_GEMINI_COMMAND`  | N/A (env only)    | `"gemini"` |
+| `REACHFORGE_CODEX_COMMAND`   | N/A (env only)    | `"codex"`  |
 
 ---
 

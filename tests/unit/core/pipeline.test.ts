@@ -3,14 +3,14 @@ import * as path from 'path';
 import * as os from 'os';
 import fs from 'fs-extra';
 import { PipelineEngine } from '../../../src/core/pipeline.js';
-import { ProjectNotFoundError, AphypeError } from '../../../src/types/index.js';
+import { ProjectNotFoundError, ReachforgeError } from '../../../src/types/index.js';
 import { STAGES } from '../../../src/core/constants.js';
 
 let tmpDir: string;
 let engine: PipelineEngine;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-test-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-test-'));
   engine = new PipelineEngine(tmpDir);
 });
 
@@ -94,12 +94,12 @@ describe('PipelineEngine.moveProject', () => {
       .rejects.toThrow(ProjectNotFoundError);
   });
 
-  test('throws AphypeError if target already exists', async () => {
+  test('throws ReachforgeError if target already exists', async () => {
     await engine.initPipeline();
     await fs.ensureDir(path.join(tmpDir, '01_inbox', 'dup'));
     await fs.ensureDir(path.join(tmpDir, '02_drafts', 'dup'));
     await expect(engine.moveProject('dup', '01_inbox', '02_drafts'))
-      .rejects.toThrow(AphypeError);
+      .rejects.toThrow(ReachforgeError);
   });
 
   test('uses copy+remove for safe move (not rename)', async () => {

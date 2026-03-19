@@ -9,7 +9,7 @@ let tmpDir: string;
 let mm: MetadataManager;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-meta-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-meta-'));
   mm = new MetadataManager(tmpDir);
 });
 

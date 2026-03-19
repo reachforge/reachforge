@@ -12,28 +12,28 @@
 ## 1. Problem Statement
 
 ### Current Pain
-aphype v0.1 treats `process.cwd()` as the pipeline root. This creates a fundamental conflict:
+reachforge v0.1 treats `process.cwd()` as the pipeline root. This creates a fundamental conflict:
 
 1. **Code–content coupling**: Pipeline directories (01_inbox → 06_sent) are created in the project source directory, mixing tool code with user content.
-2. **No multi-project support**: A content operator managing a tech blog, company newsletter, and personal brand must run 3 separate aphype instances in 3 directories.
-3. **Git pollution**: Users who want to version-control their articles must either pollute the aphype repo or maintain complex .gitignore rules.
+2. **No multi-project support**: A content operator managing a tech blog, company newsletter, and personal brand must run 3 separate reachforge instances in 3 directories.
+3. **Git pollution**: Users who want to version-control their articles must either pollute the reachforge repo or maintain complex .gitignore rules.
 
 ### Who Feels This Pain
 - **Professional content operators** running 2-5 projects with different target platforms, languages, and tones.
 - **Teams** where one person manages multiple brand voices.
-- **Any user** who installs aphype globally (via npm) and expects a clean workspace elsewhere.
+- **Any user** who installs reachforge globally (via npm) and expects a clean workspace elsewhere.
 
 ## 2. Proposed Solution
 
 ### Core Concept: Workspace as Content Home
 
-Separate the **tool** (aphype npm package) from the **workspace** (user content). A workspace contains multiple **projects**, each with an independent 6-stage pipeline.
+Separate the **tool** (reachforge npm package) from the **workspace** (user content). A workspace contains multiple **projects**, each with an independent 6-stage pipeline.
 
 ### Directory Structure (Flat)
 
 ```
-~/aphype-workspace/                    ← workspace root (user's git repo)
-  .aphype/
+~/reachforge-workspace/                    ← workspace root (user's git repo)
+  .reachforge/
     config.yaml                        ← workspace-level config (shared credentials, defaults)
   tech-blog/                           ← project 1
     01_inbox/
@@ -59,7 +59,7 @@ Separate the **tool** (aphype npm package) from the **workspace** (user content)
 |----------|--------|-----------|
 | Layout | Flat (projects as top-level dirs) | Simpler, user sees projects immediately, fewer nested paths |
 | Content sharing | Completely independent | Simplest, safest. Cross-project reuse via manual copy or symlink |
-| Global config | `~/.aphype/config.yaml` | Stores default workspace path, global credentials |
+| Global config | `~/.reachforge/config.yaml` | Stores default workspace path, global credentials |
 | Project isolation | Each project has own pipeline + config | Clean separation, different platforms per project |
 | Season/Batch | No directory-level modeling | Project = ongoing channel. Seasons/batches managed via filename conventions (e.g., `s1-batch1-topic.md`) and `project.yaml` tags. Tool layer stays simple; operational strategy is the user's domain. |
 
@@ -69,8 +69,8 @@ Separate the **tool** (aphype npm package) from the **workspace** (user content)
 Priority (highest → lowest):
   1. Environment variables        ← runtime override
   2. Project .env + project.yaml  ← project-specific
-  3. Workspace .aphype/config.yaml ← shared across projects
-  4. Global ~/.aphype/config.yaml  ← machine-wide defaults
+  3. Workspace .reachforge/config.yaml ← shared across projects
+  4. Global ~/.reachforge/config.yaml  ← machine-wide defaults
 ```
 
 ### project.yaml Schema
@@ -99,29 +99,29 @@ history:
 
 ```bash
 # Workspace management
-aphype init [path]                  # Initialize a new workspace (default: cwd)
-aphype new <project-name>           # Create a new project in current workspace
+reachforge init [path]                  # Initialize a new workspace (default: cwd)
+reachforge new <project-name>           # Create a new project in current workspace
 
 # Context-aware commands (detect workspace/project from cwd)
-cd ~/aphype-workspace/tech-blog
-aphype status                       # Status of current project
-aphype draft my-idea.md             # Works in project context
+cd ~/reachforge-workspace/tech-blog
+reachforge status                       # Status of current project
+reachforge draft my-idea.md             # Works in project context
 
 # Cross-project views
-aphype status --all                 # Dashboard across ALL projects
-aphype status --project company-news # Status of specific project
+reachforge status --all                 # Dashboard across ALL projects
+reachforge status --project company-news # Status of specific project
 
 # Workspace info
-aphype workspace                    # Show current workspace path and project list
+reachforge workspace                    # Show current workspace path and project list
 ```
 
 ### Context Resolution Logic
 
 ```
-1. Check APHYPE_WORKSPACE env var → use that workspace
-2. Walk up from cwd looking for .aphype/ directory → found = workspace root
+1. Check REACHFORGE_WORKSPACE env var → use that workspace
+2. Walk up from cwd looking for .reachforge/ directory → found = workspace root
 3. Check if cwd contains project.yaml → cwd is a project dir
-4. Check ~/.aphype/config.yaml for default_workspace → use that
+4. Check ~/.reachforge/config.yaml for default_workspace → use that
 5. Fallback: treat cwd as a single-project workspace (backward compatible)
 ```
 
@@ -140,13 +140,13 @@ aphype workspace                    # Show current workspace path and project li
 
 ### Backward compatibility:
 - If no workspace detected, fall back to `cwd()` as project root → existing single-project usage works unchanged
-- `aphype init` is opt-in, not required
+- `reachforge init` is opt-in, not required
 
 ## 5. What If We Don't Build This?
 
-1. **Users work around it** — create separate directories manually, run aphype in each. Functional but clunky.
+1. **Users work around it** — create separate directories manually, run reachforge in each. Functional but clunky.
 2. **Professional operators won't adopt** — managing 5 directories with 5 sets of credentials is a dealbreaker.
-3. **npm global install is broken** — `aphype status` in any directory creates pipeline dirs in that directory.
+3. **npm global install is broken** — `reachforge status` in any directory creates pipeline dirs in that directory.
 4. **Content can't be Git-managed cleanly** — the core "User Sovereignty" principle (§6 of DESIGN_STRATEGY) is violated.
 
 ## 6. Anti-Pseudo-Requirement Check
@@ -154,7 +154,7 @@ aphype workspace                    # Show current workspace path and project li
 | Check | Result |
 |-------|--------|
 | Is this a real user need? | Yes — professional operators confirmed. Also solves the code/content separation problem we discovered organically. |
-| Can it be solved with config alone? | Partially — `APHYPE_WORKSPACE` env var works but doesn't solve multi-project. |
+| Can it be solved with config alone? | Partially — `REACHFORGE_WORKSPACE` env var works but doesn't solve multi-project. |
 | Is this over-engineering? | No — the core change (workspace path resolution) is ~100 lines. Project isolation reuses existing PipelineEngine. |
 | Does a competitor solve this? | Hugo, Jekyll, Obsidian all separate tool from content workspace. This is standard practice. |
 
@@ -168,17 +168,17 @@ aphype workspace                    # Show current workspace path and project li
 | Postiz | SaaS, no local workspace concept |
 | Buffer | SaaS, multi-brand via UI |
 
-aphype would be the first **CLI content engine** with native workspace + multi-project support.
+reachforge would be the first **CLI content engine** with native workspace + multi-project support.
 
 ## 8. MVP Scope
 
 ### In Scope (v0.3)
-- `aphype init [path]` — create workspace with `.aphype/config.yaml`
-- `aphype new <name>` — create project with `project.yaml` + pipeline dirs
+- `reachforge init [path]` — create workspace with `.reachforge/config.yaml`
+- `reachforge new <name>` — create project with `project.yaml` + pipeline dirs
 - Workspace path resolution (4-step logic above)
 - Config hierarchy (4 layers)
-- `aphype status --all` — cross-project dashboard
-- `aphype workspace` — show workspace info
+- `reachforge status --all` — cross-project dashboard
+- `reachforge workspace` — show workspace info
 - Backward compatibility with single-project (no workspace) mode
 
 ### Out of Scope (future)

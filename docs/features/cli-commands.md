@@ -25,14 +25,14 @@ Command handlers do NOT contain business logic. All logic lives in `core/`, `llm
 
 | File | Command | Max Lines |
 |------|---------|-----------|
-| `commands/status.ts` | `aphype status` | 80 |
-| `commands/draft.ts` | `aphype draft <source>` | 100 |
-| `commands/adapt.ts` | `aphype adapt <article>` | 120 |
-| `commands/schedule.ts` | `aphype schedule <article> <date>` | 80 |
-| `commands/publish.ts` | `aphype publish` | 120 |
-| `commands/watch.ts` | `aphype watch` | 100 |
-| `commands/mcp.ts` | `aphype mcp` | 60 |
-| `commands/analytics.ts` | `aphype analytics` | 100 |
+| `commands/status.ts` | `reachforge status` | 80 |
+| `commands/draft.ts` | `reachforge draft <source>` | 100 |
+| `commands/adapt.ts` | `reachforge adapt <article>` | 120 |
+| `commands/schedule.ts` | `reachforge schedule <article> <date>` | 80 |
+| `commands/publish.ts` | `reachforge publish` | 120 |
+| `commands/watch.ts` | `reachforge watch` | 100 |
+| `commands/mcp.ts` | `reachforge mcp` | 60 |
+| `commands/analytics.ts` | `reachforge analytics` | 100 |
 
 ## 3. TypeScript Interfaces
 
@@ -86,7 +86,7 @@ export function registerAnalyticsCommand(program: Command, ctx: CommandContext):
 ### Status Command
 
 1. Call `pipeline.getStatus()` to get pipeline state
-2. Print header: "aphype Content Factory Dashboard" (chalk.blue.bold)
+2. Print header: "reachforge Content Factory Dashboard" (chalk.blue.bold)
 3. For each stage in STAGES:
    a. If count > 0: print green checkmark icon, stage name, yellow count
    b. If count == 0: print gray circle icon, stage name, gray "0"
@@ -165,7 +165,7 @@ export function registerAnalyticsCommand(program: Command, ctx: CommandContext):
 ### Watch Command
 
 1. Parse `--interval` option, validate with `WatchParamsSchema`
-2. Print "aphype Daemon is now watching..." (chalk.blue.bold)
+2. Print "reachforge Daemon is now watching..." (chalk.blue.bold)
 3. Register SIGTERM/SIGINT handlers:
    a. Set `shuttingDown = true`
    b. Wait for in-progress publish to complete
@@ -174,7 +174,7 @@ export function registerAnalyticsCommand(program: Command, ctx: CommandContext):
 4. Define `tick()` function:
    a. Print timestamp and "Checking..." (chalk.dim)
    b. Run publish logic (same as Publish Command steps 3-6)
-   c. Log results to `aphype-watcher.log`
+   c. Log results to `reachforge-watcher.log`
 5. Execute first `tick()` immediately
 6. Set interval for subsequent ticks at configured interval
 7. Run indefinitely until signal received

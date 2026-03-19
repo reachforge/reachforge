@@ -8,7 +8,7 @@ export async function workspaceInfoCommand(context: WorkspaceContext): Promise<v
   if (!context.workspaceRoot) {
     console.log(chalk.yellow('Not in a workspace.'));
     console.log(chalk.dim('\nTo create a workspace:'));
-    console.log(chalk.dim('  aphype init [path]'));
+    console.log(chalk.dim('  reachforge init [path]'));
     return;
   }
 
@@ -21,7 +21,7 @@ export async function workspaceInfoCommand(context: WorkspaceContext): Promise<v
   const projects = await WorkspaceResolver.listProjects(context.workspaceRoot);
 
   if (projects.length === 0) {
-    console.log(chalk.yellow('\n   No projects yet. Run `aphype new <name>` to create one.'));
+    console.log(chalk.yellow('\n   No projects yet. Run `reachforge new <name>` to create one.'));
   } else {
     console.log(chalk.dim(`   ${projects.length} project(s):\n`));
 

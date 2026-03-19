@@ -11,7 +11,7 @@ describe('watchCommand validation', () => {
   test('rejects interval of 0', async () => {
     // Import dynamically to avoid side effects
     const { watchCommand } = await import('../../../src/commands/watch.js');
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-watch-'));
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-watch-'));
     const engine = new PipelineEngine(tmpDir);
 
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -25,7 +25,7 @@ describe('watchCommand validation', () => {
 
   test('rejects non-numeric interval', async () => {
     const { watchCommand } = await import('../../../src/commands/watch.js');
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-watch-'));
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-watch-'));
     const engine = new PipelineEngine(tmpDir);
 
     vi.spyOn(console, 'log').mockImplementation(() => {});

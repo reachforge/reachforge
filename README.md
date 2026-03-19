@@ -1,8 +1,8 @@
-# aphype (AI PartnerUp Hype)
+# reachforge (ReachForge)
 
-> **aphype: The Social Influence Engine for AI-Native Content.**
+> **reachforge: The Social Influence Engine for AI-Native Content.**
 
-**aphype** is an **AI-native Social Influence Engine** for end-users. It adopts a "File-as-State" design philosophy, transforming inspiration fragments into multi-platform viral assets through a lightweight six-stage pipeline.
+**reachforge** is an **AI-native Social Influence Engine** for end-users. It adopts a "File-as-State" design philosophy, transforming inspiration fragments into multi-platform viral assets through a lightweight six-stage pipeline.
 
 ## Core Design Philosophy
 - **Directory-based Sync**: No database required. Folders represent states, filenames act as timestamps, and YAML files store metadata.
@@ -22,7 +22,7 @@
 
 ### 1. Install an LLM CLI
 
-aphype uses local CLI tools for AI generation — no API keys needed. Install at least one:
+reachforge uses local CLI tools for AI generation — no API keys needed. Install at least one:
 
 | Adapter | Install | Auth |
 |---------|---------|------|
@@ -33,17 +33,17 @@ aphype uses local CLI tools for AI generation — no API keys needed. Install at
 ### 2. Initialize Workspace & Configure
 
 ```bash
-aphype init ~/aphype-workspace
-cd ~/aphype-workspace
+reachforge init ~/reachforge-workspace
+cd ~/reachforge-workspace
 ```
 
 Create a `.env` file **in the workspace directory** with your API keys:
 
 ```bash
-# ~/aphype-workspace/.env
+# ~/reachforge-workspace/.env
 
 # LLM adapter (claude, gemini, or codex)
-APHYPE_LLM_ADAPTER=claude
+REACHFORGE_LLM_ADAPTER=claude
 
 # Platform API keys (for publishing)
 DEVTO_API_KEY=your-key        # Dev.to: Settings > Extensions > DEV API Keys
@@ -53,8 +53,8 @@ POSTIZ_API_KEY=your-key       # Postiz (for X/Twitter): postiz.com Dashboard > A
 You can also use different adapters for different stages:
 
 ```bash
-APHYPE_DRAFT_ADAPTER=gemini   # Use Gemini for drafting
-APHYPE_ADAPT_ADAPTER=claude   # Use Claude for platform adaptation
+REACHFORGE_DRAFT_ADAPTER=gemini   # Use Gemini for drafting
+REACHFORGE_ADAPT_ADAPTER=claude   # Use Claude for platform adaptation
 ```
 
 **Configuration precedence** (highest to lowest):
@@ -64,25 +64,25 @@ APHYPE_ADAPT_ADAPTER=claude   # Use Claude for platform adaptation
 | 1 | Environment variables | Session |
 | 2 | `{project}/.env` | Single project |
 | 3 | `{workspace}/.env` | All projects in workspace |
-| 4 | `~/.aphype/config.yaml` | Global (all workspaces) |
+| 4 | `~/.reachforge/config.yaml` | Global (all workspaces) |
 
 ### 3. Create a Project & Run
 
 ```bash
-aphype new my-tech-blog
+reachforge new my-tech-blog
 cd my-tech-blog
 
-aphype status                          # View pipeline dashboard
-aphype draft my-idea.md                # Generate draft from inbox
-aphype adapt my-article                # Adapt for all platforms
-aphype schedule my-article 2026-03-20  # Schedule for publishing
-aphype publish                         # Publish due content
-aphype watch                           # Daemon mode: auto-publish on schedule
+reachforge status                          # View pipeline dashboard
+reachforge draft my-idea.md                # Generate draft from inbox
+reachforge adapt my-article                # Adapt for all platforms
+reachforge schedule my-article 2026-03-20  # Schedule for publishing
+reachforge publish                         # Publish due content
+reachforge watch                           # Daemon mode: auto-publish on schedule
 ```
 
 ## Development
 
-**aphype** recommends using [Bun](https://bun.sh/) for extreme performance and a single-file distribution experience.
+**reachforge** recommends using [Bun](https://bun.sh/) for extreme performance and a single-file distribution experience.
 
 ```bash
 # Install dependencies

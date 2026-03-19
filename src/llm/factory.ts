@@ -52,7 +52,7 @@ export class AdapterFactory {
       throw new AdapterNotFoundError(name);
     }
 
-    const envKey = `APHYPE_${name.toUpperCase()}_COMMAND`;
+    const envKey = `REACHFORGE_${name.toUpperCase()}_COMMAND`;
     const command = process.env[envKey] || DEFAULT_COMMANDS[name as AdapterName];
 
     let adapter: CLIAdapter;
@@ -81,13 +81,13 @@ export class AdapterFactory {
 
   private static resolveAdapterName(stage: string): string {
     // Stage-specific env vars take priority
-    if (stage === 'draft' && process.env.APHYPE_DRAFT_ADAPTER) {
-      return process.env.APHYPE_DRAFT_ADAPTER;
+    if (stage === 'draft' && process.env.REACHFORGE_DRAFT_ADAPTER) {
+      return process.env.REACHFORGE_DRAFT_ADAPTER;
     }
-    if (stage === 'adapt' && process.env.APHYPE_ADAPT_ADAPTER) {
-      return process.env.APHYPE_ADAPT_ADAPTER;
+    if (stage === 'adapt' && process.env.REACHFORGE_ADAPT_ADAPTER) {
+      return process.env.REACHFORGE_ADAPT_ADAPTER;
     }
     // General adapter setting
-    return process.env.APHYPE_LLM_ADAPTER || 'claude';
+    return process.env.REACHFORGE_LLM_ADAPTER || 'claude';
   }
 }

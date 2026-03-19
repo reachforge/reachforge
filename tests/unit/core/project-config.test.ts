@@ -14,7 +14,7 @@ import {
 let tmpDir: string;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-pc-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-pc-'));
 });
 
 afterEach(async () => {
@@ -114,12 +114,12 @@ describe('readWorkspaceConfig / writeWorkspaceConfig', () => {
     expect(read!.default_workspace).toBe('/home/user/ws');
   });
 
-  test('returns null for missing .aphype/config.yaml', async () => {
+  test('returns null for missing .reachforge/config.yaml', async () => {
     expect(await readWorkspaceConfig(tmpDir)).toBeNull();
   });
 
-  test('creates .aphype directory', async () => {
+  test('creates .reachforge directory', async () => {
     await writeWorkspaceConfig(tmpDir, {});
-    expect(await fs.pathExists(path.join(tmpDir, '.aphype', 'config.yaml'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '.reachforge', 'config.yaml'))).toBe(true);
   });
 });

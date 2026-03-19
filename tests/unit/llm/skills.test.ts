@@ -17,7 +17,7 @@ async function writeSkill(baseDir: string, relativePath: string, content: string
 }
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-skills-test-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-skills-test-'));
   builtInDir = path.join(tmpDir, 'built-in');
   workspaceDir = path.join(tmpDir, 'workspace');
   projectDir = path.join(tmpDir, 'project');

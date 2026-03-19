@@ -13,12 +13,12 @@
 
 ## 1. Purpose and Scope
 
-The Skill Resolver implements a three-layer cascade for resolving skill markdown files that are injected into LLM prompts. Skills replace the hardcoded `PLATFORM_PROMPTS` and `DEFAULT_DRAFT_PROMPT` strings currently in `src/llm/types.ts`. This enables users to customize LLM behavior at the workspace or project level without modifying aphype source code.
+The Skill Resolver implements a three-layer cascade for resolving skill markdown files that are injected into LLM prompts. Skills replace the hardcoded `PLATFORM_PROMPTS` and `DEFAULT_DRAFT_PROMPT` strings currently in `src/llm/types.ts`. This enables users to customize LLM behavior at the workspace or project level without modifying reachforge source code.
 
 The three layers (highest priority first):
 1. **Project skills** at `{project}/skills/` -- per-project overrides
 2. **Workspace skills** at `{workspace}/skills/` -- shared across projects in a workspace
-3. **Built-in skills** at `{cliRoot}/skills/` -- bundled with the aphype binary
+3. **Built-in skills** at `{cliRoot}/skills/` -- bundled with the reachforge binary
 
 The module provides:
 - `SkillResolver` class with `resolve()` and `listAll()` methods
@@ -353,7 +353,7 @@ After resolving skills, the adapter layer injects them differently per CLI tool:
 
 ### Claude Injection
 
-1. Create temp directory: `mkdtemp("aphype-skills-")`.
+1. Create temp directory: `mkdtemp("reachforge-skills-")`.
 2. Create `.claude/skills/` inside temp dir.
 3. For each resolved skill:
    - Copy the skill file to `{tmpdir}/.claude/skills/{skillName}`.
@@ -399,7 +399,7 @@ function buildFullPrompt(skills: ResolvedSkill[], userPrompt: string, resolver: 
 
 | Error Condition                      | Behavior                                          | Recovery |
 |--------------------------------------|---------------------------------------------------|----------|
-| Built-in skills directory missing    | Warning logged, layer skipped                     | Reinstall aphype |
+| Built-in skills directory missing    | Warning logged, layer skipped                     | Reinstall reachforge |
 | Workspace skills directory missing   | Silent skip (normal for projects without custom skills) | N/A |
 | Project skills directory missing     | Silent skip (normal)                              | N/A |
 | Skill file unreadable (permissions)  | Warning logged, skill skipped                     | Fix permissions |

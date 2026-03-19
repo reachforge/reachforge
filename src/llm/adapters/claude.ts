@@ -18,7 +18,7 @@ export class ClaudeAdapter implements CLIAdapter {
 
     try {
       // Build temp skills directory
-      skillsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-skills-'));
+      skillsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-skills-'));
       const claudeSkillsDir = path.join(skillsDir, '.claude', 'skills');
       await fs.mkdir(claudeSkillsDir, { recursive: true });
 

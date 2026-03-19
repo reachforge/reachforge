@@ -1,4 +1,4 @@
-# Implementation Plan: aphype Refactor + Bug Fixes
+# Implementation Plan: reachforge Refactor + Bug Fixes
 
 | Field | Value |
 |-------|-------|
@@ -49,7 +49,7 @@
 | M4 | Dead Python code | Step 7 | Delete `scripts/adapt.py`, `pyproject.toml` |
 | M5 | `as any` everywhere | Step 1 | Proper TypeScript interfaces |
 | M6 | No .env.example | Step 2 | Create `.env.example` |
-| M7 | Hardcoded gemini-pro | Step 3 | Config via `APHYPE_LLM_MODEL` |
+| M7 | Hardcoded gemini-pro | Step 3 | Config via `REACHFORGE_LLM_MODEL` |
 | M8 | No --dry-run | Step 4 | Add to schedule, publish commands |
 | M9 | Mock publish silent | Step 5 | MockProvider warns "MOCK MODE" |
 | M10 | readdir order | Step 2 | Sort by name, prefer `main.md` > `index.md` > first .md |

@@ -1,14 +1,14 @@
-# Software Requirements Specification: aphype
+# Software Requirements Specification: reachforge
 
 | Field            | Value                                              |
 |------------------|----------------------------------------------------|
-| **Document**     | aphype SRS v1.0                                    |
+| **Document**     | reachforge SRS v1.0                                    |
 | **Author**       | aipartnerup Engineering                            |
 | **Date**         | 2026-03-14                                         |
 | **Status**       | Draft                                              |
 | **Version**      | 1.0                                                |
-| **PRD Reference**| [aphype PRD v1.0](prd.md)                         |
-| **Decomposition**| [aphype Decomposition](decomposition.md)           |
+| **PRD Reference**| [reachforge PRD v1.0](prd.md)                         |
+| **Decomposition**| [reachforge Decomposition](decomposition.md)           |
 | **Standard**     | IEEE 830 / ISO/IEC/IEEE 29148                      |
 
 ---
@@ -17,11 +17,11 @@
 
 ### 1.1 Purpose
 
-This Software Requirements Specification defines the complete functional and non-functional requirements for **aphype**, an AI-native Social Influence Engine. The intended audience includes developers implementing the system, QA engineers writing test plans, and stakeholders reviewing scope. This document transforms the product-level requirements in the PRD into formal, testable, traceable engineering requirements.
+This Software Requirements Specification defines the complete functional and non-functional requirements for **reachforge**, an AI-native Social Influence Engine. The intended audience includes developers implementing the system, QA engineers writing test plans, and stakeholders reviewing scope. This document transforms the product-level requirements in the PRD into formal, testable, traceable engineering requirements.
 
 ### 1.2 Scope
 
-aphype is a CLI-based tool that transforms raw content ideas into platform-optimized, publication-ready social media assets through a six-stage file-based pipeline. The system:
+reachforge is a CLI-based tool that transforms raw content ideas into platform-optimized, publication-ready social media assets through a six-stage file-based pipeline. The system:
 
 - Accepts raw ideas as markdown/text files in an inbox directory.
 - Generates long-form article drafts via Google Gemini AI.
@@ -30,7 +30,7 @@ aphype is a CLI-based tool that transforms raw content ideas into platform-optim
 - Publishes to platforms via native APIs (Dev.to, Hashnode, GitHub) and SaaS bridges (X via Postiz).
 - Exposes all operations via MCP Server for AI agent integration.
 
-aphype does NOT provide: a web UI (except via VS Code extension in Phase 4), user authentication/accounts, a hosted SaaS backend, or real-time collaborative editing.
+reachforge does NOT provide: a web UI (except via VS Code extension in Phase 4), user authentication/accounts, a hosted SaaS backend, or real-time collaborative editing.
 
 ### 1.3 Definitions, Acronyms, and Abbreviations
 
@@ -47,14 +47,14 @@ aphype does NOT provide: a web UI (except via VS Code extension in Phase 4), use
 | **MCP**            | Model Context Protocol --- standard for AI agent tool integration          |
 | **APCore**         | aipartnerup Core framework for module registration and lifecycle           |
 | **SSE**            | Server-Sent Events transport for MCP                                       |
-| **Bun**            | JavaScript/TypeScript runtime used to execute aphype                       |
+| **Bun**            | JavaScript/TypeScript runtime used to execute reachforge                       |
 | **Gemini**         | Google's generative AI model used for content generation                   |
 | **Postiz**         | Open-source social media scheduling SaaS used as X publishing bridge       |
 
 ### 1.4 References
 
-1. aphype PRD v1.0 (`docs/aphype/prd.md`)
-2. aphype Decomposition (`docs/aphype/decomposition.md`)
+1. reachforge PRD v1.0 (`docs/reachforge/prd.md`)
+2. reachforge Decomposition (`docs/reachforge/decomposition.md`)
 3. IEEE 830-1998 --- Recommended Practice for Software Requirements Specifications
 4. ISO/IEC/IEEE 29148:2018 --- Systems and software engineering --- Life cycle processes --- Requirements engineering
 5. MCP Specification (https://modelcontextprotocol.io)
@@ -71,13 +71,13 @@ Section 2 describes the overall system context. Section 3 defines the data model
 
 ### 2.1 Product Perspective
 
-aphype is a component within the **aipartnerup** ecosystem:
+reachforge is a component within the **aipartnerup** ecosystem:
 
-- **apcore-js**: Provides module registration, lifecycle management, and the foundational runtime. aphype registers all pipeline operations as apcore modules.
-- **apcore-mcp**: Provides MCP server infrastructure. aphype uses this to expose pipeline operations as AI-agent-callable tools.
-- **apflow** (future): Workflow orchestration that may automate multi-step aphype pipelines.
+- **apcore-js**: Provides module registration, lifecycle management, and the foundational runtime. reachforge registers all pipeline operations as apcore modules.
+- **apcore-mcp**: Provides MCP server infrastructure. reachforge uses this to expose pipeline operations as AI-agent-callable tools.
+- **apflow** (future): Workflow orchestration that may automate multi-step reachforge pipelines.
 
-aphype operates entirely on the local filesystem. It requires no database, no cloud account (beyond API keys for target platforms and Gemini), and no persistent server process (except in watcher/MCP modes).
+reachforge operates entirely on the local filesystem. It requires no database, no cloud account (beyond API keys for target platforms and Gemini), and no persistent server process (except in watcher/MCP modes).
 
 ### 2.2 Product Functions (High-Level)
 
@@ -250,7 +250,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 **FR-PIPE-001**: The system shall create six directories (`01_inbox`, `02_drafts`, `03_master`, `04_adapted`, `05_scheduled`, `06_sent`) in the current working directory when any CLI command is invoked.
 - Priority: P0
-- Acceptance Criteria: Running `aphype status` on an empty directory creates all six directories. Verified by filesystem inspection.
+- Acceptance Criteria: Running `reachforge status` on an empty directory creates all six directories. Verified by filesystem inspection.
 - Source: PRD: FEAT-001
 - Boundary: If directories already exist, the system shall not overwrite or modify them.
 - Error: If the working directory is read-only, the system shall display an error message stating "Failed to initialize pipeline: permission denied" and exit with code 1.
@@ -263,7 +263,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 **FR-PIPE-003**: The system shall store project metadata in a `meta.yaml` file within each project directory, conforming to the schema defined in Section 3.1.1.
 - Priority: P0
-- Acceptance Criteria: After `aphype draft my-idea`, `02_drafts/my-idea/meta.yaml` exists and is valid YAML parseable by `js-yaml`.
+- Acceptance Criteria: After `reachforge draft my-idea`, `02_drafts/my-idea/meta.yaml` exists and is valid YAML parseable by `js-yaml`.
 - Source: PRD: FEAT-001
 
 **FR-PIPE-004**: The system shall move project directories between stages by relocating the directory from the source stage to the target stage using an atomic filesystem move operation.
@@ -274,41 +274,41 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 ### 4.2 CLI Dashboard (FEAT-002)
 
-**FR-DASH-001**: The `aphype status` command shall display the count of projects in each of the six pipeline stages.
+**FR-DASH-001**: The `reachforge status` command shall display the count of projects in each of the six pipeline stages.
 - Priority: P0
 - Acceptance Criteria: Output contains six lines, each showing a stage name and an integer count. Hidden files (prefixed with `.`) and `.yaml` files at the stage root are excluded from counts.
 - Source: PRD: FEAT-002
 
-**FR-DASH-002**: The `aphype status` command shall list the names of all projects within each stage that contains one or more projects.
+**FR-DASH-002**: The `reachforge status` command shall list the names of all projects within each stage that contains one or more projects.
 - Priority: P0
 - Acceptance Criteria: For a stage with 3 projects, output shows 3 indented project names beneath the stage count line.
 - Source: PRD: FEAT-002
 
-**FR-DASH-003**: The `aphype status` command shall visually distinguish stages that contain projects from empty stages using color-coded indicators.
+**FR-DASH-003**: The `reachforge status` command shall visually distinguish stages that contain projects from empty stages using color-coded indicators.
 - Priority: P0
 - Acceptance Criteria: Non-empty stages display a green indicator; empty stages display a gray indicator. Verified by visual inspection in a terminal that supports ANSI colors.
 - Source: PRD: FEAT-002
 - Boundary: When stdout is not a TTY, the system should omit color codes.
 
-**FR-DASH-004**: The `aphype status` command shall complete execution within 500 milliseconds for pipelines containing up to 100 projects distributed across all stages.
+**FR-DASH-004**: The `reachforge status` command shall complete execution within 500 milliseconds for pipelines containing up to 100 projects distributed across all stages.
 - Priority: P0
-- Acceptance Criteria: Measured using `time aphype status` with 100 project directories populated across stages. Wall clock time is under 500ms.
+- Acceptance Criteria: Measured using `time reachforge status` with 100 project directories populated across stages. Wall clock time is under 500ms.
 - Source: PRD: FEAT-002, NFR-001
 
 ### 4.3 Project Lifecycle Management (FEAT-003)
 
-**FR-LIFE-001**: The `aphype schedule` command shall accept two arguments: an article name (string) and a date (string in `YYYY-MM-DD` format).
+**FR-LIFE-001**: The `reachforge schedule` command shall accept two arguments: an article name (string) and a date (string in `YYYY-MM-DD` format).
 - Priority: P0
-- Acceptance Criteria: `aphype schedule my-article 2026-03-20` moves the project from `04_adapted/my-article` to `05_scheduled/2026-03-20-my-article`.
+- Acceptance Criteria: `reachforge schedule my-article 2026-03-20` moves the project from `04_adapted/my-article` to `05_scheduled/2026-03-20-my-article`.
 - Source: PRD: FEAT-003
 
-**FR-LIFE-002**: The `aphype schedule` command shall validate that the date argument matches the pattern `YYYY-MM-DD` using a regular expression.
+**FR-LIFE-002**: The `reachforge schedule` command shall validate that the date argument matches the pattern `YYYY-MM-DD` using a regular expression.
 - Priority: P0
-- Acceptance Criteria: `aphype schedule my-article invalid-date` displays "Date must be in YYYY-MM-DD format" and exits without moving any files.
+- Acceptance Criteria: `reachforge schedule my-article invalid-date` displays "Date must be in YYYY-MM-DD format" and exits without moving any files.
 - Source: PRD: FEAT-003
 - Boundary: The system shall reject dates with valid format but invalid calendar values (e.g., `2026-02-30`).
 
-**FR-LIFE-003**: The `aphype schedule` command shall prepend the date to the project directory name using the format `<date>-<article>` when moving to `05_scheduled`.
+**FR-LIFE-003**: The `reachforge schedule` command shall prepend the date to the project directory name using the format `<date>-<article>` when moving to `05_scheduled`.
 - Priority: P0
 - Acceptance Criteria: Scheduling `my-article` for `2026-03-20` creates directory `05_scheduled/2026-03-20-my-article/`.
 - Source: PRD: FEAT-003
@@ -326,9 +326,9 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 ### 4.4 AI Draft Generator (FEAT-004)
 
-**FR-DRAFT-001**: The `aphype draft <source>` command shall read content from `01_inbox/<source>`, where `<source>` is either a file or a directory.
+**FR-DRAFT-001**: The `reachforge draft <source>` command shall read content from `01_inbox/<source>`, where `<source>` is either a file or a directory.
 - Priority: P0
-- Acceptance Criteria: Given a file `01_inbox/my-idea.md`, `aphype draft my-idea.md` reads its contents. Given a directory `01_inbox/my-idea/`, the system reads the first `.md` or `.txt` file within it.
+- Acceptance Criteria: Given a file `01_inbox/my-idea.md`, `reachforge draft my-idea.md` reads its contents. Given a directory `01_inbox/my-idea/`, the system reads the first `.md` or `.txt` file within it.
 - Source: PRD: FEAT-004
 - Boundary: If the source directory contains no `.md` or `.txt` files, the system shall use the source name string as the content input.
 
@@ -354,7 +354,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 **FR-DRAFT-006**: The system shall display an error message when the specified source does not exist in `01_inbox`.
 - Priority: P0
-- Acceptance Criteria: `aphype draft nonexistent` displays `Source "nonexistent" not found in 01_inbox` and exits with a non-zero exit code.
+- Acceptance Criteria: `reachforge draft nonexistent` displays `Source "nonexistent" not found in 01_inbox` and exits with a non-zero exit code.
 - Source: PRD: FEAT-004
 
 **FR-DRAFT-007**: The system shall display a progress indication while waiting for the Gemini API response.
@@ -364,7 +364,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 ### 4.5 AI Platform Adapter (FEAT-005)
 
-**FR-ADAPT-001**: The `aphype adapt <article>` command shall read the master content from `03_master/<article>/master.md`.
+**FR-ADAPT-001**: The `reachforge adapt <article>` command shall read the master content from `03_master/<article>/master.md`.
 - Priority: P0
 - Acceptance Criteria: Given `03_master/my-article/master.md` exists, the system reads its full content.
 - Source: PRD: FEAT-005
@@ -388,7 +388,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 **FR-ADAPT-005**: The system shall not overwrite existing platform version files unless the `--force` flag is provided.
 - Priority: P0
-- Acceptance Criteria: Running `aphype adapt my-article` when `x.md` already exists skips that platform and displays a message. Running with `--force` overwrites it.
+- Acceptance Criteria: Running `reachforge adapt my-article` when `x.md` already exists skips that platform and displays a message. Running with `--force` overwrites it.
 - Source: PRD: FEAT-005
 - Boundary: When `--force` is used, the system shall overwrite all existing platform files, not selectively.
 
@@ -400,12 +400,12 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 **FR-ADAPT-007**: The system shall allow platform list configuration via `meta.yaml` `adapted_platforms` field or CLI flags.
 - Priority: P0
-- Acceptance Criteria: `aphype adapt my-article --platforms x,devto` generates only X and Dev.to versions, ignoring default platforms not specified.
+- Acceptance Criteria: `reachforge adapt my-article --platforms x,devto` generates only X and Dev.to versions, ignoring default platforms not specified.
 - Source: PRD: FEAT-005
 
 ### 4.6 Native Provider: Dev.to (FEAT-006)
 
-**FR-PUB-001**: The `aphype publish` command shall authenticate with the Dev.to Forem API using an API key loaded from `credentials.yaml` or the `DEVTO_API_KEY` environment variable.
+**FR-PUB-001**: The `reachforge publish` command shall authenticate with the Dev.to Forem API using an API key loaded from `credentials.yaml` or the `DEVTO_API_KEY` environment variable.
 - Priority: P0
 - Acceptance Criteria: The HTTP request to Dev.to includes the `api-key` header with the configured value.
 - Source: PRD: FEAT-006
@@ -497,19 +497,19 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 ### 4.10 Watcher Mode (FEAT-009)
 
-**FR-WATCH-001**: The `aphype watch` command shall start a background daemon that periodically checks `05_scheduled` for projects whose date prefix is on or before the current date.
+**FR-WATCH-001**: The `reachforge watch` command shall start a background daemon that periodically checks `05_scheduled` for projects whose date prefix is on or before the current date.
 - Priority: P1
 - Acceptance Criteria: A project with prefix `2026-03-14` is detected as due on `2026-03-14`. A project with prefix `2026-03-15` is not detected as due on `2026-03-14`.
 - Source: PRD: FEAT-009
 
 **FR-WATCH-002**: The watcher shall accept a configurable check interval via the `-i` or `--interval` flag, specified in minutes, defaulting to 60 minutes.
 - Priority: P1
-- Acceptance Criteria: `aphype watch -i 30` checks for due items every 30 minutes. `aphype watch` (no flag) checks every 60 minutes.
+- Acceptance Criteria: `reachforge watch -i 30` checks for due items every 30 minutes. `reachforge watch` (no flag) checks every 60 minutes.
 - Source: PRD: FEAT-009
 
 **FR-WATCH-003**: The watcher shall invoke the publish operation for each due project found during a check cycle.
 - Priority: P1
-- Acceptance Criteria: A due project is published and moved to `06_sent` during the check cycle. The publish operation follows the same logic as `aphype publish`.
+- Acceptance Criteria: A due project is published and moved to `06_sent` during the check cycle. The publish operation follows the same logic as `reachforge publish`.
 - Source: PRD: FEAT-009
 
 **FR-WATCH-004**: The watcher shall not re-publish projects that have already been moved to `06_sent`.
@@ -529,7 +529,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 ### 4.11 MCP Server Integration (FEAT-010)
 
-**FR-MCP-001**: The `aphype mcp` command shall start an MCP-compliant server exposing pipeline operations as callable tools.
+**FR-MCP-001**: The `reachforge mcp` command shall start an MCP-compliant server exposing pipeline operations as callable tools.
 - Priority: P2
 - Acceptance Criteria: The server starts and responds to MCP `initialize` handshake. `tools/list` returns at least 5 tools.
 - Source: PRD: FEAT-010
@@ -546,12 +546,12 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 **FR-MCP-004**: The MCP server shall support both `stdio` and `SSE` transports, selectable via the `--transport` flag.
 - Priority: P2
-- Acceptance Criteria: `aphype mcp --transport stdio` communicates via stdin/stdout. `aphype mcp --transport sse --port 8000` starts an HTTP server on port 8000.
+- Acceptance Criteria: `reachforge mcp --transport stdio` communicates via stdin/stdout. `reachforge mcp --transport sse --port 8000` starts an HTTP server on port 8000.
 - Source: PRD: FEAT-010
 
 **FR-MCP-005**: The MCP server shall be compatible with Claude Desktop as an MCP client.
 - Priority: P2
-- Acceptance Criteria: Adding aphype to Claude Desktop's MCP configuration file and invoking a tool (e.g., `status`) returns valid pipeline state data.
+- Acceptance Criteria: Adding reachforge to Claude Desktop's MCP configuration file and invoking a tool (e.g., `status`) returns valid pipeline state data.
 - Source: PRD: FEAT-010
 
 ### 4.12 Provider Plugin Architecture (FEAT-011)
@@ -600,19 +600,19 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 ### 4.14 Analytics & Receipts Dashboard (FEAT-013)
 
-**FR-ANAL-001**: The `aphype analytics` command shall aggregate `receipt.yaml` files from all projects in `06_sent` and display total publish count per platform.
+**FR-ANAL-001**: The `reachforge analytics` command shall aggregate `receipt.yaml` files from all projects in `06_sent` and display total publish count per platform.
 - Priority: P2
 - Acceptance Criteria: With 5 Dev.to publishes and 3 X publishes in `06_sent`, the output displays `devto: 5` and `x: 3`.
 - Source: PRD: FEAT-013
 
-**FR-ANAL-002**: The `aphype analytics` command shall display success and failure rates per platform as percentages.
+**FR-ANAL-002**: The `reachforge analytics` command shall display success and failure rates per platform as percentages.
 - Priority: P2
 - Acceptance Criteria: With 9 successful and 1 failed Dev.to publishes, the output displays `devto: 90% success (9/10)`.
 - Source: PRD: FEAT-013
 
-**FR-ANAL-003**: The `aphype analytics` command shall accept `--from` and `--to` date flags to filter results by `published_at` date range.
+**FR-ANAL-003**: The `reachforge analytics` command shall accept `--from` and `--to` date flags to filter results by `published_at` date range.
 - Priority: P2
-- Acceptance Criteria: `aphype analytics --from 2026-03-01 --to 2026-03-14` includes only receipts within that date range.
+- Acceptance Criteria: `reachforge analytics --from 2026-03-01 --to 2026-03-14` includes only receipts within that date range.
 - Source: PRD: FEAT-013
 - Boundary: Omitting both flags returns all-time data. Omitting `--to` defaults to today. Omitting `--from` defaults to the earliest receipt.
 
@@ -642,12 +642,12 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 **FR-VSCODE-001**: The extension shall display a tree view in the VS Code sidebar showing all six pipeline stages and their contained projects.
 - Priority: P2
-- Acceptance Criteria: Opening a workspace containing aphype pipeline directories shows a tree view with expandable stage nodes and project leaf nodes.
+- Acceptance Criteria: Opening a workspace containing reachforge pipeline directories shows a tree view with expandable stage nodes and project leaf nodes.
 - Source: PRD: FEAT-015
 
 **FR-VSCODE-002**: The extension shall provide one-click actions for `draft`, `adapt`, `schedule`, and `publish` operations via context menu or inline buttons on tree view items.
 - Priority: P2
-- Acceptance Criteria: Right-clicking a project in `01_inbox` shows a "Generate Draft" option. Clicking it invokes the aphype binary and displays the result.
+- Acceptance Criteria: Right-clicking a project in `01_inbox` shows a "Generate Draft" option. Clicking it invokes the reachforge binary and displays the result.
 - Source: PRD: FEAT-015
 
 **FR-VSCODE-003**: The extension shall display a live preview of adapted content for each platform version within a VS Code editor tab.
@@ -655,9 +655,9 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 - Acceptance Criteria: Selecting a platform version file in the tree view opens a read-only preview tab displaying the adapted content.
 - Source: PRD: FEAT-015
 
-**FR-VSCODE-004**: The extension shall communicate with the aphype binary via the sidecar pattern, invoking CLI commands as child processes.
+**FR-VSCODE-004**: The extension shall communicate with the reachforge binary via the sidecar pattern, invoking CLI commands as child processes.
 - Priority: P2
-- Acceptance Criteria: The extension does not embed aphype logic; it spawns `aphype <command>` processes and parses their stdout/stderr output.
+- Acceptance Criteria: The extension does not embed reachforge logic; it spawns `reachforge <command>` processes and parses their stdout/stderr output.
 - Source: PRD: FEAT-015
 
 ---
@@ -666,7 +666,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 ### 5.1 Performance
 
-**NFR-PERF-001**: The `aphype status` command shall complete in under 500 milliseconds for pipelines containing up to 100 projects.
+**NFR-PERF-001**: The `reachforge status` command shall complete in under 500 milliseconds for pipelines containing up to 100 projects.
 - Acceptance Criteria: Measured by wall clock time across 10 consecutive runs; p95 latency is under 500ms.
 - Source: PRD: NFR-001
 
@@ -674,11 +674,11 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 - Acceptance Criteria: A visual indicator (text message or spinner) appears in stdout before the API response arrives.
 - Source: PRD: NFR-002
 
-**NFR-PERF-003**: The `aphype publish` command shall execute platform publications concurrently, completing up to 10 simultaneous platform API calls without failure.
+**NFR-PERF-003**: The `reachforge publish` command shall execute platform publications concurrently, completing up to 10 simultaneous platform API calls without failure.
 - Acceptance Criteria: Publishing to 10 platforms completes without timeout or resource exhaustion errors. Total wall time is less than 2x the slowest individual platform call.
 - Source: PRD: NFR-003
 
-**NFR-PERF-004**: The compiled aphype binary shall not exceed 50 MB in file size.
+**NFR-PERF-004**: The compiled reachforge binary shall not exceed 50 MB in file size.
 - Acceptance Criteria: `ls -la` on the compiled binary shows a size under 52,428,800 bytes.
 - Source: PRD: NFR-004
 
@@ -703,7 +703,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 - Source: PRD: NFR-008
 
 **NFR-COMPAT-002**: The system shall run on Bun runtime version 1.0 or later.
-- Acceptance Criteria: Running `aphype status` on Bun 1.0.0 produces correct output without runtime errors.
+- Acceptance Criteria: Running `reachforge status` on Bun 1.0.0 produces correct output without runtime errors.
 - Source: PRD: NFR-009
 
 **NFR-COMPAT-003**: The MCP server shall conform to the MCP specification for both stdio and SSE transports.
@@ -717,7 +717,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 - Source: PRD: NFR-011
 
 **NFR-REL-002**: All file operations shall be idempotent. Re-running a command on already-processed content shall not create duplicates or corrupt existing data.
-- Acceptance Criteria: Running `aphype draft my-idea` twice produces a single project directory in `02_drafts`. The second run either overwrites or skips with a message; it does not create `my-idea-1`.
+- Acceptance Criteria: Running `reachforge draft my-idea` twice produces a single project directory in `02_drafts`. The second run either overwrites or skips with a message; it does not create `my-idea-1`.
 - Source: PRD: NFR-012
 
 ### 5.5 Usability
@@ -747,17 +747,17 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 ### UC-001: End-to-End Content Pipeline
 
 - **Actors**: Developer (Alex)
-- **Preconditions**: aphype is installed. `GEMINI_API_KEY` is configured. Dev.to and Postiz API keys are configured in `credentials.yaml`.
+- **Preconditions**: reachforge is installed. `GEMINI_API_KEY` is configured. Dev.to and Postiz API keys are configured in `credentials.yaml`.
 - **Main Flow**:
   1. User creates `01_inbox/my-article/idea.md` with raw content.
-  2. User runs `aphype draft my-article`.
+  2. User runs `reachforge draft my-article`.
   3. System reads content from inbox, calls Gemini, saves draft to `02_drafts/my-article/draft.md`.
   4. User reviews the draft, copies/moves the project to `03_master/my-article/master.md`.
-  5. User runs `aphype adapt my-article`.
+  5. User runs `reachforge adapt my-article`.
   6. System generates platform versions in `04_adapted/my-article/platform_versions/`.
-  7. User runs `aphype schedule my-article 2026-03-20`.
+  7. User runs `reachforge schedule my-article 2026-03-20`.
   8. System moves project to `05_scheduled/2026-03-20-my-article/`.
-  9. On 2026-03-20, user runs `aphype publish` (or watcher triggers automatically).
+  9. On 2026-03-20, user runs `reachforge publish` (or watcher triggers automatically).
   10. System publishes to Dev.to and X, creates `receipt.yaml`, moves project to `06_sent/`.
 - **Alternate Flows**:
   - 5a. User edits `master.md` before adapting. The system uses the edited version.
@@ -765,7 +765,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
   - 9a. Watcher mode is active. The system auto-publishes without manual intervention.
 - **Exception Flows**:
   - 3e. Gemini API returns an error. The system displays the error, leaves no partial files in `02_drafts`, and the source remains in `01_inbox`.
-  - 10e. Dev.to publish succeeds but Postiz fails. The system records Dev.to success and Postiz failure in `receipt.yaml` and moves the project to `06_sent`. Users can re-publish failed platforms from `06_sent` using `aphype publish --retry <project>`.
+  - 10e. Dev.to publish succeeds but Postiz fails. The system records Dev.to success and Postiz failure in `receipt.yaml` and moves the project to `06_sent`. Users can re-publish failed platforms from `06_sent` using `reachforge publish --retry <project>`.
 - **Postconditions**: Content is live on configured platforms. `receipt.yaml` contains URLs and timestamps for each successful publish.
 
 ### UC-002: AI Draft Generation
@@ -773,7 +773,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 - **Actors**: Developer (Jordan)
 - **Preconditions**: `GEMINI_API_KEY` is configured. A file exists at `01_inbox/podcast-notes.md`.
 - **Main Flow**:
-  1. User runs `aphype draft podcast-notes.md`.
+  1. User runs `reachforge draft podcast-notes.md`.
   2. System displays "Generating AI draft for podcast-notes.md..."
   3. System reads `01_inbox/podcast-notes.md`.
   4. System sends content to Gemini with the draft generation prompt.
@@ -794,7 +794,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 - **Actors**: Developer (Mei)
 - **Preconditions**: `GEMINI_API_KEY` is configured. `03_master/bilingual-post/master.md` exists with approved content.
 - **Main Flow**:
-  1. User runs `aphype adapt bilingual-post`.
+  1. User runs `reachforge adapt bilingual-post`.
   2. System reads `03_master/bilingual-post/master.md`.
   3. System sends content to Gemini with X-specific prompt; saves `x.md`.
   4. System sends content to Gemini with WeChat-specific prompt; saves `wechat.md`.
@@ -814,7 +814,7 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 - **Actors**: Developer (Alex)
 - **Preconditions**: Dev.to and Postiz API keys configured. `05_scheduled/2026-03-14-my-article/` exists with platform versions and valid `meta.yaml`.
 - **Main Flow**:
-  1. User runs `aphype publish`.
+  1. User runs `reachforge publish`.
   2. System scans `05_scheduled/` for directories with date prefix on or before today.
   3. System finds `2026-03-14-my-article` as due.
   4. System runs content validation for each platform (FR-VALID-001 through FR-VALID-003).
@@ -836,13 +836,13 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 ### UC-005: MCP Agent-Driven Pipeline
 
 - **Actors**: AI Agent (Claude Desktop), Developer (Mei)
-- **Preconditions**: aphype MCP server is running (`aphype mcp --transport stdio`). Claude Desktop is configured to connect to the aphype MCP server. API keys are configured.
+- **Preconditions**: reachforge MCP server is running (`reachforge mcp --transport stdio`). Claude Desktop is configured to connect to the reachforge MCP server. API keys are configured.
 - **Main Flow**:
   1. User instructs Claude: "Draft my latest inbox item and adapt it for X and Dev.to."
-  2. Claude calls `aphype.status` tool; receives pipeline state showing `01_inbox` has `new-idea`.
-  3. Claude calls `aphype.draft` tool with `{ source: "new-idea" }`.
+  2. Claude calls `reachforge.status` tool; receives pipeline state showing `01_inbox` has `new-idea`.
+  3. Claude calls `reachforge.draft` tool with `{ source: "new-idea" }`.
   4. MCP server validates input via Zod schema, invokes draft operation, returns result.
-  5. Claude calls `aphype.adapt` tool with `{ article: "new-idea" }`.
+  5. Claude calls `reachforge.adapt` tool with `{ article: "new-idea" }`.
   6. MCP server validates input, invokes adapt operation, returns result.
   7. Claude reports to user: "Drafted and adapted. Ready for scheduling."
 - **Alternate Flows**:
@@ -903,15 +903,15 @@ Legend: C = Create, R = Read, U = Update, D = Delete, - = No interaction
 
 | Command                              | Arguments                    | Options                                | Output Format         |
 |--------------------------------------|------------------------------|----------------------------------------|-----------------------|
-| `aphype status`                      | None                         | None                                   | Colored table to stdout |
-| `aphype draft <source>`              | `source`: filename or dirname| None                                   | Status messages to stdout |
-| `aphype adapt <article>`             | `article`: project name      | `--force`, `--platforms <list>`        | Status messages to stdout |
-| `aphype schedule <article> <date>`   | `article`: name, `date`: YYYY-MM-DD | None                            | Confirmation to stdout |
-| `aphype publish`                     | None                         | `--publish-live`                       | Results per item to stdout |
-| `aphype watch`                       | None                         | `-i, --interval <minutes>`             | Log messages to stdout and file |
-| `aphype mcp`                         | None                         | `-t, --transport <type>`, `-p, --port` | MCP protocol on stdio or HTTP |
-| `aphype analytics`                   | None                         | `--from <date>`, `--to <date>`         | Aggregate stats to stdout |
-| `aphype rollback <project>`          | `project`: project name      | None                                   | Confirmation to stdout |
+| `reachforge status`                      | None                         | None                                   | Colored table to stdout |
+| `reachforge draft <source>`              | `source`: filename or dirname| None                                   | Status messages to stdout |
+| `reachforge adapt <article>`             | `article`: project name      | `--force`, `--platforms <list>`        | Status messages to stdout |
+| `reachforge schedule <article> <date>`   | `article`: name, `date`: YYYY-MM-DD | None                            | Confirmation to stdout |
+| `reachforge publish`                     | None                         | `--publish-live`                       | Results per item to stdout |
+| `reachforge watch`                       | None                         | `-i, --interval <minutes>`             | Log messages to stdout and file |
+| `reachforge mcp`                         | None                         | `-t, --transport <type>`, `-p, --port` | MCP protocol on stdio or HTTP |
+| `reachforge analytics`                   | None                         | `--from <date>`, `--to <date>`         | Aggregate stats to stdout |
+| `reachforge rollback <project>`          | `project`: project name      | None                                   | Confirmation to stdout |
 
 All commands shall provide `--help` output. Error messages shall be written to stderr. Exit code 0 indicates success; non-zero indicates failure.
 
@@ -1021,7 +1021,7 @@ The system interfaces exclusively with the local filesystem:
 | Provider                | A module that implements publishing to a specific platform            |
 | Receipt                 | A YAML record of publishing outcomes                                  |
 | SaaS Bridge             | A provider that routes through a third-party service                  |
-| Sidecar Pattern         | Running aphype as a subprocess alongside an IDE extension             |
+| Sidecar Pattern         | Running reachforge as a subprocess alongside an IDE extension             |
 
 ### 9.2 Data Entity Schema Examples
 

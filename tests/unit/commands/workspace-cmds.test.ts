@@ -12,7 +12,7 @@ import { STAGES, DEFAULT_WORKSPACE_NAME } from '../../../src/core/constants.js';
 let tmpDir: string;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-wscmd-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-wscmd-'));
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
@@ -23,10 +23,10 @@ afterEach(async () => {
 });
 
 describe('initCommand', () => {
-  test('creates .aphype/config.yaml in target directory', async () => {
+  test('creates .reachforge/config.yaml in target directory', async () => {
     await initCommand(tmpDir);
 
-    expect(await fs.pathExists(path.join(tmpDir, '.aphype', 'config.yaml'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '.reachforge', 'config.yaml'))).toBe(true);
     expect(await WorkspaceResolver.isWorkspace(tmpDir)).toBe(true);
   });
 
@@ -34,23 +34,23 @@ describe('initCommand', () => {
     await initCommand(tmpDir);
     await initCommand(tmpDir); // second call
 
-    expect(await fs.pathExists(path.join(tmpDir, '.aphype', 'config.yaml'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '.reachforge', 'config.yaml'))).toBe(true);
   });
 
   test('creates target directory if it does not exist', async () => {
     const newDir = path.join(tmpDir, 'new-workspace');
     await initCommand(newDir);
 
-    expect(await fs.pathExists(path.join(newDir, '.aphype', 'config.yaml'))).toBe(true);
+    expect(await fs.pathExists(path.join(newDir, '.reachforge', 'config.yaml'))).toBe(true);
   });
 
-  test('defaults to ~/aphype-workspace when no path given', async () => {
+  test('defaults to ~/reachforge-workspace when no path given', async () => {
     const defaultDir = path.join(os.homedir(), DEFAULT_WORKSPACE_NAME);
     const existed = await fs.pathExists(defaultDir);
 
     await initCommand(); // no args
 
-    expect(await fs.pathExists(path.join(defaultDir, '.aphype', 'config.yaml'))).toBe(true);
+    expect(await fs.pathExists(path.join(defaultDir, '.reachforge', 'config.yaml'))).toBe(true);
 
     // Clean up only if we created it
     if (!existed) {

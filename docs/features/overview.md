@@ -1,16 +1,16 @@
-# Feature Overview: aphype Component Architecture
+# Feature Overview: reachforge Component Architecture
 
 | Field        | Value                                      |
 |--------------|--------------------------------------------|
 | **Document** | Feature Overview v1.1                      |
 | **Date**     | 2026-03-17                                 |
-| **Tech Design** | [aphype Tech Design](../aphype/tech-design.md), [LLM Adapter Tech Design](../llm-adapter/tech-design.md) |
+| **Tech Design** | [reachforge Tech Design](../reachforge/tech-design.md), [LLM Adapter Tech Design](../llm-adapter/tech-design.md) |
 
 ---
 
 ## Component Map
 
-aphype is decomposed into 14 functional components across 9 source directories. This document describes how they relate to each other and the order in which they should be implemented.
+reachforge is decomposed into 14 functional components across 9 source directories. This document describes how they relate to each other and the order in which they should be implemented.
 
 ## Components
 

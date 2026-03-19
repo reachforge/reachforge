@@ -1,7 +1,7 @@
-# Project Manifest: aphype (Social Influence Engine)
+# Project Manifest: reachforge (Social Influence Engine)
 
 ## 🎯 Project Overview
-`aphype` is an AI-native engine designed to transform raw ideas into multi-platform social media assets using a file-based pipeline.
+`reachforge` is an AI-native engine designed to transform raw ideas into multi-platform social media assets using a file-based pipeline.
 
 ## 📋 Feature Manifest
 

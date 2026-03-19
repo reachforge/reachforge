@@ -7,18 +7,18 @@ import { ConfigManager } from '../../../src/core/config.js';
 let tmpDir: string;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-config-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-config-'));
   // Clear relevant env vars for test isolation
   delete process.env.GEMINI_API_KEY;
   delete process.env.DEVTO_API_KEY;
-  delete process.env.APHYPE_LLM_MODEL;
+  delete process.env.REACHFORGE_LLM_MODEL;
 });
 
 afterEach(async () => {
   await fs.remove(tmpDir);
   delete process.env.GEMINI_API_KEY;
   delete process.env.DEVTO_API_KEY;
-  delete process.env.APHYPE_LLM_MODEL;
+  delete process.env.REACHFORGE_LLM_MODEL;
 });
 
 describe('ConfigManager.load', () => {
@@ -55,8 +55,8 @@ describe('ConfigManager.load', () => {
     expect(config.getLLMModel()).toBe('gemini-pro');
   });
 
-  test('getLLMModel reads from APHYPE_LLM_MODEL env var', async () => {
-    process.env.APHYPE_LLM_MODEL = 'gemini-1.5-flash';
+  test('getLLMModel reads from REACHFORGE_LLM_MODEL env var', async () => {
+    process.env.REACHFORGE_LLM_MODEL = 'gemini-1.5-flash';
     const config = await ConfigManager.load(tmpDir);
     expect(config.getLLMModel()).toBe('gemini-1.5-flash');
   });

@@ -1,8 +1,8 @@
-# Project Decomposition: aphype
+# Project Decomposition: reachforge
 
 | Field        | Value                                      |
 |--------------|--------------------------------------------|
-| **Source**   | [aphype PRD v1.0](prd.md)                 |
+| **Source**   | [reachforge PRD v1.0](prd.md)                 |
 | **Date**     | 2026-03-14                                 |
 | **Type**     | Multi-feature project                      |
 | **Features** | 16 sub-features across 4 phases            |
@@ -11,7 +11,7 @@
 
 ## Decomposition Verdict
 
-**Multi-split project.** aphype comprises 16 distinct features that span four development phases. Features have clear dependency chains — publishing (FEAT-006/007) depends on the pipeline core (FEAT-001), the provider plugin architecture (FEAT-011) should be built before expanding providers (FEAT-006b), and media management (FEAT-008) is a prerequisite for full platform support.
+**Multi-split project.** reachforge comprises 16 distinct features that span four development phases. Features have clear dependency chains — publishing (FEAT-006/007) depends on the pipeline core (FEAT-001), the provider plugin architecture (FEAT-011) should be built before expanding providers (FEAT-006b), and media management (FEAT-008) is a prerequisite for full platform support.
 
 ---
 

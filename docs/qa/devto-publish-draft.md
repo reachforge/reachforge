@@ -2,7 +2,7 @@
 
 ## Problem
 
-When aphype (or any API client) creates an article on Dev.to with `published: false`, the article is saved as a **draft**. The draft URL works but shows a warning:
+When reachforge (or any API client) creates an article on Dev.to with `published: false`, the article is saved as a **draft**. The draft URL works but shows a warning:
 
 > *Unpublished Post. This URL is public but secret, so share at your own discretion.*
 
@@ -51,17 +51,17 @@ Dev.to's API uses two sources for the `published` state:
 
 **Frontmatter takes precedence.** Even if the API sends `"published": true`, a frontmatter `published: false` will override it and save the article as a draft.
 
-aphype v0.2+ handles this correctly by stripping the `published` field from frontmatter before sending, and controlling the state exclusively via the API parameter. If you are using an older version or created the article manually, you may need to fix the frontmatter as described above.
+reachforge v0.2+ handles this correctly by stripping the `published` field from frontmatter before sending, and controlling the state exclusively via the API parameter. If you are using an older version or created the article manually, you may need to fix the frontmatter as described above.
 
-## aphype-Specific Notes
+## reachforge-Specific Notes
 
 ### Controlling draft vs. published
 
-aphype provides three levels of control (highest priority first):
+reachforge provides three levels of control (highest priority first):
 
 | Control | Example | Scope |
 |---------|---------|-------|
-| CLI flag | `aphype publish --draft` | All articles in this publish run |
+| CLI flag | `reachforge publish --draft` | All articles in this publish run |
 | Frontmatter | `published: false` in `devto.md` | Single article |
 | Default | (no setting) | Published (`true`) |
 
@@ -69,10 +69,10 @@ aphype provides three levels of control (highest priority first):
 
 ```bash
 # Publish as draft for review
-aphype publish --draft
+reachforge publish --draft
 
 # Publish live (default)
-aphype publish
+reachforge publish
 
 # Per-article control: set in platform_versions/devto.md frontmatter
 # published: false  → draft

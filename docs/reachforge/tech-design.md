@@ -1,15 +1,15 @@
-# Technical Design Document: aphype
+# Technical Design Document: reachforge
 
 | Field            | Value                                              |
 |------------------|----------------------------------------------------|
-| **Document**     | aphype Technical Design v1.0                       |
+| **Document**     | reachforge Technical Design v1.0                       |
 | **Author**       | aipartnerup Engineering                            |
 | **Date**         | 2026-03-14                                         |
 | **Status**       | Draft                                              |
 | **Version**      | 1.0                                                |
-| **PRD Reference**| [aphype PRD v1.0](prd.md)                         |
-| **SRS Reference**| [aphype SRS v1.0](srs.md)                         |
-| **Decomposition**| [aphype Decomposition](decomposition.md)           |
+| **PRD Reference**| [reachforge PRD v1.0](prd.md)                         |
+| **SRS Reference**| [reachforge SRS v1.0](srs.md)                         |
+| **Decomposition**| [reachforge Decomposition](decomposition.md)           |
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### 1.1 Background
 
-aphype is currently a single-file monolith (`src/index.ts`, 290 lines) that implements a six-stage file-based content pipeline. All logic resides in one `AphypeLogic` object with five methods, CLI wiring via Commander, APCore module registration, and MCP server launch via apcore-mcp. Publishing is mocked with random URLs. There is no test suite, no modular architecture, and no real platform integration.
+reachforge is currently a single-file monolith (`src/index.ts`, 290 lines) that implements a six-stage file-based content pipeline. All logic resides in one `ReachforgeLogic` object with five methods, CLI wiring via Commander, APCore module registration, and MCP server launch via apcore-mcp. Publishing is mocked with random URLs. There is no test suite, no modular architecture, and no real platform integration.
 
 The PRD targets v0.2 (MVP) with real publishing to Dev.to and X via Postiz, plus a provider plugin architecture that enables future platform expansion. The SRS formalizes 67 functional requirements and 16 non-functional requirements across 16 features. This design document specifies **how** to build the system described by those requirements: the module boundaries, interfaces, data flows, error handling, and migration path from the current monolith to a plugin-based architecture.
 
@@ -32,7 +32,7 @@ The PRD targets v0.2 (MVP) with real publishing to Dev.to and X via Postiz, plus
 
 ### 1.3 Non-Goals
 
-1. **Web UI or desktop app**: aphype remains CLI-only and MCP-server-only. The VS Code extension (FEAT-015, P2) is out of scope for this design.
+1. **Web UI or desktop app**: reachforge remains CLI-only and MCP-server-only. The VS Code extension (FEAT-015, P2) is out of scope for this design.
 2. **Multi-user or hosted deployment**: No authentication, no user accounts, no cloud backend.
 3. **Real-time collaborative editing**: Content pipeline is single-user, file-based.
 4. **Template system implementation details**: FEAT-014 (P2) is acknowledged but deferred to a future design iteration. Note: the `LLMProvider` interface includes `template` and `templateVars` fields in `GenerateOptions`/`AdaptOptions` as forward-compatible extension points; these fields are ignored until FEAT-014 is designed.
@@ -63,7 +63,7 @@ This design addresses all P0 and P1 requirements from the SRS:
 
 ### 2.1 High-Level Architecture
 
-aphype uses a **plugin-based architecture** with a core pipeline engine that delegates platform-specific behavior to provider plugins and LLM-specific behavior to LLM provider plugins. The core owns the state machine (six-stage pipeline), YAML operations, and orchestration. Providers are independent modules that implement a standard interface and are discovered at runtime via filesystem convention.
+reachforge uses a **plugin-based architecture** with a core pipeline engine that delegates platform-specific behavior to provider plugins and LLM-specific behavior to LLM provider plugins. The core owns the state machine (six-stage pipeline), YAML operations, and orchestration. Providers are independent modules that implement a standard interface and are discovered at runtime via filesystem convention.
 
 Key architectural decisions:
 
@@ -76,11 +76,11 @@ Key architectural decisions:
 
 ```mermaid
 C4Context
-    title aphype System Context Diagram
+    title reachforge System Context Diagram
 
     Person(developer, "Developer", "Tech blogger / content creator who uses CLI or AI agents")
 
-    System(aphype, "aphype", "AI-native Social Influence Engine: CLI tool + MCP server that transforms ideas into multi-platform social content")
+    System(reachforge, "reachforge", "AI-native Social Influence Engine: CLI tool + MCP server that transforms ideas into multi-platform social content")
 
     System_Ext(gemini, "Google Gemini API", "LLM for content generation and platform adaptation")
     System_Ext(claude_api, "Anthropic Claude API", "Alternative LLM provider (future)")
@@ -93,27 +93,27 @@ C4Context
 
     Person(ai_agent, "AI Agent", "Claude Desktop or other MCP client that operates pipeline programmatically")
 
-    Rel(developer, aphype, "Uses via CLI commands", "Terminal")
-    Rel(ai_agent, aphype, "Invokes tools via MCP protocol", "stdio / SSE")
-    Rel(aphype, gemini, "Sends content for generation/adaptation", "HTTPS")
-    Rel(aphype, claude_api, "Sends content for generation/adaptation", "HTTPS")
-    Rel(aphype, devto, "Publishes articles", "HTTPS REST")
-    Rel(aphype, postiz, "Publishes X threads", "HTTPS REST")
-    Rel(aphype, hashnode, "Publishes articles", "HTTPS GraphQL")
-    Rel(aphype, github, "Creates discussions / updates files", "HTTPS REST/GraphQL")
-    Rel(aphype, apcore, "Registers modules", "In-process")
-    Rel(aphype, apcore_mcp, "Launches MCP server", "In-process")
+    Rel(developer, reachforge, "Uses via CLI commands", "Terminal")
+    Rel(ai_agent, reachforge, "Invokes tools via MCP protocol", "stdio / SSE")
+    Rel(reachforge, gemini, "Sends content for generation/adaptation", "HTTPS")
+    Rel(reachforge, claude_api, "Sends content for generation/adaptation", "HTTPS")
+    Rel(reachforge, devto, "Publishes articles", "HTTPS REST")
+    Rel(reachforge, postiz, "Publishes X threads", "HTTPS REST")
+    Rel(reachforge, hashnode, "Publishes articles", "HTTPS GraphQL")
+    Rel(reachforge, github, "Creates discussions / updates files", "HTTPS REST/GraphQL")
+    Rel(reachforge, apcore, "Registers modules", "In-process")
+    Rel(reachforge, apcore_mcp, "Launches MCP server", "In-process")
 ```
 
 ### 2.3 C4 Container Diagram
 
 ```mermaid
 C4Container
-    title aphype Container Diagram
+    title reachforge Container Diagram
 
     Person(user, "Developer / AI Agent")
 
-    Container_Boundary(aphype, "aphype") {
+    Container_Boundary(reachforge, "reachforge") {
         Container(cli, "CLI Layer", "Commander v12", "Parses commands, routes to handlers, formats output")
         Container(commands, "Command Handlers", "TypeScript", "status, draft, adapt, schedule, publish, watch, analytics")
         Container(mcp_server, "MCP Server", "apcore-mcp", "Exposes pipeline ops as MCP tools with Zod validation")
@@ -349,7 +349,7 @@ export class MetadataManager {
 ```typescript
 // core/config.ts
 
-import { CredentialsConfig, AphypeConfig } from '../types/pipeline';
+import { CredentialsConfig, ReachforgeConfig } from '../types/pipeline';
 
 export class ConfigManager {
   /**
@@ -360,7 +360,7 @@ export class ConfigManager {
    * FR-PLUG-003: Provider config loaded here.
    * NFR-SEC-001: Keys loaded only from .env or credentials.yaml.
    */
-  static async load(workingDir: string): Promise<AphypeConfig>;
+  static async load(workingDir: string): Promise<ReachforgeConfig>;
 
   /**
    * Returns the API key for a specific service.
@@ -373,7 +373,7 @@ export class ConfigManager {
 
   /**
    * Returns the configured LLM provider name.
-   * Default: 'gemini'. Configurable via APHYPE_LLM_PROVIDER env var.
+   * Default: 'gemini'. Configurable via REACHFORGE_LLM_PROVIDER env var.
    */
   getLLMProvider(): string;
 }
@@ -486,12 +486,12 @@ import { ConfigManager } from '../core/config';
 export class LLMFactory {
   /**
    * Creates an LLM provider instance based on configuration.
-   * Reads APHYPE_LLM_PROVIDER env var (default: 'gemini').
+   * Reads REACHFORGE_LLM_PROVIDER env var (default: 'gemini').
    *
    * Supported values:
    * - 'gemini' -> GeminiProvider (requires GEMINI_API_KEY)
    * - 'claude' -> ClaudeProvider (requires ANTHROPIC_API_KEY)
-   * - 'local'  -> LocalProvider (requires APHYPE_LOCAL_LLM_URL)
+   * - 'local'  -> LocalProvider (requires REACHFORGE_LOCAL_LLM_URL)
    *
    * @throws ConfigError if the required API key for the chosen provider is missing
    */
@@ -521,7 +521,7 @@ rollback(project: string) {
 }
 ```
 
-CLI syntax: `aphype rollback <project>` — project name is matched against all stages.
+CLI syntax: `reachforge rollback <project>` — project name is matched against all stages.
 
 #### 4.1.5 MCP Module (`mcp/`)
 
@@ -1360,7 +1360,7 @@ export interface CredentialsConfig {
 }
 
 /** Full application configuration */
-export interface AphypeConfig {
+export interface ReachforgeConfig {
   credentials: CredentialsConfig;
   llmProvider: string;         // 'gemini' | 'claude' | 'local'
   workingDir: string;
@@ -1511,13 +1511,13 @@ export const CredentialsSchema = z.object({
 ```mermaid
 stateDiagram-v2
     [*] --> Inbox: User drops file/directory
-    Inbox --> Drafts: aphype draft <source>
+    Inbox --> Drafts: reachforge draft <source>
     Drafts --> Master: User manually moves/copies
-    Master --> Adapted: aphype adapt <article>
-    Adapted --> Scheduled: aphype schedule <article> <date>
-    Scheduled --> Sent: aphype publish (when due date <= today)
+    Master --> Adapted: reachforge adapt <article>
+    Adapted --> Scheduled: reachforge schedule <article> <date>
+    Scheduled --> Sent: reachforge publish (when due date <= today)
     Scheduled --> Scheduled: Publish partially fails (some platforms succeed, some fail)
-    Scheduled --> Adapted: aphype rollback (FR-LIFE-005)
+    Scheduled --> Adapted: reachforge rollback (FR-LIFE-005)
     Sent --> [*]
 
     state Inbox {
@@ -1559,7 +1559,7 @@ stateDiagram-v2
 - Metadata: None (user-managed)
 
 **Stage 2: Drafts (02_drafts)**
-- Input: `aphype draft <source>` reads from `01_inbox/<source>`
+- Input: `reachforge draft <source>` reads from `01_inbox/<source>`
 - Processing: Content sent to LLM provider (Gemini/Claude) with draft generation prompt
 - Output: `02_drafts/<project>/draft.md` (AI-generated article)
 - Metadata: `meta.yaml` created with `{ article, status: "drafted", created_at }`
@@ -1572,20 +1572,20 @@ stateDiagram-v2
 - Metadata: `meta.yaml` updated with `{ status: "master" }`
 
 **Stage 4: Adapted (04_adapted)**
-- Input: `aphype adapt <article>` reads `03_master/<article>/master.md`
+- Input: `reachforge adapt <article>` reads `03_master/<article>/master.md`
 - Processing: For each target platform, content sent to LLM with platform-specific prompt
 - Output: `04_adapted/<article>/platform_versions/<platform>.md` per platform
 - Metadata: `meta.yaml` created with `{ article, status: "adapted", adapted_platforms: [...] }`
 - Error path: Partial adaptation failures recorded; successful adaptations preserved
 
 **Stage 5: Scheduled (05_scheduled)**
-- Input: `aphype schedule <article> <date>` moves from `04_adapted`
+- Input: `reachforge schedule <article> <date>` moves from `04_adapted`
 - Processing: Directory renamed to `<date>-<article>`, meta updated
 - Output: `05_scheduled/<date>-<article>/` with all content from adapted stage
 - Metadata: `meta.yaml` updated with `{ status: "scheduled", publish_date }`
 
 **Stage 6: Sent (06_sent)**
-- Input: `aphype publish` finds due items in `05_scheduled`
+- Input: `reachforge publish` finds due items in `05_scheduled`
 - Processing: Per provider: validate -> upload media -> publish -> record receipt
 - Output: `06_sent/<date>-<article>/` with `receipt.yaml` added
 - Metadata: `meta.yaml` updated with `{ status: "published" }`, `receipt.yaml` created
@@ -1604,7 +1604,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 
 #### 4.5.1 CLI Command Specifications
 
-**`aphype status`**
+**`reachforge status`**
 
 | Property | Value |
 |----------|-------|
@@ -1615,7 +1615,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Exit code | 0 on success, 1 on filesystem error |
 | Performance | < 500ms for 100 projects (NFR-PERF-001) |
 
-**`aphype draft <source>`**
+**`reachforge draft <source>`**
 
 | Property | Value |
 |----------|-------|
@@ -1627,7 +1627,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Exit code | 0 on success, 1 on error (missing API key, source not found, API failure) |
 | Error messages | "GEMINI_API_KEY is not set" / "Source '<source>' not found in 01_inbox" / "AI generation failed: <details>" |
 
-**`aphype adapt <article>`**
+**`reachforge adapt <article>`**
 
 | Property | Value |
 |----------|-------|
@@ -1638,7 +1638,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Exit code | 0 on success (even partial), 1 on total failure |
 | Error messages | "Master article not found at 03_master/<article>/master.md" / "<platform>.md already exists, use --force to overwrite" |
 
-**`aphype schedule <article> <date>`**
+**`reachforge schedule <article> <date>`**
 
 | Property | Value |
 |----------|-------|
@@ -1649,7 +1649,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Exit code | 0 on success, 1 on error |
 | Error messages | "Date must be in YYYY-MM-DD format" / "Date must be a valid calendar date" / "Article '<article>' not found in 04_adapted" |
 
-**`aphype publish`**
+**`reachforge publish`**
 
 | Property | Value |
 |----------|-------|
@@ -1661,7 +1661,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Exit code | 0 if any publish succeeds, 1 if all fail or no due items |
 | Error messages | "No content due for publishing today." / Per-platform success/failure messages with URLs |
 
-**`aphype watch`**
+**`reachforge watch`**
 
 | Property | Value |
 |----------|-------|
@@ -1669,9 +1669,9 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Options | `-i, --interval <minutes>` (integer, 1-1440, default: 60): check interval |
 | Behavior | Long-running process. Checks for due items at configured interval. Publishes automatically. |
 | Signal handling | SIGTERM/SIGINT: completes in-progress publish, then exits with code 0 (FR-WATCH-005) |
-| Logging | Writes to stdout and `aphype-watcher.log` in working directory (FR-WATCH-006) |
+| Logging | Writes to stdout and `reachforge-watcher.log` in working directory (FR-WATCH-006) |
 
-**`aphype mcp`**
+**`reachforge mcp`**
 
 | Property | Value |
 |----------|-------|
@@ -1679,7 +1679,7 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 | Options | `-t, --transport <type>` (enum: 'stdio' or 'sse', default: 'stdio'). `-p, --port <number>` (integer, 1024-65535, default: 8000): port for SSE transport. |
 | Behavior | Starts MCP server. In stdio mode, communicates via stdin/stdout. In SSE mode, starts HTTP server. |
 
-**`aphype analytics`**
+**`reachforge analytics`**
 
 | Property | Value |
 |----------|-------|
@@ -1692,22 +1692,22 @@ Refer to Section 4.3.4 (Zod Schemas) for machine-readable schema definitions. Th
 
 Each MCP tool maps 1:1 to a CLI command. Tools are defined in `mcp/tools.ts` with Zod schemas for input validation (FR-MCP-003, NFR-SEC-003).
 
-**Tool: `aphype.status`**
+**Tool: `reachforge.status`**
 
 ```typescript
 {
-  name: 'aphype.status',
+  name: 'reachforge.status',
   description: 'Get the current state of the content pipeline — item counts and names per stage.',
   inputSchema: z.object({}),  // No parameters
   returnType: PipelineStatus, // { stages: Record<PipelineStage, StageInfo>, totalProjects, dueToday }
 }
 ```
 
-**Tool: `aphype.draft`**
+**Tool: `reachforge.draft`**
 
 ```typescript
 {
-  name: 'aphype.draft',
+  name: 'reachforge.draft',
   description: 'Generate an AI draft from a source in 01_inbox. The source can be a file or directory name.',
   inputSchema: z.object({
     source: z.string()
@@ -1719,11 +1719,11 @@ Each MCP tool maps 1:1 to a CLI command. Tools are defined in `mcp/tools.ts` wit
 }
 ```
 
-**Tool: `aphype.adapt`**
+**Tool: `reachforge.adapt`**
 
 ```typescript
 {
-  name: 'aphype.adapt',
+  name: 'reachforge.adapt',
   description: 'Generate platform-specific content versions from a master article in 03_master.',
   inputSchema: z.object({
     article: z.string()
@@ -1742,11 +1742,11 @@ Each MCP tool maps 1:1 to a CLI command. Tools are defined in `mcp/tools.ts` wit
 }
 ```
 
-**Tool: `aphype.schedule`**
+**Tool: `reachforge.schedule`**
 
 ```typescript
 {
-  name: 'aphype.schedule',
+  name: 'reachforge.schedule',
   description: 'Schedule an adapted article for publishing on a specific date.',
   inputSchema: z.object({
     article: z.string()
@@ -1761,11 +1761,11 @@ Each MCP tool maps 1:1 to a CLI command. Tools are defined in `mcp/tools.ts` wit
 }
 ```
 
-**Tool: `aphype.publish`**
+**Tool: `reachforge.publish`**
 
 ```typescript
 {
-  name: 'aphype.publish',
+  name: 'reachforge.publish',
   description: 'Publish all scheduled content that is due (date <= today) to configured platforms.',
   inputSchema: z.object({
     publishLive: z.boolean()
@@ -1796,7 +1796,7 @@ Each MCP tool maps 1:1 to a CLI command. Tools are defined in `mcp/tools.ts` wit
 |--------|--------|
 | Base URL | `https://api.postiz.com` (TBD — confirm from Postiz documentation) |
 | Auth | `Authorization: Bearer <api_key>` header |
-| Create post | `POST /posts` with body `{ platform: "twitter", content: string[], type: "thread" \| "single" }` (note: `"twitter"` is the Postiz API's external convention; aphype's internal identifier is `x`) |
+| Create post | `POST /posts` with body `{ platform: "twitter", content: string[], type: "thread" \| "single" }` (note: `"twitter"` is the Postiz API's external convention; reachforge's internal identifier is `x`) |
 | Response (200/201) | `{ id, postUrl, status }` |
 | Rate limit | TBD per Postiz docs. Retry on 429. |
 | Error responses | 401: invalid API key. 400: malformed request. 500/502/503: transient server errors. |
@@ -1832,23 +1832,23 @@ Each MCP tool maps 1:1 to a CLI command. Tools are defined in `mcp/tools.ts` wit
 // types/errors.ts
 
 /**
- * Base error class for all aphype errors.
+ * Base error class for all reachforge errors.
  * All errors include a machine-readable code and human-readable message.
  */
-export class AphypeError extends Error {
+export class ReachforgeError extends Error {
   constructor(
     public readonly code: string,
     message: string,
     public readonly cause?: Error
   ) {
     super(message);
-    this.name = 'AphypeError';
+    this.name = 'ReachforgeError';
   }
 }
 
 // --- User Errors (caused by invalid input or misconfiguration) ---
 
-export class ConfigError extends AphypeError {
+export class ConfigError extends ReachforgeError {
   constructor(message: string) {
     super('CONFIG_ERROR', message);
   }
@@ -1857,7 +1857,7 @@ export class ConfigError extends AphypeError {
 // Example: "GEMINI_API_KEY is not set. Set it in your .env file or export it as an environment variable."
 // Recovery: User fixes configuration
 
-export class ValidationError extends AphypeError {
+export class ValidationError extends ReachforgeError {
   constructor(message: string, public readonly field: string) {
     super('VALIDATION_ERROR', message);
   }
@@ -1866,14 +1866,14 @@ export class ValidationError extends AphypeError {
 // Example: "Date must be in YYYY-MM-DD format with valid month (01-12) and day (01-31)"
 // Recovery: User provides correct input
 
-export class ProjectNotFoundError extends AphypeError {
+export class ProjectNotFoundError extends ReachforgeError {
   constructor(project: string, stage: string) {
     super('PROJECT_NOT_FOUND', `Project "${project}" not found in ${stage}.`);
   }
 }
 // Recovery: User verifies project name and stage
 
-export class ProjectExistsError extends AphypeError {
+export class ProjectExistsError extends ReachforgeError {
   constructor(project: string, stage: string) {
     super('PROJECT_EXISTS', `Project already exists in ${stage}: ${project}.`);
   }
@@ -1882,7 +1882,7 @@ export class ProjectExistsError extends AphypeError {
 
 // --- AI/LLM Errors ---
 
-export class LLMApiError extends AphypeError {
+export class LLMApiError extends ReachforgeError {
   constructor(provider: string, message: string, cause?: Error) {
     super('LLM_API_ERROR', `${provider} API error: ${message}`, cause);
   }
@@ -1890,7 +1890,7 @@ export class LLMApiError extends AphypeError {
 // Thrown when: Gemini/Claude API returns error, timeout, rate limit
 // Recovery: Check API key, retry later, check quota
 
-export class LLMApiKeyError extends AphypeError {
+export class LLMApiKeyError extends ReachforgeError {
   constructor(provider: string) {
     super('LLM_API_KEY_ERROR', `${provider} API key is not configured. Set it in your .env file.`);
   }
@@ -1899,7 +1899,7 @@ export class LLMApiKeyError extends AphypeError {
 
 // --- Network/Platform Errors ---
 
-export class PlatformApiError extends AphypeError {
+export class PlatformApiError extends ReachforgeError {
   constructor(platform: string, status: number, message: string) {
     super('PLATFORM_API_ERROR', `${platform} API returned ${status}: ${message}`);
   }
@@ -1907,7 +1907,7 @@ export class PlatformApiError extends AphypeError {
 // Thrown when: Platform API returns non-retryable error (422, etc.)
 // Recovery: Fix content or configuration per error message
 
-export class AuthenticationError extends AphypeError {
+export class AuthenticationError extends ReachforgeError {
   constructor(platform: string) {
     super('AUTH_ERROR', `${platform} authentication failed. Verify your API key.`);
   }
@@ -1915,7 +1915,7 @@ export class AuthenticationError extends AphypeError {
 // Thrown when: Platform API returns 401 or 403
 // Recovery: Check and update API key
 
-export class HttpRetryExhaustedError extends AphypeError {
+export class HttpRetryExhaustedError extends ReachforgeError {
   constructor(url: string, attempts: number, lastStatus: number) {
     super(
       'RETRY_EXHAUSTED',
@@ -1928,7 +1928,7 @@ export class HttpRetryExhaustedError extends AphypeError {
 
 // --- Filesystem Errors ---
 
-export class FilesystemError extends AphypeError {
+export class FilesystemError extends ReachforgeError {
   constructor(operation: string, path: string, cause?: Error) {
     super('FS_ERROR', `Filesystem ${operation} failed for ${path}: ${cause?.message ?? 'unknown error'}`, cause);
   }
@@ -1963,7 +1963,7 @@ When publishing to multiple platforms:
 
 All CLI error messages follow this pattern:
 ```
-Error: <AphypeError.message>
+Error: <ReachforgeError.message>
 ```
 
 For errors with recovery hints (NFR-USAB-001):
@@ -2086,7 +2086,7 @@ MCP error responses follow the MCP protocol error format:
 
 ### 6.4 No Telemetry (NFR-SEC-002)
 
-- aphype makes zero outbound network requests except to explicitly configured APIs (Gemini, Dev.to, Postiz, Hashnode, GitHub)
+- reachforge makes zero outbound network requests except to explicitly configured APIs (Gemini, Dev.to, Postiz, Hashnode, GitHub)
 - No analytics, crash reporting, update checking, or phone-home behavior
 - Verifiable via network traffic analysis during a full pipeline run
 
@@ -2159,7 +2159,7 @@ E2E tests are gated behind an `E2E=true` environment variable and run separately
 
 `src/index.ts` (290 lines) contains:
 - Pipeline initialization (`initPipeline`)
-- `AphypeLogic` object with 5 methods (`status`, `draft`, `adapt`, `schedule`, `publish`)
+- `ReachforgeLogic` object with 5 methods (`status`, `draft`, `adapt`, `schedule`, `publish`)
 - APCore module registration
 - Commander CLI setup with 7 commands
 - MCP server launch
@@ -2177,21 +2177,21 @@ The migration uses a **strangler fig pattern**: extract modules from the monolit
 4. Create `src/types/index.ts` re-exporting all types
 5. Create `src/core/constants.ts` with `STAGES`, regex patterns, defaults
 6. Update `src/index.ts` to import from new locations
-7. **Verify**: `aphype status` works identically
+7. **Verify**: `reachforge status` works identically
 
 **Step 2: Extract Core Pipeline and Metadata** (isolate filesystem logic)
 1. Create `src/core/metadata.ts` with `MetadataManager` class
 2. Create `src/core/config.ts` with `ConfigManager` class
 3. Create `src/core/pipeline.ts` with `PipelineEngine` class
-4. Refactor `AphypeLogic` methods to use `PipelineEngine` and `MetadataManager`
+4. Refactor `ReachforgeLogic` methods to use `PipelineEngine` and `MetadataManager`
 5. **Verify**: All 5 commands work identically
 
 **Step 3: Extract LLM Abstraction** (decouple from Gemini)
 1. Create `src/llm/types.ts` with `LLMProvider` interface
 2. Create `src/llm/gemini.ts` with `GeminiProvider` class
 3. Create `src/llm/factory.ts` with `LLMFactory`
-4. Refactor `draft` and `adapt` in `AphypeLogic` to use `LLMProvider` interface
-5. **Verify**: `aphype draft` and `aphype adapt` work identically
+4. Refactor `draft` and `adapt` in `ReachforgeLogic` to use `LLMProvider` interface
+5. **Verify**: `reachforge draft` and `reachforge adapt` work identically
 
 **Step 4: Extract Command Handlers** (separate CLI from logic)
 1. Create `src/commands/status.ts`, `draft.ts`, `adapt.ts`, `schedule.ts`, `publish.ts`, `watch.ts`, `mcp.ts`
@@ -2205,7 +2205,7 @@ The migration uses a **strangler fig pattern**: extract modules from the monolit
 3. Create `src/providers/devto.ts` (first real provider, replacing mock)
 4. Create `src/providers/postiz.ts` (second real provider)
 5. Refactor `publish` command to use provider loader instead of hardcoded mock logic
-6. **Verify**: `aphype publish` uses real Dev.to/Postiz APIs (with test API keys)
+6. **Verify**: `reachforge publish` uses real Dev.to/Postiz APIs (with test API keys)
 
 **Step 6: Add Validators and Media Manager** (new capabilities)
 1. Create `src/validators/` with platform-specific validation
@@ -2225,7 +2225,7 @@ The migration uses a **strangler fig pattern**: extract modules from the monolit
 - All CLI commands maintain the same argument and option signatures throughout migration
 - Pipeline directory structure (`01_inbox` through `06_sent`) does not change
 - `meta.yaml` schema is additive only — new optional fields may be added; no existing fields are removed or renamed
-- APCore module names (`aphype.status`, `aphype.draft`, etc.) remain unchanged
+- APCore module names (`reachforge.status`, `reachforge.draft`, etc.) remain unchanged
 - MCP tool names remain unchanged
 
 ### 8.5 Estimated Timeline
@@ -2330,7 +2330,7 @@ The migration uses a **strangler fig pattern**: extract modules from the monolit
 | NFR-REL-002 (idempotent operations) | `initPipeline()` uses `ensureDir`; `draft` overwrites existing; `schedule` checks for conflicts |
 | NFR-MAINT-001 (no file > 300 lines) | Module decomposition targets <200 lines per file; enforced by linter rule |
 | NFR-MAINT-002 (provider interface) | `PlatformProvider` interface; `ProviderLoader` discovery; no core modifications for new providers |
-| NFR-USAB-001 (actionable errors) | `AphypeError` hierarchy with code + message + recovery hint pattern |
+| NFR-USAB-001 (actionable errors) | `ReachforgeError` hierarchy with code + message + recovery hint pattern |
 | NFR-USAB-002 (help text) | Commander `--help` with description, args, options, examples per command |
 
 ---
@@ -2343,9 +2343,9 @@ The migration uses a **strangler fig pattern**: extract modules from the monolit
 |---|---------|--------|-------------------|-------|-------------|
 | 1 | What is the exact Postiz API endpoint for X thread creation? | Blocks FEAT-007 implementation | Review Postiz documentation; create sandbox account for testing | Engineering | Before Sprint 2 |
 | 2 | Should `credentials.yaml` support apcore encryption? | Affects `ConfigManager` complexity | Start with plaintext YAML; add encryption as optional enhancement in v0.3 via apcore integration | Engineering | v0.3 |
-| 3 | Should the LLM provider be configurable per-article or only globally? | Affects `meta.yaml` schema and `AdaptOptions` | Global only for v0.2 (via `APHYPE_LLM_PROVIDER`); per-article in v0.3 via `meta.yaml` `llm` field | Product | v0.2 decision |
-| 4 | What is the Hashnode `publicationId` discovery mechanism? | Users need to know their publication ID | Add an `aphype config hashnode` subcommand that queries the Hashnode API for the user's publications | Engineering | Sprint 4 |
-| 5 | Should the watcher write logs to a file in the working directory or a system log location? | Affects `utils/logger.ts` path logic | Working directory (`./aphype-watcher.log`) for simplicity; configurable via env var `APHYPE_LOG_PATH` | Engineering | Sprint 3 |
+| 3 | Should the LLM provider be configurable per-article or only globally? | Affects `meta.yaml` schema and `AdaptOptions` | Global only for v0.2 (via `REACHFORGE_LLM_PROVIDER`); per-article in v0.3 via `meta.yaml` `llm` field | Product | v0.2 decision |
+| 4 | What is the Hashnode `publicationId` discovery mechanism? | Users need to know their publication ID | Add an `reachforge config hashnode` subcommand that queries the Hashnode API for the user's publications | Engineering | Sprint 4 |
+| 5 | Should the watcher write logs to a file in the working directory or a system log location? | Affects `utils/logger.ts` path logic | Working directory (`./reachforge-watcher.log`) for simplicity; configurable via env var `REACHFORGE_LOG_PATH` | Engineering | Sprint 3 |
 | 6 | How should the system handle content that exists as adaptations but whose master was later edited? | Affects adapt flow integrity | Out of scope for v0.2; the user is responsible for re-running `adapt` after editing `master.md` | Product | Deferred |
 
 ### 10.2 Risks
@@ -2357,7 +2357,7 @@ The migration uses a **strangler fig pattern**: extract modules from the monolit
 | **LLM output quality inconsistency** | Medium | High | The LLM may produce X thread segments exceeding 280 characters despite prompt instructions. Mitigation: the validator catches this before publishing and returns an actionable error. Users can re-run `adapt` or manually edit. |
 | **Rate limit exhaustion during batch publishing** | Medium | Medium | Publishing 10+ platforms concurrently could trigger rate limits. `HttpClient` retry logic handles this per-provider, but bulk runs may still be slow. Mitigation: configurable concurrency limit (default 10, can lower to 3-5). |
 | **Migration breaks existing user workflows** | Low | Low | The strangler fig migration preserves all CLI commands and pipeline directory structure. Unit tests validate each step. |
-| **apcore/apcore-mcp API changes** | Medium | Low | aphype depends on local `apcore-js` and `apcore-mcp` packages. Pin versions in `package.json`. Abstract apcore interaction to a thin adapter layer if needed. |
+| **apcore/apcore-mcp API changes** | Medium | Low | reachforge depends on local `apcore-js` and `apcore-mcp` packages. Pin versions in `package.json`. Abstract apcore interaction to a thin adapter layer if needed. |
 
 ---
 

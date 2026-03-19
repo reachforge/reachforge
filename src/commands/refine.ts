@@ -150,7 +150,7 @@ export async function refineCommand(
           break;
         }
         if (result.errorCode === 'timeout') {
-          console.error('Try again with a shorter prompt or increase APHYPE_LLM_TIMEOUT.');
+          console.error('Try again with a shorter prompt or increase REACHFORGE_LLM_TIMEOUT.');
         }
         continue;
       }

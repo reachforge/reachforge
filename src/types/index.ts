@@ -13,7 +13,7 @@ export type {
   PublishResult,
   LLMGenerateOptions,
   LLMAdaptOptions,
-  AphypeConfig,
+  ReachforgeConfig,
 } from './pipeline.js';
 
 // PlatformProvider and ValidationResult are canonical in providers/types.ts
@@ -37,7 +37,7 @@ export {
 export type { ProjectMetaInput, ReceiptInput, CredentialsInput } from './schemas.js';
 
 export {
-  AphypeError,
+  ReachforgeError,
   ProjectNotFoundError,
   InvalidDateError,
   PathTraversalError,

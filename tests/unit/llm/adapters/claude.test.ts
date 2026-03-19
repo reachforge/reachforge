@@ -59,7 +59,7 @@ describe('ClaudeAdapter.execute', () => {
     const call = mockRunCLIProcess.mock.calls[0][0];
     expect(call.args).toContain('--add-dir');
     const addDirIdx = call.args.indexOf('--add-dir');
-    expect(call.args[addDirIdx + 1]).toMatch(/aphype-skills-/);
+    expect(call.args[addDirIdx + 1]).toMatch(/reachforge-skills-/);
   });
 
   test('passes prompt via stdin', async () => {

@@ -1,8 +1,8 @@
-# Product Requirements Document: aphype
+# Product Requirements Document: reachforge
 
 | Field        | Value                                      |
 |--------------|--------------------------------------------|
-| **Document** | aphype PRD v1.0                            |
+| **Document** | reachforge PRD v1.0                            |
 | **Author**   | aipartnerup Product Team                   |
 | **Date**     | 2026-03-14                                 |
 | **Status**   | Draft                                      |
@@ -14,9 +14,9 @@
 
 Today, independent developers and content creators face a fragmented, manual workflow when distributing content across platforms. A single blog post destined for Dev.to, X (Twitter), and WeChat requires separate rewrites, separate logins, separate formatting, and separate scheduling. The result: creators either under-distribute (limiting reach) or spend hours on repetitive adaptation work that adds no creative value.
 
-**aphype** is an AI-native Social Influence Engine that eliminates this friction. It transforms a single raw idea into platform-optimized, publication-ready assets through a six-stage file-based pipeline. Users drop an idea into an inbox folder; AI generates a long-form draft; AI adapts that draft for each target platform; the user schedules it; and aphype publishes automatically via direct APIs or SaaS bridges. No database, no complex setup --- directories are states, filenames are timestamps, YAML files are metadata.
+**reachforge** is an AI-native Social Influence Engine that eliminates this friction. It transforms a single raw idea into platform-optimized, publication-ready assets through a six-stage file-based pipeline. Users drop an idea into an inbox folder; AI generates a long-form draft; AI adapts that draft for each target platform; the user schedules it; and reachforge publishes automatically via direct APIs or SaaS bridges. No database, no complex setup --- directories are states, filenames are timestamps, YAML files are metadata.
 
-aphype is part of the **aipartnerup** ecosystem (alongside apcore and apflow), designed for developers who think in files and terminals. The MVP targets two publishing paths --- native API integration with Dev.to and SaaS-bridged publishing to X via Postiz --- to validate the hybrid distribution architecture before expanding to additional platforms.
+reachforge is part of the **aipartnerup** ecosystem (alongside apcore and apflow), designed for developers who think in files and terminals. The MVP targets two publishing paths --- native API integration with Dev.to and SaaS-bridged publishing to X via Postiz --- to validate the hybrid distribution architecture before expanding to additional platforms.
 
 ---
 
@@ -98,13 +98,13 @@ Tools like **Repurpose.io**, **ContentStudio**, and **Castmagic** focus on trans
 **Typefully** focuses on X/Twitter with a drafting-optimized UI. **Postiz** (open source) provides a self-hostable social media scheduler with API integrations. Neither offers AI content generation or file-based workflows.
 
 ### The Gap
-No existing tool combines: (a) AI-powered content generation and adaptation, (b) multi-platform publishing via hybrid native + SaaS APIs, (c) a file-based, CLI-native, developer-friendly workflow, and (d) integration with the AI agent ecosystem via MCP. This is the space aphype occupies.
+No existing tool combines: (a) AI-powered content generation and adaptation, (b) multi-platform publishing via hybrid native + SaaS APIs, (c) a file-based, CLI-native, developer-friendly workflow, and (d) integration with the AI agent ecosystem via MCP. This is the space reachforge occupies.
 
 ---
 
 ## 5. Competitive Analysis
 
-| Capability                       | Buffer      | Typefully   | Postiz (OSS) | ContentStudio | **aphype**     |
+| Capability                       | Buffer      | Typefully   | Postiz (OSS) | ContentStudio | **reachforge**     |
 |----------------------------------|-------------|-------------|---------------|---------------|----------------|
 | Multi-platform scheduling        | Yes         | X only      | Yes           | Yes           | Yes            |
 | AI content generation            | Limited     | No          | No            | Limited       | Core feature   |
@@ -118,9 +118,9 @@ No existing tool combines: (a) AI-powered content generation and adaptation, (b)
 | Free tier available              | Yes (3 ch.) | Yes (1 acc.)| Yes (OSS)     | No            | Yes (OSS)      |
 | Target audience                  | Marketers   | X creators  | SMB teams     | Marketers     | Developers     |
 
-### aphype Competitive Positioning
+### reachforge Competitive Positioning
 
-aphype does not compete head-to-head with Buffer or Hootsuite. It occupies an adjacent niche: **developer-native, AI-first content distribution**. Its differentiation rests on three pillars:
+reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies an adjacent niche: **developer-native, AI-first content distribution**. Its differentiation rests on three pillars:
 
 1. **AI-native pipeline**: Content generation and adaptation are first-class operations, not bolt-on features.
 2. **File-based architecture**: No database, no cloud dependency. Content is version-controllable, inspectable, and portable.
@@ -136,7 +136,7 @@ aphype does not compete head-to-head with Buffer or Hootsuite. It occupies an ad
 ### Strategic Positioning within aipartnerup
 - **apcore**: The foundational framework providing module registration, lifecycle management, and MCP server infrastructure.
 - **apflow**: Workflow orchestration and task automation.
-- **aphype**: The user-facing content engine that leverages apcore for modularity and apflow for automation. aphype is the flagship product that demonstrates the aipartnerup ecosystem's value.
+- **reachforge**: The user-facing content engine that leverages apcore for modularity and apflow for automation. reachforge is the flagship product that demonstrates the aipartnerup ecosystem's value.
 
 ### Strategy Phases
 1. **Validate** (v0.2): Prove the pipeline works end-to-end with real publishing to Dev.to + X.
@@ -148,9 +148,9 @@ aphype does not compete head-to-head with Buffer or Hootsuite. It occupies an ad
 
 ## 7. Core Value Proposition
 
-### Why aphype vs. Alternatives
+### Why reachforge vs. Alternatives
 
-| Dimension               | aphype Advantage                                                     |
+| Dimension               | reachforge Advantage                                                     |
 |--------------------------|----------------------------------------------------------------------|
 | **Workflow fit**         | CLI-native; works where developers already work                      |
 | **AI integration**       | AI generates AND adapts content; competitors only schedule            |
@@ -161,8 +161,8 @@ aphype does not compete head-to-head with Buffer or Hootsuite. It occupies an ad
 ### Moat Analysis (Honest Assessment)
 - **Weak moat**: The six-stage pipeline and CLI wrapper are straightforward to replicate. AI adaptation prompts can be copied.
 - **Medium moat**: Integration with apcore/apflow ecosystem creates switching costs for users invested in aipartnerup. MCP server support creates value for AI agent users.
-- **Potential moat**: If aphype accumulates platform-specific prompt tuning, publishing heuristics, and a library of successful adaptation patterns, these become a knowledge moat. Community contributions to provider plugins would also strengthen defensibility.
-- **Honest conclusion**: aphype's moat is currently thin. The primary defense is execution speed and developer experience quality, not technological barriers.
+- **Potential moat**: If reachforge accumulates platform-specific prompt tuning, publishing heuristics, and a library of successful adaptation patterns, these become a knowledge moat. Community contributions to provider plugins would also strengthen defensibility.
+- **Honest conclusion**: reachforge's moat is currently thin. The primary defense is execution speed and developer experience quality, not technological barriers.
 
 ---
 
@@ -172,22 +172,22 @@ aphype does not compete head-to-head with Buffer or Hootsuite. It occupies an ad
 > As Alex, I want to drop a markdown file into `01_inbox`, run three commands (`draft`, `adapt`, `publish`), and see my content live on Dev.to and X, so that I can validate the tool works end-to-end in under 10 minutes.
 
 ### US-002: Scheduled Multi-Platform Publish
-> As Mei, I want to schedule an adapted article for next Tuesday and have aphype automatically publish to all configured platforms on that date, so that I do not need to remember to publish manually.
+> As Mei, I want to schedule an adapted article for next Tuesday and have reachforge automatically publish to all configured platforms on that date, so that I do not need to remember to publish manually.
 
 ### US-003: AI-Powered Adaptation
-> As Jordan, I want to run `aphype adapt my-article` and get platform-optimized versions (an X thread, a Dev.to article, a WeChat post) without writing any of them myself, so that I can focus on creating the original content.
+> As Jordan, I want to run `reachforge adapt my-article` and get platform-optimized versions (an X thread, a Dev.to article, a WeChat post) without writing any of them myself, so that I can focus on creating the original content.
 
 ### US-004: Dashboard Overview
-> As Alex, I want to run `aphype status` and see how many items are in each pipeline stage, which items are due for publishing today, so that I can manage my content queue at a glance.
+> As Alex, I want to run `reachforge status` and see how many items are in each pipeline stage, which items are due for publishing today, so that I can manage my content queue at a glance.
 
 ### US-005: MCP Agent Integration
-> As Mei, I want to connect aphype to Claude Desktop via MCP, so that I can say "publish my latest article to all platforms" and have the AI agent operate the pipeline on my behalf.
+> As Mei, I want to connect reachforge to Claude Desktop via MCP, so that I can say "publish my latest article to all platforms" and have the AI agent operate the pipeline on my behalf.
 
 ### US-006: Publish to Dev.to via Native API
-> As Alex, I want aphype to publish directly to Dev.to using my API key, without any third-party SaaS intermediary, so that I have full control and zero cost.
+> As Alex, I want reachforge to publish directly to Dev.to using my API key, without any third-party SaaS intermediary, so that I have full control and zero cost.
 
 ### US-007: Publish to X via Postiz Bridge
-> As Jordan, I want aphype to publish to X through Postiz Cloud, so that I do not need to manage X OAuth credentials myself.
+> As Jordan, I want reachforge to publish to X through Postiz Cloud, so that I do not need to manage X OAuth credentials myself.
 
 ---
 
@@ -298,7 +298,7 @@ aphype does not compete head-to-head with Buffer or Hootsuite. It occupies an ad
 ### P2 --- Nice to Have / Future
 
 #### FEAT-010: MCP Server Integration
-- **Description**: Full MCP server exposing all pipeline operations as tools, enabling AI agents to operate aphype.
+- **Description**: Full MCP server exposing all pipeline operations as tools, enabling AI agents to operate reachforge.
 - **Status**: Basic implementation exists (via apcore-mcp).
 - **Acceptance Criteria**:
   - All 5 core operations (status, draft, adapt, schedule, publish) exposed as MCP tools.
@@ -308,7 +308,7 @@ aphype does not compete head-to-head with Buffer or Hootsuite. It occupies an ad
 #### FEAT-013: Analytics & Receipts Dashboard
 - **Description**: Aggregate `receipt.yaml` data from `06_sent` to show publishing history, success rates, and platform-level metrics.
 - **Acceptance Criteria**:
-  - `aphype analytics` command shows total publishes by platform, success/failure rates.
+  - `reachforge analytics` command shows total publishes by platform, success/failure rates.
   - Supports date range filtering.
 
 #### FEAT-014: Template System
@@ -330,9 +330,9 @@ aphype does not compete head-to-head with Buffer or Hootsuite. It occupies an ad
 ## 10. Non-Functional Requirements
 
 ### Performance
-- **NFR-001**: `aphype status` must complete in under 500ms for pipelines containing up to 100 items.
-- **NFR-002**: `aphype draft` and `aphype adapt` latency is bounded by LLM API response time (typically 5-30 seconds). The CLI must show progress indication during AI calls.
-- **NFR-003**: `aphype publish` must handle up to 10 simultaneous platform publications without failure.
+- **NFR-001**: `reachforge status` must complete in under 500ms for pipelines containing up to 100 items.
+- **NFR-002**: `reachforge draft` and `reachforge adapt` latency is bounded by LLM API response time (typically 5-30 seconds). The CLI must show progress indication during AI calls.
+- **NFR-003**: `reachforge publish` must handle up to 10 simultaneous platform publications without failure.
 - **NFR-004**: Compiled binary size must remain under 50MB.
 
 ### Security
@@ -377,14 +377,14 @@ aphype does not compete head-to-head with Buffer or Hootsuite. It occupies an ad
 
 ## 12. "What If We Don't Build This?" Analysis
 
-### If aphype is not built:
-1. **The aipartnerup ecosystem lacks a flagship user-facing product.** apcore and apflow are infrastructure; without aphype, there is no demonstration of their value to end users.
+### If reachforge is not built:
+1. **The aipartnerup ecosystem lacks a flagship user-facing product.** apcore and apflow are infrastructure; without reachforge, there is no demonstration of their value to end users.
 2. **Developers continue with manual cross-posting.** The distribution tax persists. This is the status quo and is survivable --- people have lived with it for years.
 3. **The MCP/agentic content workflow opportunity goes unexplored.** No existing tool provides MCP-based content pipeline control. This is a genuine first-mover opportunity in the AI agent ecosystem, but the window is time-limited as the MCP ecosystem matures.
-4. **Competitors may fill the gap.** Postiz is open source and actively developed. If they add AI generation and adaptation features, the aphype value proposition narrows significantly.
+4. **Competitors may fill the gap.** Postiz is open source and actively developed. If they add AI generation and adaptation features, the reachforge value proposition narrows significantly.
 
 ### Honest Assessment
-aphype solves a real but not urgent problem. Developers can and do cross-post manually. The tool's value is in saving 30-60 minutes per article and enabling an agentic workflow that does not yet exist elsewhere. The strongest argument for building it is strategic: it validates the aipartnerup ecosystem and establishes a presence in the AI-native developer tools space before competitors arrive.
+reachforge solves a real but not urgent problem. Developers can and do cross-post manually. The tool's value is in saving 30-60 minutes per article and enabling an agentic workflow that does not yet exist elsewhere. The strongest argument for building it is strategic: it validates the aipartnerup ecosystem and establishes a presence in the AI-native developer tools space before competitors arrive.
 
 ---
 
@@ -441,16 +441,16 @@ aphype solves a real but not urgent problem. Developers can and do cross-post ma
 
 | #  | Question                                                                                         | Owner        | Status |
 |----|--------------------------------------------------------------------------------------------------|--------------|--------|
-| 1  | Should aphype support user-editable AI prompts in v0.2, or defer to v0.3 (template system)?     | Product      | Open   |
+| 1  | Should reachforge support user-editable AI prompts in v0.2, or defer to v0.3 (template system)?     | Product      | Open   |
 | 2  | What is the Postiz Cloud API pricing model, and does it have rate limits that affect our publish throughput? | Engineering  | Open   |
 | 3  | Should `03_master` require explicit user sign-off (e.g., a flag in `meta.yaml`), or is moving the file sufficient? | Product      | Open   |
 | 4  | How should credentials be managed --- `.env` only, or also support `credentials.yaml` with encryption via apcore? | Engineering  | Open   |
 | 5  | Is the current single-file architecture (`src/index.ts`) acceptable for v0.2, or must refactoring happen first? | Engineering  | Open   |
-| 6  | Should aphype publish content as "draft" by default on platforms that support it (Dev.to), requiring manual approval? | Product      | Open   |
+| 6  | Should reachforge publish content as "draft" by default on platforms that support it (Dev.to), requiring manual approval? | Product      | Open   |
 | 7  | What is the commercialization strategy? Open-source core + premium features? SaaS? Or pure open-source? | Business     | Open (deliberately deferred) |
 | 8  | Should the Python-era artifacts (`pyproject.toml`, `scripts/adapt.py`) be removed or archived before v0.2? | Engineering  | Open   |
 | 9  | What is the minimum set of platforms needed for the tool to be compelling to the target audience? | Product      | Open   |
-| 10 | How should aphype handle content that fails AI adaptation for one platform but succeeds for others? | Engineering  | Open   |
+| 10 | How should reachforge handle content that fails AI adaptation for one platform but succeeds for others? | Engineering  | Open   |
 
 ---
 

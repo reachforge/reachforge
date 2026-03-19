@@ -65,31 +65,31 @@ async function getConfig() {
 
 // APCore registration for MCP/programmatic access
 const apcore = new APCore();
-apcore.register('aphype.status', {
+apcore.register('reachforge.status', {
   execute: async () => {
     const engine = await getEngine();
     return engine.getStatus();
   },
 });
-apcore.register('aphype.draft', {
+apcore.register('reachforge.draft', {
   execute: async (inputs: { source: string }) => {
     const engine = await getEngine();
     await draftCommand(engine, inputs.source);
   },
 });
-apcore.register('aphype.adapt', {
+apcore.register('reachforge.adapt', {
   execute: async (inputs: { article: string }) => {
     const engine = await getEngine();
     await adaptCommand(engine, inputs.article);
   },
 });
-apcore.register('aphype.schedule', {
+apcore.register('reachforge.schedule', {
   execute: async (inputs: { article: string; date: string }) => {
     const engine = await getEngine();
     await scheduleCommand(engine, inputs.article, inputs.date);
   },
 });
-apcore.register('aphype.publish', {
+apcore.register('reachforge.publish', {
   execute: async () => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await publishCommand(engine, { config: config.getConfig() });
@@ -98,8 +98,8 @@ apcore.register('aphype.publish', {
 
 // CLI Setup
 program
-  .name('aphype')
-  .description('AI PartnerUp Hype: The Social Influence Engine')
+  .name('reachforge')
+  .description('ReachForge: The Social Influence Engine')
   .version('0.1.0')
   .option('-w, --workspace <path>', 'Workspace root directory')
   .option('-P, --project <name>', 'Project name within workspace');
@@ -161,7 +161,7 @@ program
 
 program
   .command('watch')
-  .description('Start the aphype daemon to watch for due content')
+  .description('Start the reachforge daemon to watch for due content')
   .option('-i, --interval <minutes>', 'Check interval in minutes (min: 1)', '60')
   .action(withErrorHandler(async (options: { interval?: string }) => {
     const engine = await getEngine();
@@ -170,7 +170,7 @@ program
 
 program
   .command('mcp')
-  .description('Launch aphype as an MCP Server')
+  .description('Launch reachforge as an MCP Server')
   .option('-p, --port <number>', 'Port for SSE transport', '8000')
   .option('-t, --transport <type>', 'Transport type (stdio, sse)', 'stdio')
   .action(withErrorHandler(async (options: { port?: string; transport?: string }) => {
@@ -181,7 +181,7 @@ program
 // Workspace management commands
 program
   .command('init [path]')
-  .description('Initialize a new aphype workspace (default: ~/aphype-workspace)')
+  .description('Initialize a new reachforge workspace (default: ~/reachforge-workspace)')
   .action(withErrorHandler(async (targetPath?: string) => {
     await initCommand(targetPath);
   }));
@@ -224,8 +224,8 @@ program.action(withErrorHandler(async () => {
   if (!process.stdin.isTTY) {
     // Non-interactive: show instructions without prompting
     console.log(`No workspace found. Initialize one with:`);
-    console.log(chalk.dim(`  aphype init [path]`));
-    console.log(chalk.dim(`\nRun ${chalk.white('aphype --help')} for all available commands.`));
+    console.log(chalk.dim(`  reachforge init [path]`));
+    console.log(chalk.dim(`\nRun ${chalk.white('reachforge --help')} for all available commands.`));
     return;
   }
 
@@ -238,10 +238,10 @@ program.action(withErrorHandler(async () => {
     await initCommand(defaultPath);
   } else {
     console.log(chalk.dim('\nYou can initialize a workspace manually:'));
-    console.log(chalk.dim('  aphype init [path]'));
+    console.log(chalk.dim('  reachforge init [path]'));
   }
 
-  console.log(chalk.dim(`\nRun ${chalk.white('aphype --help')} for all available commands.`));
+  console.log(chalk.dim(`\nRun ${chalk.white('reachforge --help')} for all available commands.`));
 }));
 
 function confirm(prompt: string): Promise<boolean> {

@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs/promises';
 import { SessionManager } from '../../../src/llm/session.js';
-import { SessionValidationError, AphypeError } from '../../../src/types/index.js';
+import { SessionValidationError, ReachforgeError } from '../../../src/types/index.js';
 import type { SessionData } from '../../../src/llm/types.js';
 
 let tmpDir: string;
@@ -19,7 +19,7 @@ const validSession: SessionData = {
 };
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aphype-session-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reachforge-session-'));
   manager = new SessionManager(tmpDir);
 });
 
@@ -40,9 +40,9 @@ describe('SessionData & SessionValidationError', () => {
     expect(data.lastUsedAt).toBeDefined();
   });
 
-  test('SessionValidationError extends AphypeError with correct name', () => {
+  test('SessionValidationError extends ReachforgeError with correct name', () => {
     const err = new SessionValidationError('test');
-    expect(err).toBeInstanceOf(AphypeError);
+    expect(err).toBeInstanceOf(ReachforgeError);
     expect(err.name).toBe('SessionValidationError');
   });
 });
@@ -135,12 +135,12 @@ describe('SessionManager.save & load', () => {
 describe('SessionManager.getSessionPath', () => {
   test('returns correct path for draft stage', () => {
     const p = manager.getSessionPath('my-article', 'draft');
-    expect(p).toBe(path.join(tmpDir, '.aphype', 'sessions', 'my-article', 'draft.json'));
+    expect(p).toBe(path.join(tmpDir, '.reachforge', 'sessions', 'my-article', 'draft.json'));
   });
 
   test('returns correct path for adapt-x stage', () => {
     const p = manager.getSessionPath('my-article', 'adapt-x');
-    expect(p).toBe(path.join(tmpDir, '.aphype', 'sessions', 'my-article', 'adapt-x.json'));
+    expect(p).toBe(path.join(tmpDir, '.reachforge', 'sessions', 'my-article', 'adapt-x.json'));
   });
 });
 

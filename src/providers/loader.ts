@@ -1,5 +1,5 @@
 import type { PlatformProvider } from './types.js';
-import type { AphypeConfig } from '../types/index.js';
+import type { ReachforgeConfig } from '../types/index.js';
 import { MockProvider } from './mock.js';
 import { DevtoProvider } from './devto.js';
 import { PostizProvider } from './postiz.js';
@@ -9,11 +9,11 @@ import { GitHubProvider } from './github.js';
 export class ProviderLoader {
   private providers: Map<string, PlatformProvider> = new Map();
 
-  constructor(config: AphypeConfig) {
+  constructor(config: ReachforgeConfig) {
     this.loadProviders(config);
   }
 
-  private loadProviders(config: AphypeConfig): void {
+  private loadProviders(config: ReachforgeConfig): void {
     if (config.devtoApiKey) {
       this.register(new DevtoProvider(config.devtoApiKey));
     }

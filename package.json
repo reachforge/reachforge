@@ -1,13 +1,13 @@
 {
-  "name": "aphype",
+  "name": "reachforge",
   "version": "0.1.0",
-  "description": "AI PartnerUp Hype: The Social Influence Engine for AI-Native Content.",
+  "description": "ReachForge: The Social Influence Engine for AI-Native Content.",
   "type": "module",
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "mkdir -p bin && bun build ./src/index.ts --compile --outfile bin/aphype",
-    "build:macos": "bun build ./src/index.ts --compile --target bun-darwin-arm64 --outfile bin/aphype-macos",
-    "build:win": "bun build ./src/index.ts --compile --target bun-windows-x64 --outfile bin/aphype.exe",
+    "build": "mkdir -p bin && bun build ./src/index.ts --compile --outfile bin/reachforge",
+    "build:macos": "bun build ./src/index.ts --compile --target bun-darwin-arm64 --outfile bin/reachforge-macos",
+    "build:win": "bun build ./src/index.ts --compile --target bun-windows-x64 --outfile bin/reachforge.exe",
     "lint": "eslint src/**/*.ts",
     "test": "vitest run",
     "test:watch": "vitest"

@@ -47,7 +47,7 @@ T01 (Helper functions)
 
 ### T04: CLI registration + non-TTY
 - **Files**: `src/index.ts`
-- Register `aphype refine <article>` in Commander.js
+- Register `reachforge refine <article>` in Commander.js
 - Non-TTY mode: read all stdin, one turn, save, exit
 - **Tests**: 1
 
@@ -63,4 +63,4 @@ T01 (Helper functions)
 
 - This command depends on all three prior features: CLI Adapter Core, Session Manager, Skill Resolver
 - The interactive loop is the most complex part — mocking readline properly is key
-- Non-TTY handling enables CI/scripted usage: `echo "make it shorter" | aphype refine my-article`
+- Non-TTY handling enables CI/scripted usage: `echo "make it shorter" | reachforge refine my-article`

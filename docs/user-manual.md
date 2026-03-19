@@ -1,0 +1,607 @@
+# reachforge User Manual
+
+**ReachForge — The Social Influence Engine for AI-Native Content**
+
+Version 0.1.0
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Installation](#installation)
+3. [Quick Start](#quick-start)
+4. [The Content Pipeline](#the-content-pipeline)
+5. [Commands Reference](#commands-reference)
+6. [Configuration](#configuration)
+7. [LLM Integration](#llm-integration)
+8. [Platform Providers](#platform-providers)
+9. [Skill System](#skill-system)
+10. [MCP Server](#mcp-server)
+11. [Troubleshooting](#troubleshooting)
+
+---
+
+## Overview
+
+reachforge is a CLI tool that transforms raw ideas into polished, platform-specific content through a six-stage file-based pipeline. It uses AI (Claude, Gemini, or Codex) to draft, refine, and adapt articles for multiple publishing platforms — Dev.to, Hashnode, GitHub Discussions, and X (via Postiz).
+
+**Key design principles:**
+
+- **File-as-state** — no database; the directory structure _is_ the pipeline state.
+- **Multi-project workspaces** — manage many content projects from a single workspace.
+- **Pluggable LLM adapters** — switch between Claude, Gemini, and Codex per stage.
+- **Progressive publishing** — resumable, lock-protected, with per-platform receipts.
+
+---
+
+## Installation
+
+**Prerequisites:** [Bun](https://bun.sh/) runtime.
+
+```bash
+# Install Bun
+curl -fsSL https://bun.sh/install | bash
+
+# Clone and build
+git clone <repo-url>
+cd reachforge
+bun install
+bun run build          # creates ./bin/reachforge
+```
+
+Cross-platform builds:
+
+```bash
+bun run build:macos    # macOS ARM64
+bun run build:win      # Windows x64
+```
+
+---
+
+## Quick Start
+
+```bash
+# 1. Create a workspace
+reachforge init ~/my-workspace
+cd ~/my-workspace
+
+# 2. Create a project
+reachforge new my-blog
+cd my-blog
+
+# 3. Drop an idea into the inbox
+echo "Why AI pair programming changes everything..." > 01_inbox/ai-pairing.md
+
+# 4. Generate a draft
+reachforge draft ai-pairing.md
+
+# 5. Refine interactively
+reachforge refine ai-pairing
+
+# 6. Promote to master (manual step)
+cp 02_drafts/ai-pairing/draft.md 03_master/ai-pairing/master.md
+
+# 7. Adapt for platforms
+reachforge adapt ai-pairing --platforms devto,hashnode,x
+
+# 8. Schedule
+reachforge schedule ai-pairing 2026-04-01
+
+# 9. Publish
+reachforge publish
+```
+
+---
+
+## The Content Pipeline
+
+Each project contains six stage directories. Content flows left to right:
+
+```
+01_inbox ──▸ 02_drafts ──▸ 03_master ──▸ 04_adapted ──▸ 05_scheduled ──▸ 06_sent
+```
+
+| Stage | Purpose | Key Files |
+|-------|---------|-----------|
+| `01_inbox` | Raw material — notes, sketches, ideas | Any `.md` / `.txt` |
+| `02_drafts` | AI-generated long-form drafts | `draft.md`, `meta.yaml` |
+| `03_master` | Editor-approved source of truth | `master.md`, `meta.yaml` |
+| `04_adapted` | Platform-specific versions | `platform_versions/{platform}.md` |
+| `05_scheduled` | Content awaiting publish date | `meta.yaml` (with `publish_date`) |
+| `06_sent` | Published archive | `receipt.yaml` |
+
+**Workspace layout:**
+
+```
+~/my-workspace/
+├── .reachforge/
+│   └── config.yaml            # Workspace config
+├── project-a/
+│   ├── 01_inbox/
+│   ├── 02_drafts/
+│   ├── 03_master/
+│   ├── 04_adapted/
+│   ├── 05_scheduled/
+│   ├── 06_sent/
+│   ├── project.yaml           # Project config
+│   ├── .env                   # API keys (optional)
+│   └── skills/                # Custom LLM skills (optional)
+└── project-b/
+    └── ...
+```
+
+---
+
+## Commands Reference
+
+### Global Options
+
+```
+-w, --workspace <path>    Override workspace root directory
+-P, --project <name>      Select project within workspace
+-V, --version             Show version
+-h, --help                Show help
+```
+
+---
+
+### `reachforge init [path]`
+
+Initialize a new workspace.
+
+```bash
+reachforge init                    # Interactive — defaults to ~/reachforge-workspace
+reachforge init ~/my-workspace     # Explicit path
+```
+
+Creates the `.reachforge/config.yaml` directory structure.
+
+---
+
+### `reachforge new <project-name>`
+
+Create a new project in the current workspace.
+
+```bash
+reachforge new my-blog
+```
+
+Scaffolds all six stage directories and a `project.yaml`.
+
+---
+
+### `reachforge status`
+
+Show pipeline dashboard for the current project.
+
+```bash
+reachforge status           # Current project
+reachforge status --all     # All projects in workspace
+```
+
+Displays item counts per stage and items due today.
+
+---
+
+### `reachforge workspace`
+
+Show workspace info and list all projects.
+
+```bash
+reachforge workspace
+```
+
+---
+
+### `reachforge draft <source>`
+
+Generate an AI draft from an inbox source.
+
+```bash
+reachforge draft my-idea.md
+```
+
+- **Input:** File or directory in `01_inbox/`.
+  - If directory: reads `main.md` > `index.md` > first `.md` > first `.txt`.
+- **Output:** `02_drafts/{name}/draft.md` + `meta.yaml`.
+- **LLM adapter:** Controlled by `REACHFORGE_DRAFT_ADAPTER` or `REACHFORGE_LLM_ADAPTER`.
+
+---
+
+### `reachforge refine <article>`
+
+Interactively refine a draft or master article with AI feedback.
+
+```bash
+reachforge refine my-idea
+```
+
+Opens an interactive session with these commands:
+
+| Command | Action |
+|---------|--------|
+| _(any text)_ | Send feedback to LLM, receive refined version |
+| `/save` | Save current draft and exit |
+| `/quit` | Discard changes and exit |
+| `/status` | Show session info (adapter, turns, session ID) |
+| `/diff` | Show differences from original |
+
+**Features:**
+
+- Sessions are persisted in `.reachforge/sessions/` and automatically resumed.
+- Works on articles in both `02_drafts` and `03_master`.
+- Non-TTY mode: single-turn refinement from piped input.
+
+---
+
+### `reachforge adapt <article>`
+
+Generate platform-specific versions from a master article.
+
+```bash
+reachforge adapt my-idea                              # Default platforms
+reachforge adapt my-idea --platforms x,devto,hashnode  # Specific platforms
+reachforge adapt my-idea --force                       # Overwrite existing
+```
+
+| Option | Description |
+|--------|-------------|
+| `-p, --platforms <list>` | Comma-separated platform names |
+| `-f, --force` | Overwrite existing platform versions |
+
+- **Input:** Article in `03_master/`.
+- **Output:** `04_adapted/{article}/platform_versions/{platform}.md` per platform.
+- **Default platforms:** `x`, `wechat`, `zhihu`.
+- Adapts all platforms in parallel.
+
+**Supported platforms:** `x`, `wechat`, `zhihu`, `devto`, `hashnode`, `github`.
+
+---
+
+### `reachforge schedule <article> <date>`
+
+Move an adapted article to the scheduled stage.
+
+```bash
+reachforge schedule my-idea 2026-04-01
+reachforge schedule my-idea 2026-04-01 --dry-run
+```
+
+| Option | Description |
+|--------|-------------|
+| `-n, --dry-run` | Preview what would be moved |
+
+- **Date format:** `YYYY-MM-DD`.
+- Creates `05_scheduled/2026-04-01-my-idea/` with a `meta.yaml` containing the publish date.
+
+---
+
+### `reachforge publish`
+
+Publish all scheduled content that is due (date <= today).
+
+```bash
+reachforge publish
+reachforge publish --dry-run
+reachforge publish --draft
+```
+
+| Option | Description |
+|--------|-------------|
+| `-n, --dry-run` | Preview without publishing |
+| `-d, --draft` | Publish as draft (overrides `published` frontmatter field) |
+
+**Publishing pipeline:**
+
+1. Scans `05_scheduled/` for items with date <= today.
+2. Validates content per platform.
+3. Acquires a lock (`.publish.lock`) to prevent concurrent runs.
+4. Publishes to each platform (in parallel).
+5. Writes progressive `receipt.yaml` tracking per-platform status.
+6. On success, moves the item to `06_sent/`.
+7. Releases the lock.
+
+**Resumable:** If the process crashes mid-publish, re-running `reachforge publish` picks up from where it left off using the receipt file.
+
+---
+
+### `reachforge rollback <article>`
+
+Move an article back one pipeline stage.
+
+```bash
+reachforge rollback my-idea
+```
+
+Moves the article to the previous stage (e.g., `05_scheduled` -> `04_adapted`). Cannot roll back from `01_inbox`.
+
+---
+
+### `reachforge watch`
+
+Start a daemon that auto-publishes due content at intervals.
+
+```bash
+reachforge watch                  # Check every 60 minutes (default)
+reachforge watch --interval 30    # Check every 30 minutes
+```
+
+| Option | Description |
+|--------|-------------|
+| `-i, --interval <minutes>` | Check interval (minimum: 1, default: 60) |
+
+Gracefully shuts down on `SIGINT` / `SIGTERM`.
+
+---
+
+### `reachforge mcp`
+
+Launch reachforge as an MCP (Model Context Protocol) server.
+
+```bash
+reachforge mcp                             # stdio transport, port 8000
+reachforge mcp --transport sse --port 8001
+```
+
+| Option | Description |
+|--------|-------------|
+| `-t, --transport <type>` | `stdio` (default) or `sse` |
+| `-p, --port <number>` | Port for SSE transport (default: 8000) |
+
+Exposes these MCP tools: `reachforge_status`, `reachforge_draft`, `reachforge_adapt`, `reachforge_schedule`, `reachforge_publish`, `reachforge_rollback`.
+
+---
+
+## Configuration
+
+### Configuration Layers (highest to lowest priority)
+
+1. **Environment variables**
+2. **Project `.env`** — `{project}/.env`
+3. **Project `credentials.yaml`** — `{project}/credentials.yaml`
+4. **Workspace `.env`** — `{workspace}/.env`
+5. **Workspace `config.yaml`** — `{workspace}/.reachforge/config.yaml`
+6. **Global config** — `~/.reachforge/config.yaml`
+
+### LLM Settings
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `REACHFORGE_LLM_ADAPTER` | Default adapter (`claude`, `gemini`, `codex`) | `claude` |
+| `REACHFORGE_DRAFT_ADAPTER` | Override adapter for `draft` stage | — |
+| `REACHFORGE_ADAPT_ADAPTER` | Override adapter for `adapt` stage | — |
+| `REACHFORGE_LLM_MODEL` | Model name | `gemini-pro` |
+| `REACHFORGE_LLM_TIMEOUT` | Timeout in seconds | `120` |
+| `REACHFORGE_CLAUDE_COMMAND` | Path to Claude CLI | `claude` |
+| `REACHFORGE_GEMINI_COMMAND` | Path to Gemini CLI | `gemini` |
+| `REACHFORGE_CODEX_COMMAND` | Path to Codex CLI | `codex` |
+
+### Platform API Keys
+
+```bash
+# Dev.to
+DEVTO_API_KEY=your-key
+
+# Hashnode
+HASHNODE_API_KEY=your-key
+HASHNODE_PUBLICATION_ID=your-publication-id
+
+# GitHub Discussions
+GITHUB_TOKEN=your-token
+GITHUB_OWNER=your-username
+GITHUB_REPO=your-repo
+GITHUB_DISCUSSION_CATEGORY=General
+
+# X (via Postiz)
+POSTIZ_API_KEY=your-key
+
+# MCP Server Auth
+MCP_AUTH_KEY=your-key
+```
+
+### Project Configuration (`project.yaml`)
+
+```yaml
+name: my-blog
+description: My tech blog
+platforms: [x, devto, hashnode]
+language: en
+tone: professional
+default_tags: [tech, ai]
+```
+
+### Workspace Resolution
+
+When you run any command, reachforge resolves the workspace in this order:
+
+1. `--workspace` flag or `REACHFORGE_WORKSPACE` env var.
+2. Walk up from `cwd` looking for a `.reachforge/` directory.
+3. Check `cwd` for `project.yaml` (treat parent as workspace).
+4. Fall back to `~/reachforge-workspace`.
+
+---
+
+## LLM Integration
+
+### Supported Adapters
+
+| Adapter | CLI Tool | Setup |
+|---------|----------|-------|
+| Claude | `claude` | `claude login` |
+| Gemini | `gemini` | `gemini login` |
+| Codex | `codex` | `codex login` |
+
+Each adapter wraps the respective CLI tool. You can mix adapters per stage — for example, use Gemini for drafting and Claude for adaptation:
+
+```bash
+export REACHFORGE_DRAFT_ADAPTER=gemini
+export REACHFORGE_ADAPT_ADAPTER=claude
+```
+
+### Token Usage
+
+After each LLM call, reachforge reports usage:
+
+```
+Tokens: 1234 in / 5678 out ($0.02)
+```
+
+---
+
+## Platform Providers
+
+### Supported Platforms
+
+| Platform | Provider | API | Content Format |
+|----------|----------|-----|----------------|
+| Dev.to | `DevtoProvider` | REST | Markdown with YAML frontmatter |
+| Hashnode | `HashnodeProvider` | GraphQL | Markdown with H1 title |
+| GitHub | `GitHubProvider` | GraphQL | Markdown with H1 title |
+| X | `PostizProvider` | REST (Postiz SaaS) | Markdown thread (`---` delimited) |
+
+### Content Validation Rules
+
+Each platform validates content before publishing:
+
+| Platform | Requirements |
+|----------|-------------|
+| **Dev.to** | Must have YAML frontmatter with `title` field |
+| **Hashnode** | Must have H1 heading or frontmatter `title` |
+| **GitHub** | Must have H1 heading (becomes discussion title) |
+| **X** | Thread segments delimited by `---`; each segment <= 280 characters |
+
+### Receipt Tracking
+
+After publishing, `receipt.yaml` records the outcome:
+
+```yaml
+status: completed
+published_at: 2026-04-01T15:30:00Z
+items:
+  - platform: devto
+    status: success
+    url: https://dev.to/user/my-post
+  - platform: x
+    status: failed
+    error: "API rate limit exceeded"
+```
+
+---
+
+## Skill System
+
+Skills are Markdown files that provide instructions and context to the LLM during draft and adapt stages.
+
+### Skill Precedence (highest to lowest)
+
+1. **Project-level** — `{project}/skills/`
+2. **Workspace-level** — `{workspace}/skills/`
+3. **Built-in** — bundled with reachforge
+
+### Skill Directory Structure
+
+```
+skills/
+├── stages/
+│   ├── draft.md        # Drafting instructions
+│   └── adapt.md        # Adaptation instructions
+└── platforms/
+    ├── x.md            # X/Twitter-specific guidance
+    ├── devto.md        # Dev.to-specific guidance
+    ├── hashnode.md
+    ├── github.md
+    ├── wechat.md
+    └── zhihu.md
+```
+
+To customize behavior, create a `skills/` directory in your project or workspace and add or override any of these files.
+
+---
+
+## MCP Server
+
+reachforge can run as an MCP server, making its pipeline available to AI agents and other MCP clients.
+
+```bash
+# stdio (for Claude Desktop, etc.)
+reachforge mcp
+
+# SSE (for networked access)
+reachforge mcp --transport sse --port 8001
+```
+
+### Available MCP Tools
+
+| Tool | Input | Description |
+|------|-------|-------------|
+| `reachforge_status` | — | Pipeline dashboard |
+| `reachforge_draft` | `source: string` | Generate draft from inbox item |
+| `reachforge_adapt` | `article: string`, `platforms?: string`, `force?: boolean` | Adapt for platforms |
+| `reachforge_schedule` | `article: string`, `date: string` | Schedule for publishing |
+| `reachforge_publish` | `dryRun?: boolean` | Publish due content |
+| `reachforge_rollback` | `project: string` | Roll back one stage |
+
+---
+
+## Troubleshooting
+
+### LLM not found
+
+```
+Error: claude: command not found
+```
+
+Install the CLI tool and authenticate:
+
+```bash
+# For Claude
+npm install -g @anthropic-ai/claude-code && claude login
+
+# For Gemini
+npm install -g @anthropic-ai/gemini-cli && gemini login
+```
+
+Or override the command path:
+
+```bash
+export REACHFORGE_CLAUDE_COMMAND=/path/to/claude
+```
+
+### LLM timeout
+
+```
+Error: LLM call timed out
+```
+
+Increase the timeout:
+
+```bash
+export REACHFORGE_LLM_TIMEOUT=300
+```
+
+### Publish lock stuck
+
+If a publish run was interrupted and the lock file remains:
+
+```bash
+# Verify no other publish process is running, then:
+rm 05_scheduled/{item}/.publish.lock
+```
+
+### Session issues with `refine`
+
+If a session becomes stale or the adapter changed, reachforge automatically archives the old session and starts fresh. Archived sessions are saved as `.bak` files in `.reachforge/sessions/`.
+
+### Validation failures
+
+Use `--dry-run` to preview issues before publishing:
+
+```bash
+reachforge publish --dry-run
+```
+
+Common validation issues:
+- **Dev.to:** Missing YAML frontmatter or `title` field.
+- **X:** A thread segment exceeds 280 characters.
+- **GitHub/Hashnode:** Missing H1 heading.

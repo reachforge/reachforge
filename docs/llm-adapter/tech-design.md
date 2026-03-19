@@ -1,4 +1,4 @@
-# Technical Design Document: LLM Adapter Layer for aphype
+# Technical Design Document: LLM Adapter Layer for reachforge
 
 | Field            | Value                                                  |
 |------------------|--------------------------------------------------------|
@@ -7,21 +7,21 @@
 | **Date**         | 2026-03-17                                             |
 | **Status**       | Draft                                                  |
 | **Version**      | 1.0                                                    |
-| **PRD Reference**| [aphype PRD v1.0](../aphype/prd.md)                   |
-| **SRS Reference**| [aphype SRS v1.0](../aphype/srs.md)                   |
+| **PRD Reference**| [reachforge PRD v1.0](../reachforge/prd.md)                   |
+| **SRS Reference**| [reachforge SRS v1.0](../reachforge/srs.md)                   |
 
 ---
 
 ## 1. Executive Summary
 
-This document describes the design of the LLM Adapter Layer for aphype, a multi-CLI adapter system that replaces the current Gemini SDK-only provider with child-process-based adapters for Claude Code, Gemini CLI, and Codex CLI. The adapter layer adds session resumption for multi-turn conversations (the `aphype refine` command), a three-layer skill cascade for injecting stage-specific and platform-specific prompts, and a unified interface that decouples pipeline commands from any specific LLM tooling.
+This document describes the design of the LLM Adapter Layer for reachforge, a multi-CLI adapter system that replaces the current Gemini SDK-only provider with child-process-based adapters for Claude Code, Gemini CLI, and Codex CLI. The adapter layer adds session resumption for multi-turn conversations (the `reachforge refine` command), a three-layer skill cascade for injecting stage-specific and platform-specific prompts, and a unified interface that decouples pipeline commands from any specific LLM tooling.
 
 ### 1.1 Problem Statement
 
 The current `src/llm/` module has a single `GeminiProvider` that calls the `@google/generative-ai` SDK directly. This creates three problems:
 
 1. **Single-provider lock-in.** Users cannot choose their preferred AI CLI (Claude, Gemini, Codex). The LLMFactory only instantiates GeminiProvider.
-2. **No session continuity.** Each `aphype draft` or `aphype adapt` call is stateless. There is no way to refine a draft iteratively across multiple invocations, which is the primary user workflow for content improvement.
+2. **No session continuity.** Each `reachforge draft` or `reachforge adapt` call is stateless. There is no way to refine a draft iteratively across multiple invocations, which is the primary user workflow for content improvement.
 3. **No skill injection.** Prompts are hardcoded strings in `types.ts` (`PLATFORM_PROMPTS`, `DEFAULT_DRAFT_PROMPT`). Users cannot customize prompts per-project or per-workspace, and the system cannot provide rich, stage-specific instructions to the LLM.
 
 ### 1.2 Goals
@@ -29,9 +29,9 @@ The current `src/llm/` module has a single `GeminiProvider` that calls the `@goo
 | ID   | Goal                                                                 | SRS Requirement      |
 |------|----------------------------------------------------------------------|----------------------|
 | G-01 | Support Claude Code, Gemini CLI, and Codex CLI as adapter backends   | FR-DRAFT-002 (extended) |
-| G-02 | Enable per-stage session persistence and resumption                  | New (supports `aphype refine`) |
+| G-02 | Enable per-stage session persistence and resumption                  | New (supports `reachforge refine`) |
 | G-03 | Implement three-layer skill cascade (built-in > workspace > project) | New (supports FEAT-014 direction) |
-| G-04 | Add `aphype refine <article>` interactive multi-turn command         | New (US-003 enhanced) |
+| G-04 | Add `reachforge refine <article>` interactive multi-turn command         | New (US-003 enhanced) |
 | G-05 | Maintain backward compatibility with existing `draft` and `adapt` commands | FR-DRAFT-001 through FR-DRAFT-007, FR-ADAPT-001 through FR-ADAPT-007 |
 | G-06 | Replace the GeminiProvider SDK approach with CLI-spawning adapters   | Design decision Q1   |
 
@@ -50,7 +50,7 @@ The current `src/llm/` module has a single `GeminiProvider` that calls the `@goo
 | Child process spawning, stream-json parsing         | Real-time streaming to user terminal       |
 | Session manager (create, read, update, cleanup)     | Session migration between adapters          |
 | Skill resolver (3-layer cascade)                    | Skill authoring tools or generators         |
-| `aphype refine` interactive command                 | Web-based refinement UI                     |
+| `reachforge refine` interactive command                 | Web-based refinement UI                     |
 | Built-in skill files for draft and adapt stages     | Platform-specific skill creation beyond MVP |
 | Config changes for adapter selection                | GUI config editor                           |
 
@@ -61,7 +61,7 @@ The current `src/llm/` module has a single `GeminiProvider` that calls the `@goo
 ### 2.1 Current Architecture (Before)
 
 ```
-aphype CLI Commands
+reachforge CLI Commands
   |
   +-- draftCommand() --> LLMFactory.create(config) --> GeminiProvider.generate()
   |                                                        |
@@ -77,7 +77,7 @@ Problems: Single provider, no sessions, hardcoded prompts, no skill injection.
 ### 2.2 Target Architecture (After)
 
 ```
-aphype CLI Commands
+reachforge CLI Commands
   |
   +-- draftCommand() ----+
   |                      |
@@ -91,7 +91,7 @@ aphype CLI Commands
                                      |
                                      +--> SessionManager.load(article, stage)
                                      |           |
-                                     |           +--> {project}/.aphype/sessions/{article}/{stage}.json
+                                     |           +--> {project}/.reachforge/sessions/{article}/{stage}.json
                                      |
                                      +--> CLIAdapter (one of:)
                                               |
@@ -104,27 +104,27 @@ aphype CLI Commands
 
 ```mermaid
 C4Context
-    title System Context: aphype LLM Adapter Layer
+    title System Context: reachforge LLM Adapter Layer
 
     Person(user, "Content Operator", "Creates and refines content via CLI")
-    System(aphype, "aphype CLI", "Content pipeline tool with LLM adapter layer")
+    System(reachforge, "reachforge CLI", "Content pipeline tool with LLM adapter layer")
     System_Ext(claude, "Claude Code CLI", "Anthropic's CLI tool, installed locally")
     System_Ext(gemini, "Gemini CLI", "Google's CLI tool, installed locally")
     System_Ext(codex, "Codex CLI", "OpenAI's CLI tool, installed locally")
     System_Ext(fs, "Local Filesystem", "Pipeline directories, session files, skill files")
 
-    Rel(user, aphype, "Runs commands: draft, adapt, refine")
-    Rel(aphype, claude, "Spawns child process with stream-json output")
-    Rel(aphype, gemini, "Spawns child process with stream-json output")
-    Rel(aphype, codex, "Spawns child process with JSON output")
-    Rel(aphype, fs, "Reads/writes pipeline files, sessions, skills")
+    Rel(user, reachforge, "Runs commands: draft, adapt, refine")
+    Rel(reachforge, claude, "Spawns child process with stream-json output")
+    Rel(reachforge, gemini, "Spawns child process with stream-json output")
+    Rel(reachforge, codex, "Spawns child process with JSON output")
+    Rel(reachforge, fs, "Reads/writes pipeline files, sessions, skills")
 ```
 
 ### 2.4 C4 Container Diagram
 
 ```mermaid
 C4Container
-    title Container Diagram: aphype LLM Adapter Layer
+    title Container Diagram: reachforge LLM Adapter Layer
 
     Container(commands, "CLI Commands", "TypeScript", "draft, adapt, refine command handlers")
     Container(factory, "AdapterFactory", "TypeScript", "Creates adapter instances from config + stage")
@@ -132,7 +132,7 @@ C4Container
     Container(session, "SessionManager", "TypeScript", "Per-stage session CRUD with file-based storage")
     Container(skills, "SkillResolver", "TypeScript", "3-layer cascade resolution for skill markdown files")
     Container(process, "ProcessRunner", "TypeScript", "Child process spawning, stream parsing, error detection")
-    ContainerDb(sessionStore, "Session Files", "JSON", "{project}/.aphype/sessions/{article}/{stage}.json")
+    ContainerDb(sessionStore, "Session Files", "JSON", "{project}/.reachforge/sessions/{article}/{stage}.json")
     ContainerDb(skillFiles, "Skill Files", "Markdown", "Built-in + workspace + project skill directories")
 
     Rel(commands, factory, "Creates adapter")
@@ -192,7 +192,7 @@ Each LLM backend is accessed by spawning its CLI tool as a child process. The ad
 
 **Advantages:**
 - Leverages the full power of each CLI tool (tool use, file access, reasoning).
-- Session management is handled by the CLI tool natively; aphype just stores the session ID.
+- Session management is handled by the CLI tool natively; reachforge just stores the session ID.
 - Skills are injected via the CLI's own mechanisms (`--add-dir` for Claude, `~/.gemini/skills/` for Gemini, `~/.codex/skills/` for Codex).
 - No API keys needed for subscription-based CLI logins (Claude Pro, Gemini Advanced, ChatGPT Plus).
 - Proven pattern: paperclip project uses this exact approach in production.
@@ -410,7 +410,7 @@ Args: [
   "--print", "-",
   "--output-format", "stream-json",
   "--verbose",
-  "--dangerously-skip-permissions",  // aphype controls all file operations
+  "--dangerously-skip-permissions",  // reachforge controls all file operations
   {sessionId ? ["--resume", sessionId] : []},
   {skillDir ? ["--add-dir", skillDir] : []},
   ...extraArgs
@@ -494,7 +494,7 @@ Env: { ...process.env }
 
 ### 4.4 ProcessRunner
 
-A shared utility for spawning child processes, adapted from the paperclip `runChildProcess` pattern but simplified for aphype's needs.
+A shared utility for spawning child processes, adapted from the paperclip `runChildProcess` pattern but simplified for reachforge's needs.
 
 ```typescript
 // src/llm/process.ts
@@ -550,7 +550,7 @@ export class SessionManager {
    * Load session for a given article and stage.
    * Returns null if no session exists or if the session file is corrupted.
    *
-   * Path: {projectDir}/.aphype/sessions/{article}/{stage}.json
+   * Path: {projectDir}/.reachforge/sessions/{article}/{stage}.json
    * Where stage is "draft" or "adapt-{platform}".
    */
   async load(article: string, stage: string): Promise<SessionData | null>;
@@ -585,7 +585,7 @@ export class SessionManager {
 **File Layout:**
 ```
 {projectDir}/
-  .aphype/
+  .reachforge/
     sessions/
       my-article/
         draft.json          <-- long-lived, survives multiple refine rounds
@@ -595,10 +595,10 @@ export class SessionManager {
 ```
 
 **Session Lifecycle:**
-1. `aphype draft my-article` => creates `draft.json` with the session ID returned by the adapter.
-2. `aphype refine my-article` => loads `draft.json`, resumes session, updates `lastUsedAt`.
-3. `aphype refine my-article` (again) => same session, another round.
-4. `aphype adapt my-article --platforms x,devto` => creates `adapt-x.json` and `adapt-devto.json` independently.
+1. `reachforge draft my-article` => creates `draft.json` with the session ID returned by the adapter.
+2. `reachforge refine my-article` => loads `draft.json`, resumes session, updates `lastUsedAt`.
+3. `reachforge refine my-article` (again) => same session, another round.
+4. `reachforge adapt my-article --platforms x,devto` => creates `adapt-x.json` and `adapt-devto.json` independently.
 5. User can use different adapters for draft vs adapt (e.g., Claude for draft, Gemini for adapt).
 
 **Cross-adapter validation:** When loading a session, the SessionManager checks if `data.adapter` matches the currently configured adapter. If mismatched, the session is not resumed (a new session starts), and the old session file is archived with a `.bak` suffix.
@@ -625,14 +625,14 @@ export class SkillResolver {
    * Resolve skills for a given stage and optional platform.
    * Returns deduplicated list where project > workspace > built-in.
    *
-   * Resolution order for "aphype draft":
+   * Resolution order for "reachforge draft":
    *   1. Look for: stages/draft.md
    *   2. Check: {project}/skills/stages/draft.md (highest priority)
    *   3. Check: {workspace}/skills/stages/draft.md
    *   4. Check: {builtIn}/skills/stages/draft.md (lowest priority)
    *   5. Return the first match found.
    *
-   * Resolution order for "aphype adapt --platform x":
+   * Resolution order for "reachforge adapt --platform x":
    *   1. Resolve stages/adapt.md (same cascade as above)
    *   2. Resolve platforms/x.md (same cascade)
    *   3. Return both resolved skills.
@@ -700,7 +700,7 @@ For Gemini and Codex, the skill content is prepended to the prompt text, since t
 export class AdapterFactory {
   /**
    * Create an adapter for the given stage.
-   * Reads adapter name from config: APHYPE_LLM_ADAPTER env var > config file > default "claude".
+   * Reads adapter name from config: REACHFORGE_LLM_ADAPTER env var > config file > default "claude".
    *
    * @param config - ConfigManager with loaded settings
    * @param stage - Pipeline stage ("draft" | "adapt")
@@ -722,7 +722,7 @@ export class AdapterFactory {
 ```
 
 **Logic Steps:**
-1. Read adapter name: `process.env.APHYPE_LLM_ADAPTER ?? config.getLLMAdapter() ?? "claude"`.
+1. Read adapter name: `process.env.REACHFORGE_LLM_ADAPTER ?? config.getLLMAdapter() ?? "claude"`.
 2. Validate adapter name is one of: `"claude"`, `"gemini"`, `"codex"`.
 3. If invalid: throw `AdapterNotFoundError("Unknown adapter: {name}. Supported: claude, gemini, codex")`.
 4. Resolve command path using `which`/`where` equivalent.
@@ -738,10 +738,10 @@ New configuration keys added to the 4-layer config system:
 
 | Key                    | Env Variable           | Config Key       | Default   | Description |
 |------------------------|------------------------|------------------|-----------|-------------|
-| LLM Adapter            | `APHYPE_LLM_ADAPTER`  | `llm_adapter`    | `"claude"`| Which CLI adapter to use |
-| Adapter Timeout        | `APHYPE_LLM_TIMEOUT`  | `llm_timeout`    | `300`     | Timeout in seconds (10-3600) |
-| Draft Adapter Override | `APHYPE_DRAFT_ADAPTER` | `draft_adapter`  | (inherits)| Override adapter for draft stage only |
-| Adapt Adapter Override | `APHYPE_ADAPT_ADAPTER` | `adapt_adapter`  | (inherits)| Override adapter for adapt stage only |
+| LLM Adapter            | `REACHFORGE_LLM_ADAPTER`  | `llm_adapter`    | `"claude"`| Which CLI adapter to use |
+| Adapter Timeout        | `REACHFORGE_LLM_TIMEOUT`  | `llm_timeout`    | `300`     | Timeout in seconds (10-3600) |
+| Draft Adapter Override | `REACHFORGE_DRAFT_ADAPTER` | `draft_adapter`  | (inherits)| Override adapter for draft stage only |
+| Adapt Adapter Override | `REACHFORGE_ADAPT_ADAPTER` | `adapt_adapter`  | (inherits)| Override adapter for adapt stage only |
 
 Stage-specific adapter overrides allow using Claude for drafting (better creative writing) and Gemini for adaptation (faster, lower cost), or any other combination.
 
@@ -802,7 +802,7 @@ sequenceDiagram
     participant Process as ProcessRunner
     participant CLI as Claude/Gemini/Codex CLI
 
-    User->>DraftCmd: aphype draft my-article
+    User->>DraftCmd: reachforge draft my-article
     DraftCmd->>Factory: create(config, "draft")
     Factory->>Skills: resolve("draft")
     Skills-->>Factory: [draft.md skill path]
@@ -831,7 +831,7 @@ sequenceDiagram
     participant Adapter as CLIAdapter
     participant CLI as Claude/Gemini/Codex CLI
 
-    User->>RefineCmd: aphype refine my-article
+    User->>RefineCmd: reachforge refine my-article
     RefineCmd->>Session: load("my-article", "draft")
     Session-->>RefineCmd: SessionData { sessionId: "abc123" }
     RefineCmd->>RefineCmd: Display current draft content
@@ -1025,8 +1025,8 @@ skills/                 # Built-in skills (bundled with CLI)
 | # | Question | Owner | Target Date | Fallback if Unresolved |
 |---|----------|-------|-------------|------------------------|
 | 1 | Should skills be prepended to the prompt text or injected via CLI-native mechanisms only? | Engineering | 2026-03-24 | Prepend to prompt (simpler, works for all adapters) |
-| 2 | What is the maximum session age before automatic cleanup? | Product | 2026-03-24 | 30 days, configurable via `APHYPE_SESSION_TTL_DAYS` |
-| 3 | Should `aphype refine` support adapt-stage sessions (refining platform-specific content)? | Product | 2026-03-31 | Phase 1: draft-only. Phase 2: adapt support. |
+| 2 | What is the maximum session age before automatic cleanup? | Product | 2026-03-24 | 30 days, configurable via `REACHFORGE_SESSION_TTL_DAYS` |
+| 3 | Should `reachforge refine` support adapt-stage sessions (refining platform-specific content)? | Product | 2026-03-31 | Phase 1: draft-only. Phase 2: adapt support. |
 | 4 | How should the system handle concurrent refine sessions (two terminals, same article)? | Engineering | 2026-03-24 | File locking via `.lock` file; second process waits or fails with message |
 
 ---

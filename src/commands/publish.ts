@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import fs from 'fs-extra';
 import type { PipelineEngine } from '../core/pipeline.js';
-import type { Receipt, AphypeConfig } from '../types/index.js';
+import type { Receipt, ReachforgeConfig } from '../types/index.js';
 import { ProviderLoader } from '../providers/loader.js';
 import { validateContent } from '../validators/runner.js';
 import { PLATFORM_VERSIONS_DIR } from '../core/constants.js';
@@ -9,7 +9,7 @@ import { markdownToHtml } from '../utils/markdown.js';
 
 export async function publishCommand(
   engine: PipelineEngine,
-  options: { dryRun?: boolean; draft?: boolean; config?: AphypeConfig } = {},
+  options: { dryRun?: boolean; draft?: boolean; config?: ReachforgeConfig } = {},
 ): Promise<void> {
   await engine.initPipeline();
   const dueItems = await engine.findDueProjects();

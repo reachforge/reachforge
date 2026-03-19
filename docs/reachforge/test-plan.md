@@ -1,16 +1,16 @@
-# Test Plan: aphype
+# Test Plan: reachforge
 
 | Field            | Value                                              |
 |------------------|----------------------------------------------------|
-| **Document**     | aphype Test Plan v1.0                              |
+| **Document**     | reachforge Test Plan v1.0                              |
 | **Author**       | aipartnerup QA Engineering                         |
 | **Date**         | 2026-03-14                                         |
 | **Status**       | Draft                                              |
 | **Version**      | 1.0                                                |
-| **SRS Reference**| [aphype SRS v1.0](srs.md)                         |
-| **Tech Design**  | [aphype Technical Design v1.0](tech-design.md)     |
-| **PRD Reference**| [aphype PRD v1.0](prd.md)                         |
-| **Decomposition**| [aphype Decomposition](decomposition.md)           |
+| **SRS Reference**| [reachforge SRS v1.0](srs.md)                         |
+| **Tech Design**  | [reachforge Technical Design v1.0](tech-design.md)     |
+| **PRD Reference**| [reachforge PRD v1.0](prd.md)                         |
+| **Decomposition**| [reachforge Decomposition](decomposition.md)           |
 | **Standard**     | IEEE 829, ISTQB Foundation                         |
 
 ---
@@ -19,7 +19,7 @@
 
 ### 1.1 Purpose
 
-This Test Plan defines the test strategy, test environment, test cases, and quality gates for **aphype**, an AI-native Social Influence Engine. It provides comprehensive coverage for all functional requirements (FR-xxx-NNN) and non-functional requirements (NFR-xxx-NNN) specified in the SRS, with traceability to the PRD features and Technical Design components.
+This Test Plan defines the test strategy, test environment, test cases, and quality gates for **reachforge**, an AI-native Social Influence Engine. It provides comprehensive coverage for all functional requirements (FR-xxx-NNN) and non-functional requirements (NFR-xxx-NNN) specified in the SRS, with traceability to the PRD features and Technical Design components.
 
 ### 1.2 Scope
 
@@ -37,10 +37,10 @@ This Test Plan defines the test strategy, test environment, test cases, and qual
 
 ### 1.3 References
 
-1. aphype SRS v1.0 (`docs/aphype/srs.md`)
-2. aphype Technical Design v1.0 (`docs/aphype/tech-design.md`)
-3. aphype PRD v1.0 (`docs/aphype/prd.md`)
-4. aphype Decomposition (`docs/aphype/decomposition.md`)
+1. reachforge SRS v1.0 (`docs/reachforge/srs.md`)
+2. reachforge Technical Design v1.0 (`docs/reachforge/tech-design.md`)
+3. reachforge PRD v1.0 (`docs/reachforge/prd.md`)
+4. reachforge Decomposition (`docs/reachforge/decomposition.md`)
 5. Bun Test Runner documentation (https://bun.sh/docs/cli/test)
 6. IEEE 829-2008 Standard for Software and System Test Documentation
 
@@ -293,7 +293,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 | `HASHNODE_API_KEY` | `test-hashnode-key-fghij` | Mock API key for Hashnode tests      |
 | `GITHUB_TOKEN`     | `test-github-token-klmno` | Mock token for GitHub tests          |
 | `E2E`             | `true`                     | Enables E2E test execution           |
-| `APHYPE_LLM_PROVIDER` | `gemini`              | Default LLM provider for tests       |
+| `REACHFORGE_LLM_PROVIDER` | `gemini`              | Default LLM provider for tests       |
 
 ---
 
@@ -309,7 +309,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
   1. Create a `PipelineEngine` instance with the temp directory as `workingDir`
   2. Call `initPipeline()`
   3. Read the directory listing of `workingDir`
-- **Test Data**: Working directory path `/tmp/aphype-test-XXXXX/`
+- **Test Data**: Working directory path `/tmp/reachforge-test-XXXXX/`
 - **Expected Result**: Six directories exist: `01_inbox`, `02_drafts`, `03_master`, `04_adapted`, `05_scheduled`, `06_sent`. Each is an empty directory. No files are created.
 - **Automation**: Yes
 - **Traces**: FR-PIPE-001
@@ -470,7 +470,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: Pipeline with 2 items in `01_inbox`, 1 in `02_drafts`, 0 in others
 - **Test Steps**:
   1. Create `01_inbox/idea-a/`, `01_inbox/idea-b/`, `02_drafts/article-c/`
-  2. Run `aphype status`
+  2. Run `reachforge status`
   3. Capture stdout output
 - **Expected Result**: Output contains all 6 stage names. `01_inbox` shows count 2 with names `idea-a`, `idea-b`. `02_drafts` shows count 1 with name `article-c`. Other stages show count 0. Exit code 0.
 - **Automation**: Yes
@@ -481,7 +481,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: Empty working directory (no pipeline dirs)
 - **Test Steps**:
-  1. Run `aphype status` in empty temp directory
+  1. Run `reachforge status` in empty temp directory
   2. Check stdout and filesystem
 - **Expected Result**: Six pipeline directories are auto-created. Output shows all stages with count 0. Exit code 0.
 - **Automation**: Yes
@@ -493,7 +493,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: `04_adapted/my-article/meta.yaml` exists with `status: "adapted"`
 - **Test Steps**:
   1. Create adapted project with meta.yaml and platform_versions/
-  2. Run `aphype schedule my-article 2026-03-20`
+  2. Run `reachforge schedule my-article 2026-03-20`
   3. Check filesystem state
 - **Expected Result**: `04_adapted/my-article/` is gone. `05_scheduled/2026-03-20-my-article/` exists. `meta.yaml` inside contains `status: "scheduled"` and `publish_date: "2026-03-20"`. Exit code 0.
 - **Automation**: Yes
@@ -504,9 +504,9 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `04_adapted/my-article/` exists
 - **Test Steps**:
-  1. Run `aphype schedule my-article 03-20-2026`
-  2. Run `aphype schedule my-article not-a-date`
-  3. Run `aphype schedule my-article 2026-02-30` (invalid calendar date)
+  1. Run `reachforge schedule my-article 03-20-2026`
+  2. Run `reachforge schedule my-article not-a-date`
+  3. Run `reachforge schedule my-article 2026-02-30` (invalid calendar date)
 - **Expected Result**: All three commands output error containing `"Date must be in YYYY-MM-DD format"` (or `"valid calendar date"` for the third). Exit code 1. No files moved.
 - **Automation**: Yes
 - **Traces**: FR-LIFE-002
@@ -516,7 +516,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: Pipeline initialized but `04_adapted/ghost/` does not exist
 - **Test Steps**:
-  1. Run `aphype schedule ghost 2026-03-20`
+  1. Run `reachforge schedule ghost 2026-03-20`
 - **Expected Result**: Stderr contains `"Article 'ghost' not found in 04_adapted"` or equivalent. Exit code 1.
 - **Automation**: Yes
 - **Traces**: FR-LIFE-001
@@ -527,7 +527,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: `01_inbox/my-idea.md` exists. `GEMINI_API_KEY` is unset.
 - **Test Steps**:
   1. Unset `GEMINI_API_KEY` from environment
-  2. Run `aphype draft my-idea.md`
+  2. Run `reachforge draft my-idea.md`
 - **Expected Result**: Stderr contains `"GEMINI_API_KEY is not set"`. Exit code 1. No files created in `02_drafts/`.
 - **Automation**: Yes
 - **Traces**: FR-DRAFT-005
@@ -537,7 +537,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `01_inbox/` is empty
 - **Test Steps**:
-  1. Run `aphype draft nonexistent`
+  1. Run `reachforge draft nonexistent`
 - **Expected Result**: Stderr contains `'Source "nonexistent" not found in 01_inbox'`. Exit code non-zero.
 - **Automation**: Yes
 - **Traces**: FR-DRAFT-006
@@ -547,9 +547,9 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `03_master/my-article/master.md` exists. `04_adapted/my-article/platform_versions/x.md` already exists with content `"old content"`.
 - **Test Steps**:
-  1. Run `aphype adapt my-article` (without --force)
+  1. Run `reachforge adapt my-article` (without --force)
   2. Verify `x.md` still contains `"old content"`
-  3. Run `aphype adapt my-article --force`
+  3. Run `reachforge adapt my-article --force`
   4. Verify `x.md` now contains new AI-generated content
 - **Expected Result**: Step 1 skips existing `x.md` with informational message. Step 3 overwrites `x.md` with new content.
 - **Automation**: Yes
@@ -560,7 +560,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `03_master/my-article/master.md` exists
 - **Test Steps**:
-  1. Run `aphype adapt my-article --platforms x,devto`
+  1. Run `reachforge adapt my-article --platforms x,devto`
   2. List files in `04_adapted/my-article/platform_versions/`
 - **Expected Result**: Only `x.md` and `devto.md` exist in `platform_versions/`. No `wechat.md` or `zhihu.md`. `meta.yaml` contains `adapted_platforms: ["x", "devto"]`.
 - **Automation**: Yes
@@ -571,7 +571,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `05_scheduled/` contains only `2026-12-31-future-article/`
 - **Test Steps**:
-  1. Run `aphype publish` (system date is 2026-03-14)
+  1. Run `reachforge publish` (system date is 2026-03-14)
 - **Expected Result**: Stdout contains `"No content due for publishing today."`. Exit code 1. No items moved.
 - **Automation**: Yes
 - **Traces**: FR-PUB-001
@@ -1164,7 +1164,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: Watcher runs one check cycle
 - **Test Steps**:
   1. Run watcher for one cycle
-  2. Read `aphype-watcher.log`
+  2. Read `reachforge-watcher.log`
 - **Expected Result**: Log file contains entry with ISO 8601 timestamp, number of due items found, and publish outcome.
 - **Automation**: Yes
 - **Traces**: FR-WATCH-006
@@ -1188,7 +1188,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Test Steps**:
   1. Send MCP `tools/list` request
   2. Parse response
-- **Expected Result**: Response contains at least 5 tools: `aphype.status`, `aphype.draft`, `aphype.adapt`, `aphype.schedule`, `aphype.publish`. Each has `name`, `description`, and `inputSchema`.
+- **Expected Result**: Response contains at least 5 tools: `reachforge.status`, `reachforge.draft`, `reachforge.adapt`, `reachforge.schedule`, `reachforge.publish`. Each has `name`, `description`, and `inputSchema`.
 - **Automation**: Yes
 - **Traces**: FR-MCP-001, FR-MCP-002
 
@@ -1197,8 +1197,8 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Unit
 - **Preconditions**: MCP tool definitions loaded
 - **Test Steps**:
-  1. Call `aphype.draft` tool with `{ source: "" }` (empty string)
-  2. Call `aphype.schedule` tool with `{ article: "test", date: "invalid" }`
+  1. Call `reachforge.draft` tool with `{ source: "" }` (empty string)
+  2. Call `reachforge.schedule` tool with `{ article: "test", date: "invalid" }`
 - **Expected Result**: Both return MCP error responses with validation messages. No pipeline operations invoked.
 - **Automation**: Yes
 - **Traces**: FR-MCP-003, NFR-SEC-003
@@ -1208,7 +1208,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: Pipeline with 2 items in inbox
 - **Test Steps**:
-  1. Call `aphype.status` tool via MCP
+  1. Call `reachforge.status` tool via MCP
 - **Expected Result**: Response contains `stages` object with `01_inbox: { count: 2, items: [...] }` and other stages.
 - **Automation**: Yes
 - **Traces**: FR-MCP-002
@@ -1283,8 +1283,8 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `01_inbox/my-idea.md` exists
 - **Test Steps**:
-  1. Run `aphype draft my-idea.md` (creates `02_drafts/my-idea/`)
-  2. Run `aphype draft my-idea.md` again
+  1. Run `reachforge draft my-idea.md` (creates `02_drafts/my-idea/`)
+  2. Run `reachforge draft my-idea.md` again
   3. List contents of `02_drafts/`
 - **Expected Result**: Single `my-idea/` directory in `02_drafts/`. No `my-idea-1/` or similar duplicates. Second run either overwrites or displays message about existing draft.
 - **Automation**: Yes
@@ -1319,7 +1319,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `06_sent/` contains 3 published projects each with a valid `receipt.yaml` recording publishes to x, devto, wechat
 - **Test Steps**:
-  1. Run `aphype analytics`
+  1. Run `reachforge analytics`
   2. Parse stdout output
 - **Test Data**: 3 receipt files: 2 with all-success, 1 with x=success, devto=failed
 - **Expected Result**: Output displays: `Total publishes: 3`, `devto: 2 success / 1 failed`, `x: 3 success / 0 failed`, `wechat: 2 success / 0 failed`. Exit code 0.
@@ -1331,7 +1331,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Unit
 - **Preconditions**: `06_sent/` contains projects published on 2026-01-15, 2026-02-10, 2026-03-05
 - **Test Steps**:
-  1. Run `aphype analytics --from 2026-02-01 --to 2026-02-28`
+  1. Run `reachforge analytics --from 2026-02-01 --to 2026-02-28`
 - **Expected Result**: Only the 2026-02-10 project is included in counts. Exit code 0.
 - **Automation**: Yes
 - **Traces**: FR-ANAL-002
@@ -1341,7 +1341,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Unit
 - **Preconditions**: `06_sent/` is empty
 - **Test Steps**:
-  1. Run `aphype analytics`
+  1. Run `reachforge analytics`
 - **Expected Result**: Output displays "No publishing history found." Exit code 0.
 - **Automation**: Yes
 - **Traces**: FR-ANAL-003
@@ -1354,7 +1354,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: `templates/tech-blog.yaml` exists with content: `prompt: "Write a detailed technical blog post about: {{topic}}"`. Mock LLM configured.
 - **Test Steps**:
   1. Create `01_inbox/my-idea/idea.md` with content "Bun vs Deno"
-  2. Run `aphype draft my-idea --template tech-blog`
+  2. Run `reachforge draft my-idea --template tech-blog`
 - **Test Data**: Template file at `templates/tech-blog.yaml`, inbox content "Bun vs Deno"
 - **Expected Result**: The LLM is called with a prompt containing "Write a detailed technical blog post about:" instead of the default prompt. Draft saved to `02_drafts/my-idea/draft.md`.
 - **Automation**: Yes
@@ -1363,7 +1363,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 **TC-TMPL-002: Default platform templates exist**
 - **Priority**: P2
 - **Type**: Unit
-- **Preconditions**: Fresh aphype installation
+- **Preconditions**: Fresh reachforge installation
 - **Test Steps**:
   1. Check `templates/` directory for default template files
 - **Expected Result**: Default templates exist: `templates/default-draft.yaml`, `templates/default-x.yaml`, `templates/default-wechat.yaml`, `templates/default-zhihu.yaml`, `templates/default-devto.yaml`.
@@ -1375,7 +1375,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Unit
 - **Preconditions**: No file at `templates/nonexistent.yaml`
 - **Test Steps**:
-  1. Run `aphype draft my-idea --template nonexistent`
+  1. Run `reachforge draft my-idea --template nonexistent`
 - **Expected Result**: Error message: `Template 'nonexistent' not found in templates/`. Exit code 1. No draft created.
 - **Automation**: Yes
 - **Traces**: FR-TMPL-003
@@ -1385,7 +1385,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: Integration
 - **Preconditions**: `03_master/my-article/meta.yaml` contains `template: "tech-blog"`. `templates/tech-blog.yaml` exists. Mock LLM configured.
 - **Test Steps**:
-  1. Run `aphype adapt my-article`
+  1. Run `reachforge adapt my-article`
 - **Expected Result**: Adaptation uses the tech-blog template prompts instead of defaults. Platform version files created in `04_adapted/my-article/platform_versions/`.
 - **Automation**: Yes
 - **Traces**: FR-TMPL-004
@@ -1428,14 +1428,14 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: Clean working directory. Mock LLM and mock platform APIs configured. All API keys set.
 - **Test Steps**:
   1. Create `01_inbox/e2e-test-article/idea.md` with content: `"Write about Bun runtime performance vs Node.js"`
-  2. Run `aphype draft e2e-test-article`
+  2. Run `reachforge draft e2e-test-article`
   3. Verify `02_drafts/e2e-test-article/draft.md` exists and is non-empty
   4. Copy `02_drafts/e2e-test-article/` to `03_master/e2e-test-article/`, rename `draft.md` to `master.md`
-  5. Run `aphype adapt e2e-test-article --platforms x,devto`
+  5. Run `reachforge adapt e2e-test-article --platforms x,devto`
   6. Verify `04_adapted/e2e-test-article/platform_versions/x.md` and `devto.md` exist
-  7. Run `aphype schedule e2e-test-article 2026-03-14`
+  7. Run `reachforge schedule e2e-test-article 2026-03-14`
   8. Verify `05_scheduled/2026-03-14-e2e-test-article/` exists
-  9. Run `aphype publish`
+  9. Run `reachforge publish`
   10. Verify `06_sent/2026-03-14-e2e-test-article/` exists with `receipt.yaml`
 - **Test Data**: Inbox content: `"Write about Bun runtime performance vs Node.js"`. Schedule date: `2026-03-14`.
 - **Expected Result**: Project traverses all 6 stages. Final `receipt.yaml` contains success entries for devto and x. No files remain in intermediate stages for this project.
@@ -1449,7 +1449,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Test Steps**:
   1. Follow steps 1-8 from TC-E2E-001
   2. Configure Postiz mock to fail
-  3. Run `aphype publish`
+  3. Run `reachforge publish`
   4. Check final state
 - **Expected Result**: Project moved to `06_sent/`. `receipt.yaml` has `devto: success` and `x: failed`. Project is not stuck in `05_scheduled/`.
 - **Automation**: Yes
@@ -1460,11 +1460,11 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Type**: E2E
 - **Preconditions**: MCP server running. Mock APIs configured.
 - **Test Steps**:
-  1. Call `aphype.status` tool --- verify inbox has items
-  2. Call `aphype.draft` tool with source name
-  3. Call `aphype.adapt` tool with article name
-  4. Call `aphype.schedule` tool with date
-  5. Call `aphype.publish` tool
+  1. Call `reachforge.status` tool --- verify inbox has items
+  2. Call `reachforge.draft` tool with source name
+  3. Call `reachforge.adapt` tool with article name
+  4. Call `reachforge.schedule` tool with date
+  5. Call `reachforge.publish` tool
 - **Expected Result**: All MCP tool calls succeed. Pipeline state changes match CLI behavior exactly.
 - **Automation**: Partial
 - **Traces**: UC-005, FR-MCP-002
@@ -1481,7 +1481,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Preconditions**: 100 projects distributed across pipeline stages
 - **Test Steps**:
   1. Create 100 project directories (20 per stage for 5 stages)
-  2. Run `aphype status` 10 times consecutively
+  2. Run `reachforge status` 10 times consecutively
   3. Measure wall clock time for each run
 - **Expected Result**: p95 latency is under 500ms.
 - **Automation**: Yes
@@ -1559,8 +1559,8 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Priority**: P1
 - **Type**: Unit
 - **Test Steps**:
-  1. Send MCP call to `aphype.draft` with `{ source: "" }` (empty)
-  2. Send MCP call to `aphype.schedule` with `{ article: "../traversal", date: "2026-03-20" }`
+  1. Send MCP call to `reachforge.draft` with `{ source: "" }` (empty)
+  2. Send MCP call to `reachforge.schedule` with `{ article: "../traversal", date: "2026-03-20" }`
   3. Verify no filesystem operations occurred
 - **Expected Result**: Both return MCP error responses. Pipeline state unchanged.
 - **Automation**: Yes
@@ -1594,8 +1594,8 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 - **Priority**: P1
 - **Type**: Compatibility
 - **Test Steps**:
-  1. Run `aphype status` on Bun 1.0.0
-  2. Run `aphype status` on latest Bun
+  1. Run `reachforge status` on Bun 1.0.0
+  2. Run `reachforge status` on latest Bun
 - **Expected Result**: Both produce identical correct output.
 - **Automation**: Partial (CI matrix)
 - **Traces**: NFR-COMPAT-002
@@ -1768,7 +1768,7 @@ All fixtures are stored in `tests/fixtures/` and version-controlled. Fixtures ar
 **Pipeline setup utility** (`tests/helpers/temp-pipeline.ts`):
 ```typescript
 export async function createTempPipeline(): Promise<{ dir: string; cleanup: () => Promise<void> }> {
-  const dir = await mkdtemp(join(tmpdir(), 'aphype-test-'));
+  const dir = await mkdtemp(join(tmpdir(), 'reachforge-test-'));
   const stages = ['01_inbox', '02_drafts', '03_master', '04_adapted', '05_scheduled', '06_sent'];
   for (const stage of stages) {
     await mkdir(join(dir, stage), { recursive: true });
@@ -1838,4 +1838,4 @@ Open -> Triaged -> In Progress -> Fixed -> Verified -> Closed
 
 ---
 
-*End of Test Plan. This document shall be reviewed and updated as the aphype codebase progresses through the migration steps defined in the Technical Design.*
+*End of Test Plan. This document shall be reviewed and updated as the reachforge codebase progresses through the migration steps defined in the Technical Design.*

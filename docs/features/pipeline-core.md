@@ -12,7 +12,7 @@
 
 ## 1. Purpose and Scope
 
-The pipeline core is the foundation of aphype. It manages the six-stage directory structure that represents the content state machine, handles project directory operations (create, list, move, rollback), and provides metadata read/write services via YAML files. Every other component depends on the pipeline core.
+The pipeline core is the foundation of reachforge. It manages the six-stage directory structure that represents the content state machine, handles project directory operations (create, list, move, rollback), and provides metadata read/write services via YAML files. Every other component depends on the pipeline core.
 
 This module does NOT contain:
 - CLI presentation logic (that belongs to `commands/`)
@@ -124,7 +124,7 @@ class ConfigManager {
 
   getApiKey(service: string): string | undefined;
   getLLMProvider(): string;
-  getConfig(): AphypeConfig;
+  getConfig(): ReachforgeConfig;
 }
 ```
 
@@ -223,12 +223,12 @@ class ConfigManager {
 | Stage | meta.yaml status | Trigger |
 |-------|-----------------|---------|
 | `01_inbox` | (no meta.yaml) | User creates content |
-| `02_drafts` | `drafted` | `aphype draft` |
+| `02_drafts` | `drafted` | `reachforge draft` |
 | `03_master` | `master` | User manually moves |
-| `04_adapted` | `adapted` | `aphype adapt` |
-| `05_scheduled` | `scheduled` | `aphype schedule` |
-| `06_sent` | `published` | `aphype publish` |
-| `05_scheduled` (on failure) | `failed` | `aphype publish` (all platforms fail) |
+| `04_adapted` | `adapted` | `reachforge adapt` |
+| `05_scheduled` | `scheduled` | `reachforge schedule` |
+| `06_sent` | `published` | `reachforge publish` |
+| `05_scheduled` (on failure) | `failed` | `reachforge publish` (all platforms fail) |
 
 ### Config Key Mapping
 
@@ -239,7 +239,7 @@ class ConfigManager {
 | `POSTIZ_API_KEY` | `postiz_api_key` | Postiz / X bridge |
 | `HASHNODE_API_KEY` | `hashnode_api_key` | Hashnode platform |
 | `GITHUB_TOKEN` | `github_token` | GitHub platform |
-| `APHYPE_LLM_PROVIDER` | (not in yaml) | LLM provider selection |
+| `REACHFORGE_LLM_PROVIDER` | (not in yaml) | LLM provider selection |
 
 ## 7. Error Handling
 
@@ -297,7 +297,7 @@ class ConfigManager {
 3. Missing credentials.yaml does not throw — returns empty config
 4. `getApiKey('devto')` returns correct value from each source
 5. `getLLMProvider()` defaults to 'gemini' when env var not set
-6. `getLLMProvider()` reads from `APHYPE_LLM_PROVIDER` env var
+6. `getLLMProvider()` reads from `REACHFORGE_LLM_PROVIDER` env var
 
 ## 9. Dependencies
 

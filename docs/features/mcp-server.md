@@ -12,7 +12,7 @@
 
 ## 1. Purpose and Scope
 
-The MCP (Model Context Protocol) server exposes all aphype pipeline operations as callable tools for AI agents. It uses `apcore-mcp` as the transport layer and adds Zod-validated tool definitions with descriptive schemas so that AI agents (Claude Desktop, etc.) can discover and invoke pipeline operations programmatically.
+The MCP (Model Context Protocol) server exposes all reachforge pipeline operations as callable tools for AI agents. It uses `apcore-mcp` as the transport layer and adds Zod-validated tool definitions with descriptive schemas so that AI agents (Claude Desktop, etc.) can discover and invoke pipeline operations programmatically.
 
 The MCP server provides the exact same functionality as the CLI but through the MCP protocol. This means AI agents operate the same pipeline, produce the same filesystem artifacts, and follow the same validation rules as a human user.
 
@@ -31,7 +31,7 @@ The MCP server provides the exact same functionality as the CLI but through the 
 import { z } from 'zod';
 
 export interface McpToolDefinition {
-  name: string;              // Tool name (e.g., 'aphype.status')
+  name: string;              // Tool name (e.g., 'reachforge.status')
   description: string;       // Human/AI-readable description
   inputSchema: z.ZodSchema;  // Zod schema for input validation
   handler: (input: unknown) => Promise<unknown>;  // Execution function
@@ -40,7 +40,7 @@ export interface McpToolDefinition {
 // mcp/server.ts
 
 export interface McpServerConfig {
-  name: string;              // 'aphype'
+  name: string;              // 'reachforge'
   version: string;           // Package version
   transport: 'stdio' | 'sse';
   port: number;              // Port for SSE transport (default 8000)
@@ -50,11 +50,11 @@ export interface McpServerConfig {
 
 ## 4. Tool Definitions
 
-### aphype.status
+### reachforge.status
 
 ```typescript
 {
-  name: 'aphype.status',
+  name: 'reachforge.status',
   description: 'Get the current state of the content pipeline. Returns item counts and project names for each of the 6 stages (inbox, drafts, master, adapted, scheduled, sent), plus items due for publishing today.',
   inputSchema: z.object({}),
   handler: async () => {
@@ -77,11 +77,11 @@ export interface McpServerConfig {
 }
 ```
 
-### aphype.draft
+### reachforge.draft
 
 ```typescript
 {
-  name: 'aphype.draft',
+  name: 'reachforge.draft',
   description: 'Generate an AI-powered long-form article draft from a source in the 01_inbox directory. The source can be a markdown file or a directory containing markdown/text files.',
   inputSchema: z.object({
     source: z.string()
@@ -99,11 +99,11 @@ export interface McpServerConfig {
 
 **Return type:** `{ name: string, path: string }`
 
-### aphype.adapt
+### reachforge.adapt
 
 ```typescript
 {
-  name: 'aphype.adapt',
+  name: 'reachforge.adapt',
   description: 'Generate platform-specific content versions from a master article in 03_master. Creates adapted versions for each target platform (X threads, Dev.to articles, etc.) in 04_adapted.',
   inputSchema: z.object({
     article: z.string()
@@ -128,11 +128,11 @@ export interface McpServerConfig {
 
 **Return type:** `{ article: string, path: string, adaptedPlatforms: string[] }`
 
-### aphype.schedule
+### reachforge.schedule
 
 ```typescript
 {
-  name: 'aphype.schedule',
+  name: 'reachforge.schedule',
   description: 'Schedule an adapted article for publishing on a specific date. Moves the project from 04_adapted to 05_scheduled with a date prefix.',
   inputSchema: z.object({
     article: z.string()
@@ -153,11 +153,11 @@ export interface McpServerConfig {
 
 **Return type:** `{ scheduled_name: string, path: string }`
 
-### aphype.publish
+### reachforge.publish
 
 ```typescript
 {
-  name: 'aphype.publish',
+  name: 'reachforge.publish',
   description: 'Publish all scheduled content that is due (publish date <= today) to configured platform providers. Creates receipt.yaml with results and moves successful projects to 06_sent.',
   inputSchema: z.object({
     publishLive: z.boolean()
@@ -181,7 +181,7 @@ export interface McpServerConfig {
 1. Create `McpServerConfig` from command options and context:
    ```typescript
    const config: McpServerConfig = {
-     name: 'aphype',
+     name: 'reachforge',
      version: packageVersion,
      transport: options.transport,
      port: options.port,
@@ -191,7 +191,7 @@ export interface McpServerConfig {
 2. Register each tool with apcore:
    ```typescript
    for (const tool of config.tools) {
-     apcore.register(`aphype.${tool.name}`, {
+     apcore.register(`reachforge.${tool.name}`, {
        execute: async (inputs: unknown) => {
          // 1. Validate inputs via Zod schema
          const parseResult = tool.inputSchema.safeParse(inputs);
@@ -209,7 +209,7 @@ export interface McpServerConfig {
          } catch (err) {
            return {
              error: {
-               code: err instanceof AphypeError ? err.code : 'INTERNAL_ERROR',
+               code: err instanceof ReachforgeError ? err.code : 'INTERNAL_ERROR',
                message: err.message,
              },
            };
@@ -256,26 +256,26 @@ MCP error responses never include API keys, file system absolute paths outside t
 
 1. Server registers exactly 5 tools (status, draft, adapt, schedule, publish)
 2. Each tool has a non-empty name, description, and inputSchema
-3. Tool names follow the `aphype.<command>` pattern
+3. Tool names follow the `reachforge.<command>` pattern
 
 ### Input Validation Tests
 
-4. `aphype.draft` with empty source returns VALIDATION_ERROR
-5. `aphype.draft` with source containing slashes returns VALIDATION_ERROR
-6. `aphype.adapt` with empty article returns VALIDATION_ERROR
-7. `aphype.adapt` with invalid platforms format returns VALIDATION_ERROR
-8. `aphype.schedule` with invalid date format returns VALIDATION_ERROR
-9. `aphype.schedule` with impossible date (Feb 30) returns VALIDATION_ERROR
-10. `aphype.publish` with non-boolean publishLive returns VALIDATION_ERROR
+4. `reachforge.draft` with empty source returns VALIDATION_ERROR
+5. `reachforge.draft` with source containing slashes returns VALIDATION_ERROR
+6. `reachforge.adapt` with empty article returns VALIDATION_ERROR
+7. `reachforge.adapt` with invalid platforms format returns VALIDATION_ERROR
+8. `reachforge.schedule` with invalid date format returns VALIDATION_ERROR
+9. `reachforge.schedule` with impossible date (Feb 30) returns VALIDATION_ERROR
+10. `reachforge.publish` with non-boolean publishLive returns VALIDATION_ERROR
 11. Valid inputs pass validation and reach the handler
 
 ### Handler Execution Tests
 
-12. `aphype.status` tool returns PipelineStatus object
-13. `aphype.draft` tool creates draft files and returns result
-14. `aphype.adapt` tool creates adapted files and returns result
-15. `aphype.schedule` tool moves project and returns result
-16. `aphype.publish` tool publishes due items and returns results
+12. `reachforge.status` tool returns PipelineStatus object
+13. `reachforge.draft` tool creates draft files and returns result
+14. `reachforge.adapt` tool creates adapted files and returns result
+15. `reachforge.schedule` tool moves project and returns result
+16. `reachforge.publish` tool publishes due items and returns results
 
 ### Error Propagation Tests
 

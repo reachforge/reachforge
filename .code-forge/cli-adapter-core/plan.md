@@ -52,7 +52,7 @@ T01 (Types & errors)
 - **Files**: `src/llm/types.ts`, `src/types/errors.ts`
 - **Tests**: `tests/unit/llm/types.test.ts`
 - Define `CLIAdapter`, `AdapterExecuteOptions`, `AdapterResult`, `TokenUsage`, `AdapterProbeResult`, `AdapterErrorCode`
-- Add 6 adapter error classes extending `AphypeError`
+- Add 6 adapter error classes extending `ReachforgeError`
 - **Test count**: 6
 
 ### T02: Parser utilities
@@ -121,7 +121,7 @@ T01 (Types & errors)
 ### T10: AdapterFactory
 - **Files**: `src/llm/factory.ts`
 - **Tests**: `tests/unit/llm/factory.test.ts`
-- Stage-specific adapter resolution: `APHYPE_DRAFT_ADAPTER` > `APHYPE_LLM_ADAPTER` > config > default
+- Stage-specific adapter resolution: `REACHFORGE_DRAFT_ADAPTER` > `REACHFORGE_LLM_ADAPTER` > config > default
 - Command resolution with PATH search and custom command env vars
 - **Test count**: 8
 

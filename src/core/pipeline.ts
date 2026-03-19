@@ -1,7 +1,7 @@
 import * as path from 'path';
 import fs from 'fs-extra';
 import type { PipelineStage, PipelineStatus, StageInfo, StageTransition } from '../types/index.js';
-import { ProjectNotFoundError, AphypeError } from '../types/index.js';
+import { ProjectNotFoundError, ReachforgeError } from '../types/index.js';
 import { STAGES, STAGE_STATUS_MAP, SCHEDULED_DIR_REGEX } from './constants.js';
 import { MetadataManager } from './metadata.js';
 import { sanitizePath } from '../utils/path.js';
@@ -63,7 +63,7 @@ export class PipelineEngine {
     }
 
     if (await fs.pathExists(targetPath)) {
-      throw new AphypeError(
+      throw new ReachforgeError(
         `Project "${targetName}" already exists in ${toStage}.`,
         'Target directory already exists',
         'Choose a different name or remove the existing project.',
@@ -76,7 +76,7 @@ export class PipelineEngine {
     if (await fs.pathExists(targetPath)) {
       await fs.remove(sourcePath);
     } else {
-      throw new AphypeError(
+      throw new ReachforgeError(
         `Failed to move project "${project}": copy verification failed.`,
         'File copy to target did not complete',
       );
@@ -113,7 +113,7 @@ export class PipelineEngine {
 
       if (found) {
         if (i === 0) {
-          throw new AphypeError(
+          throw new ReachforgeError(
             'Cannot rollback: project is already in the first stage.',
             `Project "${found}" is in ${stage}`,
           );

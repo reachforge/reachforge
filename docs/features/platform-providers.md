@@ -175,7 +175,7 @@ export interface ValidationResult {
      "type": "thread"
    }
    ```
-   > Note: `"twitter"` is the Postiz API's external convention. aphype's internal platform identifier is `x`.
+   > Note: `"twitter"` is the Postiz API's external convention. reachforge's internal platform identifier is `x`.
    (Use `"single"` if only one segment)
 3. POST to `https://api.postiz.com/posts` with `Authorization: Bearer <key>`
 4. On success: return `{ platform: 'x', status: 'success', url: response.postUrl }`

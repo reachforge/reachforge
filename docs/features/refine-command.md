@@ -13,7 +13,7 @@
 
 ## 1. Purpose and Scope
 
-The `aphype refine <article>` command provides an interactive multi-turn conversation loop for iteratively improving a draft article. The user gives feedback, the LLM revises the draft, and the cycle repeats until the user saves or quits. This command is the primary use case for session resumption: the draft session persists across multiple `refine` invocations, so the LLM retains context from all previous feedback rounds.
+The `reachforge refine <article>` command provides an interactive multi-turn conversation loop for iteratively improving a draft article. The user gives feedback, the LLM revises the draft, and the cycle repeats until the user saves or quits. This command is the primary use case for session resumption: the draft session persists across multiple `refine` invocations, so the LLM retains context from all previous feedback rounds.
 
 The module provides:
 - `refineCommand()` function implementing the interactive loop
@@ -65,7 +65,7 @@ program
 
 **Help output:**
 ```
-Usage: aphype refine <article>
+Usage: reachforge refine <article>
 
 Interactively refine a draft article with AI feedback.
 Resumes the previous conversation session if one exists.
@@ -187,7 +187,7 @@ Commands during refinement:
          break;
        }
        if (result.errorCode === "timeout") {
-         console.error("Try again with a shorter prompt or increase APHYPE_LLM_TIMEOUT.");
+         console.error("Try again with a shorter prompt or increase REACHFORGE_LLM_TIMEOUT.");
        }
        continue; // Don't break on transient errors; let user try again
      }

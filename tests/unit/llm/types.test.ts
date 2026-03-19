@@ -8,7 +8,7 @@ import type {
   AdapterProbeResult,
 } from '../../../src/llm/types.js';
 import {
-  AphypeError,
+  ReachforgeError,
   AdapterNotFoundError,
   AdapterNotInstalledError,
   AdapterAuthError,
@@ -139,7 +139,7 @@ describe('CLIAdapter', () => {
 });
 
 describe('Adapter error classes', () => {
-  it('each error class extends AphypeError with correct name property', () => {
+  it('each error class extends ReachforgeError with correct name property', () => {
     const errors = [
       { instance: new AdapterNotFoundError('foo'), expectedName: 'AdapterNotFoundError' },
       { instance: new AdapterNotInstalledError('claude', 'https://example.com'), expectedName: 'AdapterNotInstalledError' },
@@ -150,7 +150,7 @@ describe('Adapter error classes', () => {
     ];
 
     for (const { instance, expectedName } of errors) {
-      expect(instance).toBeInstanceOf(AphypeError);
+      expect(instance).toBeInstanceOf(ReachforgeError);
       expect(instance).toBeInstanceOf(Error);
       expect(instance.name).toBe(expectedName);
     }

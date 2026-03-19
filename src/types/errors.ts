@@ -1,11 +1,11 @@
-export class AphypeError extends Error {
+export class ReachforgeError extends Error {
   constructor(message: string, public readonly cause?: string, public readonly hint?: string) {
     super(hint ? `${message} ${hint}` : message);
-    this.name = 'AphypeError';
+    this.name = 'ReachforgeError';
   }
 }
 
-export class ProjectNotFoundError extends AphypeError {
+export class ProjectNotFoundError extends ReachforgeError {
   constructor(project: string, stage: string, hint?: string) {
     super(
       `Project "${project}" not found in ${stage}.`,
@@ -16,7 +16,7 @@ export class ProjectNotFoundError extends AphypeError {
   }
 }
 
-export class InvalidDateError extends AphypeError {
+export class InvalidDateError extends ReachforgeError {
   constructor(date: string) {
     super(
       `Invalid date format: "${date}".`,
@@ -27,7 +27,7 @@ export class InvalidDateError extends AphypeError {
   }
 }
 
-export class PathTraversalError extends AphypeError {
+export class PathTraversalError extends ReachforgeError {
   constructor(input: string) {
     super(
       `Unsafe path component rejected: "${input}".`,
@@ -38,14 +38,14 @@ export class PathTraversalError extends AphypeError {
   }
 }
 
-export class LLMError extends AphypeError {
+export class LLMError extends ReachforgeError {
   constructor(message: string, hint?: string) {
     super(message, 'LLM API call failed', hint);
     this.name = 'LLMError';
   }
 }
 
-export class LLMNotConfiguredError extends AphypeError {
+export class LLMNotConfiguredError extends ReachforgeError {
   constructor(provider: string = 'Gemini') {
     super(
       `${provider} API key is not set.`,
@@ -56,14 +56,14 @@ export class LLMNotConfiguredError extends AphypeError {
   }
 }
 
-export class ProviderError extends AphypeError {
+export class ProviderError extends ReachforgeError {
   constructor(provider: string, message: string, hint?: string) {
     super(`[${provider}] ${message}`, `Provider "${provider}" failed`, hint);
     this.name = 'ProviderError';
   }
 }
 
-export class ValidationFailedError extends AphypeError {
+export class ValidationFailedError extends ReachforgeError {
   constructor(platform: string, errors: string[]) {
     super(
       `Content validation failed for ${platform}: ${errors.join('; ')}`,
@@ -74,7 +74,7 @@ export class ValidationFailedError extends AphypeError {
   }
 }
 
-export class MetadataParseError extends AphypeError {
+export class MetadataParseError extends ReachforgeError {
   constructor(filePath: string, details: string) {
     super(
       `Failed to parse metadata at ${filePath}: ${details}`,
@@ -87,18 +87,18 @@ export class MetadataParseError extends AphypeError {
 
 // --- CLI Adapter errors ---
 
-export class AdapterNotFoundError extends AphypeError {
+export class AdapterNotFoundError extends ReachforgeError {
   constructor(name: string) {
     super(
       `Unknown LLM adapter: '${name}'. Supported: claude, gemini, codex`,
       'Adapter name is not recognized',
-      'Set APHYPE_LLM_ADAPTER to one of: claude, gemini, codex',
+      'Set REACHFORGE_LLM_ADAPTER to one of: claude, gemini, codex',
     );
     this.name = 'AdapterNotFoundError';
   }
 }
 
-export class AdapterNotInstalledError extends AphypeError {
+export class AdapterNotInstalledError extends ReachforgeError {
   constructor(name: string, installUrl: string) {
     super(
       `${name} CLI is not installed or not in PATH.`,
@@ -109,7 +109,7 @@ export class AdapterNotInstalledError extends AphypeError {
   }
 }
 
-export class AdapterAuthError extends AphypeError {
+export class AdapterAuthError extends ReachforgeError {
   constructor(name: string, command: string) {
     super(
       `${name} requires authentication.`,
@@ -120,18 +120,18 @@ export class AdapterAuthError extends AphypeError {
   }
 }
 
-export class AdapterTimeoutError extends AphypeError {
+export class AdapterTimeoutError extends ReachforgeError {
   constructor(timeoutSec: number) {
     super(
       `LLM generation timed out after ${timeoutSec}s.`,
       'CLI process exceeded timeout',
-      'Increase with APHYPE_LLM_TIMEOUT environment variable.',
+      'Increase with REACHFORGE_LLM_TIMEOUT environment variable.',
     );
     this.name = 'AdapterTimeoutError';
   }
 }
 
-export class AdapterEmptyResponseError extends AphypeError {
+export class AdapterEmptyResponseError extends ReachforgeError {
   constructor(name: string) {
     super(
       `${name} returned an empty response.`,
@@ -142,14 +142,14 @@ export class AdapterEmptyResponseError extends AphypeError {
   }
 }
 
-export class AdapterValidationError extends AphypeError {
+export class AdapterValidationError extends ReachforgeError {
   constructor(message: string) {
     super(message, 'Input validation failed');
     this.name = 'AdapterValidationError';
   }
 }
 
-export class SessionValidationError extends AphypeError {
+export class SessionValidationError extends ReachforgeError {
   constructor(message: string) {
     super(message, 'Session validation failed');
     this.name = 'SessionValidationError';

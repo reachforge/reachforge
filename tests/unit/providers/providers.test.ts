@@ -5,7 +5,7 @@ import { PostizProvider } from '../../../src/providers/postiz.js';
 import { HashnodeProvider } from '../../../src/providers/hashnode.js';
 import { GitHubProvider } from '../../../src/providers/github.js';
 import { ProviderLoader } from '../../../src/providers/loader.js';
-import type { AphypeConfig } from '../../../src/types/index.js';
+import type { ReachforgeConfig } from '../../../src/types/index.js';
 
 describe('MockProvider', () => {
   const mock = new MockProvider();
@@ -24,7 +24,7 @@ describe('MockProvider', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const result = await mock.publish('content', {});
     expect(result.status).toBe('success');
-    expect(result.url).toContain('mock.aphype.dev');
+    expect(result.url).toContain('mock.reachforge.dev');
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('MOCK MODE'));
     vi.restoreAllMocks();
   });
@@ -315,54 +315,54 @@ describe('GitHubProvider', () => {
 
 describe('ProviderLoader', () => {
   test('loads DevtoProvider when API key is present', () => {
-    const config: AphypeConfig = { devtoApiKey: 'test-key' };
+    const config: ReachforgeConfig = { devtoApiKey: 'test-key' };
     const loader = new ProviderLoader(config);
     expect(loader.hasRealProvider('devto')).toBe(true);
     expect(loader.listRegistered()).toContain('devto');
   });
 
   test('loads PostizProvider when API key is present', () => {
-    const config: AphypeConfig = { postizApiKey: 'test-key' };
+    const config: ReachforgeConfig = { postizApiKey: 'test-key' };
     const loader = new ProviderLoader(config);
     expect(loader.hasRealProvider('x')).toBe(true);
     expect(loader.listRegistered()).toContain('postiz');
   });
 
   test('loads HashnodeProvider when API key and publication ID are present', () => {
-    const config: AphypeConfig = { hashnodeApiKey: 'key', hashnodePublicationId: 'pub-123' };
+    const config: ReachforgeConfig = { hashnodeApiKey: 'key', hashnodePublicationId: 'pub-123' };
     const loader = new ProviderLoader(config);
     expect(loader.hasRealProvider('hashnode')).toBe(true);
     expect(loader.listRegistered()).toContain('hashnode');
   });
 
   test('does not load HashnodeProvider when publication ID is missing', () => {
-    const config: AphypeConfig = { hashnodeApiKey: 'key' };
+    const config: ReachforgeConfig = { hashnodeApiKey: 'key' };
     const loader = new ProviderLoader(config);
     expect(loader.hasRealProvider('hashnode')).toBe(false);
   });
 
   test('loads GitHubProvider when token, owner, and repo are present', () => {
-    const config: AphypeConfig = { githubToken: 'token', githubOwner: 'org', githubRepo: 'repo' };
+    const config: ReachforgeConfig = { githubToken: 'token', githubOwner: 'org', githubRepo: 'repo' };
     const loader = new ProviderLoader(config);
     expect(loader.hasRealProvider('github')).toBe(true);
     expect(loader.listRegistered()).toContain('github');
   });
 
   test('does not load GitHubProvider when owner is missing', () => {
-    const config: AphypeConfig = { githubToken: 'token', githubRepo: 'repo' };
+    const config: ReachforgeConfig = { githubToken: 'token', githubRepo: 'repo' };
     const loader = new ProviderLoader(config);
     expect(loader.hasRealProvider('github')).toBe(false);
   });
 
   test('returns MockProvider when no real provider available', () => {
-    const config: AphypeConfig = {};
+    const config: ReachforgeConfig = {};
     const loader = new ProviderLoader(config);
     const provider = loader.getProviderOrMock('x');
     expect(provider.id).toBe('mock');
   });
 
   test('loads multiple providers from config', () => {
-    const config: AphypeConfig = { devtoApiKey: 'key1', postizApiKey: 'key2' };
+    const config: ReachforgeConfig = { devtoApiKey: 'key1', postizApiKey: 'key2' };
     const loader = new ProviderLoader(config);
     expect(loader.size).toBe(2); // devto + x
     expect(loader.hasRealProvider('devto')).toBe(true);
@@ -370,7 +370,7 @@ describe('ProviderLoader', () => {
   });
 
   test('returns undefined for unregistered platform', () => {
-    const config: AphypeConfig = {};
+    const config: ReachforgeConfig = {};
     const loader = new ProviderLoader(config);
     expect(loader.getProvider('linkedin')).toBeUndefined();
   });

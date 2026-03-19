@@ -18,15 +18,15 @@ export interface WorkspaceContext {
 export class WorkspaceResolver {
   /**
    * 5-step context resolution:
-   * 1. APHYPE_WORKSPACE env var or --workspace CLI flag
-   * 2. Walk up from cwd looking for .aphype/
+   * 1. REACHFORGE_WORKSPACE env var or --workspace CLI flag
+   * 2. Walk up from cwd looking for .reachforge/
    * 3. cwd contains project.yaml → cwd is project, parent is workspace
-   * 4. ~/.aphype/config.yaml default_workspace, or ~/aphype-workspace as fallback
+   * 4. ~/.reachforge/config.yaml default_workspace, or ~/reachforge-workspace as fallback
    * 5. Fallback: cwd as project root (backward compatible)
    */
   static async resolve(cwd: string, overrides?: { workspace?: string; project?: string }): Promise<WorkspaceContext> {
     // Step 1: explicit workspace override (CLI flag or env var)
-    const explicitWorkspace = overrides?.workspace || process.env.APHYPE_WORKSPACE;
+    const explicitWorkspace = overrides?.workspace || process.env.REACHFORGE_WORKSPACE;
     if (explicitWorkspace) {
       const wsRoot = path.resolve(explicitWorkspace);
       if (overrides?.project) {
@@ -48,7 +48,7 @@ export class WorkspaceResolver {
       return { workspaceRoot: wsRoot, projectDir: wsRoot, projectName: undefined, isWorkspace: true };
     }
 
-    // Step 2: walk up from cwd looking for .aphype/ directory
+    // Step 2: walk up from cwd looking for .reachforge/ directory
     const found = await WorkspaceResolver.findWorkspaceRoot(cwd);
     if (found) {
       const relative = path.relative(found, cwd);
@@ -81,7 +81,7 @@ export class WorkspaceResolver {
       };
     }
 
-    // Step 4: global config default_workspace or ~/aphype-workspace
+    // Step 4: global config default_workspace or ~/reachforge-workspace
     const globalConfig = await readWorkspaceConfig(GLOBAL_CONFIG_DIR);
     const defaultWsPath = globalConfig?.default_workspace
       ? path.resolve(globalConfig.default_workspace)

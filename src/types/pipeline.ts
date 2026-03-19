@@ -88,7 +88,7 @@ export interface LLMAdaptOptions extends LLMGenerateOptions {
 // PlatformProvider, ValidationResult, and PublishResult are defined in providers/types.ts
 // Re-exported from providers/index.ts — do not duplicate here.
 
-export interface AphypeConfig {
+export interface ReachforgeConfig {
   geminiApiKey?: string;
   devtoApiKey?: string;
   postizApiKey?: string;

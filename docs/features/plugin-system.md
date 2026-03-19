@@ -12,7 +12,7 @@
 
 ## 1. Purpose and Scope
 
-The plugin system enables aphype to discover, load, and manage platform provider plugins at runtime. It scans the `providers/` directory for TypeScript modules that implement the `PlatformProvider` interface, instantiates them with credentials from ConfigManager, and makes them available to the pipeline engine for publishing operations.
+The plugin system enables reachforge to discover, load, and manage platform provider plugins at runtime. It scans the `providers/` directory for TypeScript modules that implement the `PlatformProvider` interface, instantiates them with credentials from ConfigManager, and makes them available to the pipeline engine for publishing operations.
 
 The system is designed so that adding a new provider requires creating exactly one file in `providers/` and optionally adding credentials — no modifications to core, commands, or other providers (NFR-MAINT-002).
 
@@ -174,7 +174,7 @@ To be recognized by the plugin loader, a provider file must:
 1. Create `src/providers/linkedin.ts`
 2. Implement `PlatformProvider` interface with `manifest()` returning `{ id: 'linkedin', requiredCredentials: ['linkedin_api_key'], ... }`
 3. Add `linkedin_api_key` to `credentials.yaml` or set `LINKEDIN_API_KEY` env var
-4. Run `aphype publish` — the loader discovers and loads LinkedIn provider automatically
+4. Run `reachforge publish` — the loader discovers and loads LinkedIn provider automatically
 5. No changes to `core/`, `commands/`, `index.ts`, or any other file
 
 ## 7. Error Handling
