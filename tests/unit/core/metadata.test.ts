@@ -179,3 +179,41 @@ describe('MetadataManager.lockProject / unlockProject / isLocked', () => {
     expect(locked).toBe(false);
   });
 });
+
+describe('MetadataManager.readUploadCache / writeUploadCache', () => {
+  test('returns null when no cache file exists', async () => {
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', 'no-cache'));
+    const cache = await mm.readUploadCache('05_scheduled', 'no-cache');
+    expect(cache).toBeNull();
+  });
+
+  test('writes and reads upload cache', async () => {
+    const dir = path.join(tmpDir, '05_scheduled', 'cached');
+    await fs.ensureDir(dir);
+
+    const cache = {
+      uploads: {
+        './images/logo.png': {
+          cdnUrl: 'https://cdn.example.com/logo.png',
+          platform: 'devto',
+          uploadedAt: '2026-03-20T10:00:00Z',
+          sizeBytes: 1024,
+        },
+      },
+    };
+
+    await mm.writeUploadCache('05_scheduled', 'cached', cache);
+    const read = await mm.readUploadCache('05_scheduled', 'cached');
+    expect(read).not.toBeNull();
+    expect(read!.uploads['./images/logo.png'].cdnUrl).toBe('https://cdn.example.com/logo.png');
+  });
+
+  test('returns null for corrupted cache file', async () => {
+    const dir = path.join(tmpDir, '05_scheduled', 'bad-cache');
+    await fs.ensureDir(dir);
+    await fs.writeFile(path.join(dir, '.upload_cache.yaml'), 'not valid: [[[');
+
+    const cache = await mm.readUploadCache('05_scheduled', 'bad-cache');
+    expect(cache).toBeNull();
+  });
+});

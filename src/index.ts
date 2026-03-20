@@ -24,6 +24,9 @@ import { initCommand } from './commands/init.js';
 import { newProjectCommand } from './commands/new-project.js';
 import { workspaceInfoCommand } from './commands/workspace-info.js';
 import { refineCommand } from './commands/refine.js';
+import { approveCommand } from './commands/approve.js';
+import { assetAddCommand, assetListCommand } from './commands/asset.js';
+import { analyticsCommand, collectAnalytics } from './commands/analytics.js';
 
 const program = new Command();
 
@@ -83,6 +86,12 @@ apcore.register('reach.adapt', {
     await adaptCommand(engine, inputs.article);
   },
 });
+apcore.register('reach.approve', {
+  execute: async (inputs: { article: string }) => {
+    const engine = await getEngine();
+    await approveCommand(engine, inputs.article);
+  },
+});
 apcore.register('reach.schedule', {
   execute: async (inputs: { article: string; date: string }) => {
     const engine = await getEngine();
@@ -93,6 +102,22 @@ apcore.register('reach.publish', {
   execute: async () => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await publishCommand(engine, { config: config.getConfig() });
+  },
+});
+
+apcore.register('reach.asset.list', {
+  execute: async (inputs: { subdir?: string }) => {
+    const ctx = await getContext();
+    const { AssetManager } = await import('./core/asset-manager.js');
+    const mgr = new AssetManager(ctx.projectDir);
+    return mgr.listAssets(inputs.subdir as import('./types/assets.js').AssetSubdir | undefined);
+  },
+});
+
+apcore.register('reach.analytics', {
+  execute: async (inputs: { from?: string; to?: string }) => {
+    const engine = await getEngine();
+    return collectAnalytics(engine, inputs);
   },
 });
 
@@ -120,6 +145,14 @@ program
   .action(withErrorHandler(async (source: string) => {
     const engine = await getEngine();
     await draftCommand(engine, source);
+  }));
+
+program
+  .command('approve <article>')
+  .description('Promote a draft to master stage (02_drafts → 03_master)')
+  .action(withErrorHandler(async (article: string) => {
+    const engine = await getEngine();
+    await approveCommand(engine, article);
   }));
 
 program
@@ -208,6 +241,38 @@ program
   .action(withErrorHandler(async (article: string) => {
     const engine = await getEngine();
     await refineCommand(engine, article);
+  }));
+
+program
+  .command('analytics')
+  .description('Show publishing analytics and success metrics')
+  .option('--from <date>', 'Filter from date (YYYY-MM-DD)')
+  .option('--to <date>', 'Filter to date (YYYY-MM-DD)')
+  .action(withErrorHandler(async (options: { from?: string; to?: string }) => {
+    const engine = await getEngine();
+    await analyticsCommand(engine, options);
+  }));
+
+const assetCmd = program
+  .command('asset')
+  .description('Manage project assets (images, videos, audio)');
+
+assetCmd
+  .command('add <file>')
+  .description('Register an asset file into the project asset library')
+  .option('-s, --subdir <type>', 'Asset subdirectory (images, videos, audio)')
+  .action(withErrorHandler(async (file: string, options: { subdir?: string }) => {
+    const ctx = await getContext();
+    await assetAddCommand(ctx.projectDir, file, options);
+  }));
+
+assetCmd
+  .command('list')
+  .description('List registered assets')
+  .option('-s, --subdir <type>', 'Filter by subdirectory (images, videos, audio)')
+  .action(withErrorHandler(async (options: { subdir?: string }) => {
+    const ctx = await getContext();
+    await assetListCommand(ctx.projectDir, options);
   }));
 
 // Default action: when no command is given, check for workspace or show help

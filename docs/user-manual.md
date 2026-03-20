@@ -79,16 +79,19 @@ reach draft ai-pairing.md
 # 5. Refine interactively
 reachforge refine ai-pairing
 
-# 6. Promote to master (manual step)
-cp 02_drafts/ai-pairing/draft.md 03_master/ai-pairing/master.md
+# 6. Promote to master
+reach approve ai-pairing
 
-# 7. Adapt for platforms
+# 7. Add shared assets (optional)
+reach asset add ./hero-image.png
+
+# 8. Adapt for platforms
 reach adapt ai-pairing --platforms devto,hashnode,x
 
-# 8. Schedule
+# 9. Schedule
 reach schedule ai-pairing 2026-04-01
 
-# 9. Publish
+# 10. Publish
 reach publish
 ```
 
@@ -110,6 +113,15 @@ Each project contains six stage directories. Content flows left to right:
 | `04_adapted` | Platform-specific versions | `platform_versions/{platform}.md` |
 | `05_scheduled` | Content awaiting publish date | `meta.yaml` (with `publish_date`) |
 | `06_sent` | Published archive | `receipt.yaml` |
+| `assets` | Shared media library | `images/`, `videos/`, `audio/`, `.asset-registry.yaml` |
+
+Use the `@assets/` prefix to reference shared assets in articles:
+
+```markdown
+![hero](@assets/images/hero.png)
+```
+
+Assets are stored once and never duplicated when articles move between stages. During publishing, `@assets/` references are resolved to absolute paths automatically.
 
 **Workspace layout:**
 
@@ -124,6 +136,11 @@ Each project contains six stage directories. Content flows left to right:
 │   ├── 04_adapted/
 │   ├── 05_scheduled/
 │   ├── 06_sent/
+│   ├── assets/                # Shared media library
+│   │   ├── images/
+│   │   ├── videos/
+│   │   ├── audio/
+│   │   └── .asset-registry.yaml
 │   ├── project.yaml           # Project config
 │   ├── .env                   # API keys (optional)
 │   └── skills/                # Custom LLM skills (optional)
@@ -167,7 +184,7 @@ Create a new project in the current workspace.
 reach new my-blog
 ```
 
-Scaffolds all six stage directories and a `project.yaml`.
+Scaffolds all six stage directories, a `project.yaml`, and the `assets/` library with `images/`, `videos/`, and `audio/` subdirectories.
 
 ---
 
@@ -206,6 +223,51 @@ reach draft my-idea.md
   - If directory: reads `main.md` > `index.md` > first `.md` > first `.txt`.
 - **Output:** `02_drafts/{name}/draft.md` + `meta.yaml`.
 - **LLM adapter:** Controlled by `REACHFORGE_DRAFT_ADAPTER` or `REACHFORGE_LLM_ADAPTER`.
+
+---
+
+### `reach approve <article>`
+
+Promote a draft to master stage.
+
+```bash
+reach approve my-idea
+```
+
+- Moves article from `02_drafts/` to `03_master/`.
+- Automatically renames `draft.md` to `master.md`.
+- Updates metadata status to `master`.
+
+---
+
+### `reach asset add <file>`
+
+Register a media file into the project's shared asset library.
+
+```bash
+reach asset add ./hero-image.png              # Auto-detects subdir (images)
+reach asset add ./demo.mp4                     # Auto-detects (videos)
+reach asset add ./podcast.mp3 --subdir audio   # Explicit subdir
+```
+
+| Option | Description |
+|--------|-------------|
+| `-s, --subdir <type>` | Override auto-detection (`images`, `videos`, `audio`) |
+
+The file is copied into `assets/{subdir}/` and registered in `.asset-registry.yaml`. Use the returned `@assets/` reference in your articles.
+
+### `reach asset list`
+
+List all registered assets.
+
+```bash
+reach asset list                    # All assets
+reach asset list --subdir images    # Only images
+```
+
+| Option | Description |
+|--------|-------------|
+| `-s, --subdir <type>` | Filter by subdirectory |
 
 ---
 
@@ -315,6 +377,25 @@ reach rollback my-idea
 ```
 
 Moves the article to the previous stage (e.g., `05_scheduled` -> `04_adapted`). Cannot roll back from `01_inbox`.
+
+---
+
+### `reach analytics`
+
+Show publishing analytics and per-platform success metrics.
+
+```bash
+reach analytics                              # All-time metrics
+reach analytics --from 2026-03-01            # Since March 1st
+reach analytics --from 2026-03-01 --to 2026-03-31  # March only
+```
+
+| Option | Description |
+|--------|-------------|
+| `--from <date>` | Filter from date (YYYY-MM-DD) |
+| `--to <date>` | Filter to date (YYYY-MM-DD) |
+
+Aggregates `receipt.yaml` from `06_sent/` and displays per-platform success rates (success/total) with color-coded output (green >= 80%, yellow >= 50%, red < 50%).
 
 ---
 
@@ -519,6 +600,56 @@ To customize behavior, create a `skills/` directory in your project or workspace
 
 ---
 
+## Template System
+
+Templates let you customize the AI prompts used for drafting and adaptation. They are YAML files stored in a `templates/` directory.
+
+### Template Precedence (highest to lowest)
+
+1. **Project-level** — `{project}/templates/`
+2. **Workspace-level** — `{workspace}/templates/`
+3. **Built-in defaults** — hardcoded `DEFAULT_DRAFT_PROMPT` and `PLATFORM_PROMPTS`
+
+### Template File Format
+
+```yaml
+# templates/tech-blog.yaml
+name: tech-blog
+type: draft                    # 'draft' or 'adapt'
+prompt: "Write a {tone} technical blog post about {topic}. Include code examples and real-world use cases."
+vars:
+  tone: professional
+  topic: AI
+```
+
+For platform-specific adapt templates:
+
+```yaml
+# templates/devto.yaml
+name: devto-custom
+type: adapt
+platform: devto               # optional: restricts to this platform
+prompt: "Rewrite this for Dev.to with {style} style. Include YAML frontmatter."
+vars:
+  style: tutorial
+```
+
+### Using Templates
+
+**Per-article override:** Add a `template` field to your article's `meta.yaml`:
+
+```yaml
+# 01_inbox/my-idea/meta.yaml
+article: my-idea
+template: tech-blog           # loads templates/tech-blog.yaml
+```
+
+**Convention-based:** Create a template named after a platform (e.g., `templates/devto.yaml`) and it will be used automatically for that platform during `reach adapt`.
+
+**Variable interpolation:** `{varName}` patterns in the prompt are replaced with values from the template's `vars` field. Unmatched variables are left as-is.
+
+---
+
 ## MCP Server
 
 reachforge can run as an MCP server, making its pipeline available to AI agents and other MCP clients.
@@ -535,12 +666,16 @@ reach mcp --transport sse --port 8001
 
 | Tool | Input | Description |
 |------|-------|-------------|
-| `reachforge_status` | — | Pipeline dashboard |
-| `reachforge_draft` | `source: string` | Generate draft from inbox item |
-| `reachforge_adapt` | `article: string`, `platforms?: string`, `force?: boolean` | Adapt for platforms |
-| `reachforge_schedule` | `article: string`, `date: string` | Schedule for publishing |
-| `reachforge_publish` | `dryRun?: boolean` | Publish due content |
-| `reachforge_rollback` | `project: string` | Roll back one stage |
+| `reach_status` | — | Pipeline dashboard |
+| `reach_draft` | `source: string` | Generate draft from inbox item |
+| `reach_adapt` | `article: string`, `platforms?: string`, `force?: boolean` | Adapt for platforms |
+| `reach_schedule` | `article: string`, `date: string` | Schedule for publishing |
+| `reach_publish` | `dryRun?: boolean` | Publish due content |
+| `reach_rollback` | `project: string` | Roll back one stage |
+| `reach_approve` | `article: string` | Promote draft to master |
+| `reach_asset_add` | `file: string`, `subdir?: string` | Register media asset |
+| `reach_asset_list` | `subdir?: string` | List registered assets |
+| `reach_analytics` | `from?: string`, `to?: string` | Publishing success metrics |
 
 ---
 

@@ -36,6 +36,9 @@ export {
 } from './schemas.js';
 export type { ProjectMetaInput, ReceiptInput, CredentialsInput } from './schemas.js';
 
+export type { AssetEntry, AssetRegistry, AssetSource, AssetSubdir } from './assets.js';
+export { AssetEntrySchema, AssetRegistrySchema, AssetSourceSchema, AssetSubdirSchema } from './assets.js';
+
 export {
   ReachforgeError,
   ProjectNotFoundError,

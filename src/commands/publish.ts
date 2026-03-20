@@ -6,6 +6,25 @@ import { ProviderLoader } from '../providers/loader.js';
 import { validateContent } from '../validators/runner.js';
 import { PLATFORM_VERSIONS_DIR } from '../core/constants.js';
 import { markdownToHtml } from '../utils/markdown.js';
+import { AssetManager } from '../core/asset-manager.js';
+import { MediaManager } from '../utils/media.js';
+
+// Map platform names to their credential keys in ReachforgeConfig
+function getCredentialsForPlatform(platform: string, config: ReachforgeConfig): Record<string, string> {
+  const creds: Record<string, string> = {};
+
+  if (platform === 'devto' && config.devtoApiKey) {
+    creds['api_key'] = config.devtoApiKey;
+  } else if (platform === 'hashnode' && config.hashnodeApiKey) {
+    creds['api_key'] = config.hashnodeApiKey;
+  } else if (platform === 'github') {
+    if (config.githubToken) creds['token'] = config.githubToken;
+    if (config.githubOwner) creds['github_owner'] = config.githubOwner;
+    if (config.githubRepo) creds['github_repo'] = config.githubRepo;
+  }
+
+  return creds;
+}
 
 export async function publishCommand(
   engine: PipelineEngine,
@@ -25,7 +44,10 @@ export async function publishCommand(
     return;
   }
 
-  const loader = new ProviderLoader(options.config || {});
+  const config = options.config || {};
+  const loader = new ProviderLoader(config);
+  const assetManager = new AssetManager(engine.projectDir);
+  const mediaManager = new MediaManager(engine.projectDir);
 
   for (const item of dueItems) {
     // 1. Check if already locked (another process is publishing this item)
@@ -56,7 +78,8 @@ export async function publishCommand(
       contentByPlatform[platform] = await fs.readFile(`${platformsDir}/${pFile}`, 'utf-8');
     }
 
-    // Validate content before publishing
+    // Validate content before resolving asset references
+    // (resolved absolute paths are longer and would inflate character counts for X validation)
     const validation = validateContent(contentByPlatform);
     if (!validation.allValid) {
       console.log(chalk.red(`  ❌ Validation failed for "${item}":`));
@@ -95,7 +118,15 @@ export async function publishCommand(
 
       await engine.metadata.writeReceipt('05_scheduled', item, receipt);
 
-      // 5. Publish each platform, updating receipt after each
+      // 5. Resolve @assets/ references to absolute paths (after validation, before publishing)
+      for (const platform of Object.keys(contentByPlatform)) {
+        contentByPlatform[platform] = assetManager.resolveAssetReferences(contentByPlatform[platform]);
+      }
+
+      // 6. Load upload cache for media processing (reuse across platforms)
+      let uploadCache = await engine.metadata.readUploadCache('05_scheduled', item);
+
+      // 7. Publish each platform, updating receipt after each
       for (const [platform, content] of Object.entries(contentByPlatform)) {
         const entry = receipt.items.find(e => e.platform === platform);
         if (!entry) continue;
@@ -118,10 +149,29 @@ export async function publishCommand(
         entry.status = 'sending';
         await engine.metadata.writeReceipt('05_scheduled', item, receipt);
 
+        // Process media: upload local images to platform CDN and replace paths with URLs
+        let publishContent = content;
+        const credentials = getCredentialsForPlatform(platform, config);
+        try {
+          const mediaResult = await mediaManager.processMedia(
+            publishContent, itemPath, platform, credentials, uploadCache,
+          );
+          publishContent = mediaResult.processedContent;
+          uploadCache = mediaResult.updatedCache;
+          if (mediaResult.uploads.length > 0) {
+            console.log(chalk.dim(`  📎 Uploaded ${mediaResult.uploads.length} media file(s) for ${platform}`));
+            await engine.metadata.writeUploadCache('05_scheduled', item, uploadCache);
+          }
+        } catch (mediaErr: unknown) {
+          const msg = mediaErr instanceof Error ? mediaErr.message : String(mediaErr);
+          console.warn(chalk.yellow(`  ⚠ Media processing warning for ${platform}: ${msg}`));
+          // Continue with unprocessed content — media errors are non-fatal
+        }
+
         // Convert content format if provider requires HTML (source is always Markdown)
         const formatted = provider.contentFormat === 'html'
-          ? markdownToHtml(content)
-          : provider.formatContent(content);
+          ? markdownToHtml(publishContent)
+          : provider.formatContent(publishContent);
 
         try {
           const publishMeta = options.draft !== undefined ? { draft: options.draft } : {};
@@ -146,16 +196,16 @@ export async function publishCommand(
         await engine.metadata.writeReceipt('05_scheduled', item, receipt);
       }
 
-      // 6. Determine final receipt status
+      // 8. Determine final receipt status
       const anySuccess = receipt.items.some(r => r.status === 'success');
       const allSuccess = receipt.items.every(r => r.status === 'success');
       receipt.status = allSuccess ? 'completed' : 'partial';
       await engine.metadata.writeReceipt('05_scheduled', item, receipt);
 
-      // 7. Release lock before move (prevents lock file leaking into 06_sent via fs.copy)
+      // 9. Release lock before move (prevents lock file leaking into 06_sent via fs.copy)
       await engine.metadata.unlockProject('05_scheduled', item);
 
-      // 8. Move to sent if at least one platform succeeded
+      // 10. Move to sent if at least one platform succeeded
       if (anySuccess) {
         await engine.moveProject(item, '05_scheduled', '06_sent');
         console.log(chalk.green(`✅ Published and archived: ${item}`));

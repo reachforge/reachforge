@@ -9,6 +9,7 @@ import { adaptCommand } from '../../../src/commands/adapt.js';
 import { scheduleCommand } from '../../../src/commands/schedule.js';
 import { publishCommand } from '../../../src/commands/publish.js';
 import { rollbackCommand } from '../../../src/commands/rollback.js';
+import { approveCommand } from '../../../src/commands/approve.js';
 
 const mockExecute = vi.fn();
 
@@ -182,6 +183,40 @@ describe('publishCommand', () => {
     // Should remain in scheduled (validation blocked it)
     expect(await fs.pathExists(projDir)).toBe(true);
     expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}-invalid-content`))).toBe(false);
+  });
+});
+
+describe('approveCommand', () => {
+  test('promotes draft to master and renames draft.md to master.md', async () => {
+    const draftDir = path.join(tmpDir, '02_drafts', 'my-article');
+    await fs.ensureDir(draftDir);
+    await fs.writeFile(path.join(draftDir, 'draft.md'), '# My Draft');
+    await fs.writeFile(path.join(draftDir, 'meta.yaml'), 'article: my-article\nstatus: drafted\n');
+
+    await approveCommand(engine, 'my-article');
+
+    // Moved to 03_master
+    expect(await fs.pathExists(path.join(tmpDir, '03_master', 'my-article'))).toBe(true);
+    // draft.md renamed to master.md
+    expect(await fs.pathExists(path.join(tmpDir, '03_master', 'my-article', 'master.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '03_master', 'my-article', 'draft.md'))).toBe(false);
+    // Source removed
+    expect(await fs.pathExists(draftDir)).toBe(false);
+    // Metadata updated
+    const meta = await engine.metadata.readMeta('03_master', 'my-article');
+    expect(meta?.status).toBe('master');
+  });
+
+  test('throws when draft does not exist', async () => {
+    await expect(approveCommand(engine, 'nonexistent')).rejects.toThrow('not found');
+  });
+
+  test('throws when target already exists in master', async () => {
+    await fs.ensureDir(path.join(tmpDir, '02_drafts', 'dup-article'));
+    await fs.writeFile(path.join(tmpDir, '02_drafts', 'dup-article', 'draft.md'), 'draft');
+    await fs.ensureDir(path.join(tmpDir, '03_master', 'dup-article'));
+
+    await expect(approveCommand(engine, 'dup-article')).rejects.toThrow('already exists');
   });
 });
 

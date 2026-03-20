@@ -33,6 +33,7 @@ const NO_UPLOAD_PLATFORMS = new Set(['x', 'wechat', 'zhihu']);
 // Upload endpoints per platform
 const UPLOAD_ENDPOINTS: Record<string, string> = {
   devto: 'https://dev.to/api/images',
+  hashnode: 'https://api.hashnode.com/upload',
 };
 
 export class MediaManager {
@@ -74,6 +75,12 @@ export class MediaManager {
 
     const fileBuffer = await fs.readFile(ref.absolutePath);
     const sizeBytes = fileBuffer.length;
+
+    // GitHub uses REST content API (base64), not multipart upload
+    if (platform === 'github') {
+      return this.uploadImageToGitHub(ref, fileBuffer, sizeBytes, credentials);
+    }
+
     const endpoint = UPLOAD_ENDPOINTS[platform];
 
     if (!endpoint) {
@@ -85,9 +92,10 @@ export class MediaManager {
       const filename = path.basename(ref.absolutePath);
       const mimeType = guessMimeType(filename);
 
-      // Build multipart/form-data manually using Blob/FormData (Node 18+ native)
       const formData = new FormData();
-      formData.append('image', new Blob([fileBuffer], { type: mimeType }), filename);
+      // Hashnode uses 'file' field, Dev.to uses 'image' field
+      const fieldName = platform === 'hashnode' ? 'file' : 'image';
+      formData.append(fieldName, new Blob([fileBuffer], { type: mimeType }), filename);
 
       const authHeader = credentials['api_key']
         ? { 'api-key': credentials['api_key'] }
@@ -125,6 +133,71 @@ export class MediaManager {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`Upload error for ${ref.localPath}: ${msg}`);
+      return null;
+    }
+  }
+
+  private async uploadImageToGitHub(
+    ref: MediaReference,
+    fileBuffer: Buffer,
+    sizeBytes: number,
+    credentials: Record<string, string>,
+  ): Promise<MediaUploadResult | null> {
+    const token = credentials['token'];
+    const owner = credentials['github_owner'];
+    const repo = credentials['github_repo'];
+
+    if (!token || !owner || !repo) {
+      console.warn(`GitHub image upload requires token, github_owner, and github_repo; skipping.`);
+      return null;
+    }
+
+    try {
+      const filename = path.basename(ref.absolutePath);
+      const timestamp = Date.now();
+      const uploadPath = `assets/reach-uploads/${timestamp}-${filename}`;
+      const base64Content = fileBuffer.toString('base64');
+
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contents/${uploadPath}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+          body: JSON.stringify({
+            message: `Upload image: ${filename}`,
+            content: base64Content,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const body = await response.text();
+        console.warn(`GitHub upload failed for ${ref.localPath}: ${response.status} ${body}`);
+        return null;
+      }
+
+      const data = await response.json() as { content?: { download_url?: string } };
+      const cdnUrl = data.content?.download_url ?? '';
+
+      if (!cdnUrl) {
+        console.warn(`GitHub upload response for ${ref.localPath} did not include a download URL.`);
+        return null;
+      }
+
+      return {
+        localPath: ref.localPath,
+        cdnUrl,
+        platform: 'github',
+        sizeBytes,
+        uploadedAt: new Date().toISOString(),
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`GitHub upload error for ${ref.localPath}: ${msg}`);
       return null;
     }
   }
@@ -201,7 +274,7 @@ export class MediaManager {
   }
 }
 
-function guessMimeType(filename: string): string {
+export function guessMimeType(filename: string): string {
   const ext = path.extname(filename).toLowerCase();
   const map: Record<string, string> = {
     '.png': 'image/png',
@@ -210,6 +283,13 @@ function guessMimeType(filename: string): string {
     '.gif': 'image/gif',
     '.webp': 'image/webp',
     '.svg': 'image/svg+xml',
+    '.mp4': 'video/mp4',
+    '.webm': 'video/webm',
+    '.mov': 'video/quicktime',
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.ogg': 'audio/ogg',
+    '.m4a': 'audio/mp4',
   };
   return map[ext] ?? 'application/octet-stream';
 }

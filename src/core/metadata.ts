@@ -5,7 +5,8 @@ import yaml from 'js-yaml';
 import type { ProjectMeta, Receipt, LockInfo } from '../types/index.js';
 import { ProjectMetaSchema, ReceiptSchema } from '../types/index.js';
 import { MetadataParseError } from '../types/index.js';
-import { META_FILENAME, RECEIPT_FILENAME, LOCK_FILENAME } from './constants.js';
+import type { UploadCache } from '../utils/media.js';
+import { META_FILENAME, RECEIPT_FILENAME, LOCK_FILENAME, UPLOAD_CACHE_FILENAME } from './constants.js';
 
 export class MetadataManager {
   constructor(private readonly workingDir: string) {}
@@ -116,6 +117,23 @@ export class MetadataManager {
     } catch {
       return null;
     }
+  }
+
+  async readUploadCache(stage: string, project: string): Promise<UploadCache | null> {
+    const filePath = path.join(this.workingDir, stage, project, UPLOAD_CACHE_FILENAME);
+    if (!await fs.pathExists(filePath)) return null;
+    try {
+      const raw = await fs.readFile(filePath, 'utf-8');
+      const parsed = yaml.load(raw) as UploadCache;
+      return parsed && parsed.uploads ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async writeUploadCache(stage: string, project: string, cache: UploadCache): Promise<void> {
+    const filePath = path.join(this.workingDir, stage, project, UPLOAD_CACHE_FILENAME);
+    await fs.writeFile(filePath, yaml.dump(cache, { lineWidth: -1 }));
   }
 
   private isProcessAlive(pid: number): boolean {

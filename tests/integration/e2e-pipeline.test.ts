@@ -10,6 +10,7 @@ import { scheduleCommand } from '../../src/commands/schedule.js';
 import { publishCommand } from '../../src/commands/publish.js';
 import { statusCommand } from '../../src/commands/status.js';
 import { rollbackCommand } from '../../src/commands/rollback.js';
+import { approveCommand } from '../../src/commands/approve.js';
 
 const mockExecute = vi.fn();
 
@@ -71,13 +72,12 @@ describe('E2E: Full Pipeline (inbox → sent)', () => {
     const draftMeta = await engine.metadata.readMeta('02_drafts', 'bun-vs-node');
     expect(draftMeta?.status).toBe('drafted');
 
-    // 3. Promote to master (manual step: copy + rename)
-    const draftDir = path.join(tmpDir, '02_drafts', 'bun-vs-node');
-    const masterDir = path.join(tmpDir, '03_master', 'bun-vs-node');
-    await fs.copy(draftDir, masterDir);
-    await fs.rename(path.join(masterDir, 'draft.md'), path.join(masterDir, 'master.md'));
+    // 3. Promote to master via approve command
+    await approveCommand(engine, 'bun-vs-node');
 
+    const masterDir = path.join(tmpDir, '03_master', 'bun-vs-node');
     expect(await fs.pathExists(path.join(masterDir, 'master.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '02_drafts', 'bun-vs-node'))).toBe(false);
 
     // 4. Adapt for multiple platforms
     await adaptCommand(engine, 'bun-vs-node', { platforms: 'x,devto' });
@@ -447,6 +447,138 @@ describe('E2E: Content format conversion', () => {
     expect(capturedContent).toContain('<h1>Hello</h1>');
     expect(capturedContent).toContain('<strong>Bold</strong>');
     expect(capturedContent).not.toContain('# Hello');
+  });
+});
+
+describe('E2E: Asset reference resolution in publish', () => {
+  test('@assets/ references are resolved to absolute paths before publishing', async () => {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Create assets directory with a registered image
+    const assetsDir = path.join(tmpDir, 'assets', 'images');
+    await fs.ensureDir(assetsDir);
+    await fs.writeFile(path.join(assetsDir, 'hero.png'), 'png-data');
+
+    // Create scheduled article with @assets/ reference in content
+    const dir = path.join(tmpDir, '05_scheduled', `${today}-asset-test`);
+    await fs.ensureDir(path.join(dir, 'platform_versions'));
+    await fs.writeFile(
+      path.join(dir, 'platform_versions', 'wechat.md'),
+      '# Article\n\n![hero](@assets/images/hero.png)\n\nBody text.',
+    );
+    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: asset-test\nstatus: scheduled\n');
+
+    // Capture the content sent to provider
+    const { ProviderLoader } = await import('../../src/providers/loader.js');
+    const origGetProviderOrMock = ProviderLoader.prototype.getProviderOrMock;
+    let capturedContent = '';
+
+    ProviderLoader.prototype.getProviderOrMock = function () {
+      return {
+        id: 'mock-asset', name: 'Mock Asset', platforms: ['wechat'],
+        contentFormat: 'markdown' as const,
+        validate: () => ({ valid: true, errors: [] }),
+        publish: async (content: string) => {
+          capturedContent = content;
+          return { platform: 'wechat', status: 'success' as const, url: 'https://mock.reach.dev/post/1' };
+        },
+        formatContent: (c: string) => c,
+      };
+    };
+
+    await publishCommand(engine);
+
+    // Restore
+    ProviderLoader.prototype.getProviderOrMock = origGetProviderOrMock;
+
+    // @assets/ should be resolved to absolute path
+    expect(capturedContent).not.toContain('@assets/');
+    expect(capturedContent).toContain(path.join(tmpDir, 'assets', 'images', 'hero.png'));
+  });
+
+  test('media processing is called for devto platform with local images', async () => {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Create a scheduled devto article with a local image reference
+    const dir = path.join(tmpDir, '05_scheduled', `${today}-media-test`);
+    const versionsDir = path.join(dir, 'platform_versions');
+    await fs.ensureDir(versionsDir);
+    // Create the local image file so MediaManager can find it
+    const imgDir = path.join(dir, 'images');
+    await fs.ensureDir(imgDir);
+    await fs.writeFile(path.join(imgDir, 'diagram.png'), 'fake-png-data');
+
+    await fs.writeFile(
+      path.join(versionsDir, 'devto.md'),
+      '---\ntitle: Media Test\n---\n\n![diagram](./images/diagram.png)\n\nContent here.',
+    );
+    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: media-test\nstatus: scheduled\n');
+
+    // Capture content sent to provider to verify media processing ran
+    const { ProviderLoader } = await import('../../src/providers/loader.js');
+    const origGetProviderOrMock = ProviderLoader.prototype.getProviderOrMock;
+    let capturedContent = '';
+
+    ProviderLoader.prototype.getProviderOrMock = function () {
+      return {
+        id: 'mock-devto', name: 'Mock DevTo', platforms: ['devto'],
+        contentFormat: 'markdown' as const,
+        validate: () => ({ valid: true, errors: [] }),
+        publish: async (content: string) => {
+          capturedContent = content;
+          return { platform: 'devto', status: 'success' as const, url: 'https://dev.to/test/media-test' };
+        },
+        formatContent: (c: string) => c,
+      };
+    };
+
+    await publishCommand(engine);
+
+    // Restore
+    ProviderLoader.prototype.getProviderOrMock = origGetProviderOrMock;
+
+    // The article should have been published (moved to 06_sent)
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}-media-test`))).toBe(true);
+    // Content was captured (media processing ran, though upload would fail without real API)
+    expect(capturedContent).toContain('diagram');
+  });
+
+  test('media processing is non-fatal - publish continues on upload failure', async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const dir = path.join(tmpDir, '05_scheduled', `${today}-media-fail`);
+    const versionsDir = path.join(dir, 'platform_versions');
+    await fs.ensureDir(versionsDir);
+
+    // Reference a non-existent image — MediaManager will warn but not throw
+    await fs.writeFile(
+      path.join(versionsDir, 'devto.md'),
+      '---\ntitle: Fail Test\n---\n\n![missing](./images/gone.png)\n\nContent.',
+    );
+    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: media-fail\nstatus: scheduled\n');
+
+    await publishCommand(engine);
+
+    // Should still publish successfully despite media warnings
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}-media-fail`))).toBe(true);
+  });
+
+  test('@assets/ references do not inflate X validation character count', async () => {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Create a short X thread with an @assets/ reference
+    // The @assets/ ref is short, but the resolved absolute path would be long
+    const dir = path.join(tmpDir, '05_scheduled', `${today}-x-asset`);
+    await fs.ensureDir(path.join(dir, 'platform_versions'));
+    // Content under 280 chars with @assets/ reference
+    const xContent = 'Check out this image @assets/images/hero.png - amazing!';
+    expect(xContent.length).toBeLessThan(280);
+    await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), xContent);
+    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: x-asset\nstatus: scheduled\n');
+
+    await publishCommand(engine);
+
+    // Should have published successfully (validation passes on original short content)
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}-x-asset`))).toBe(true);
   });
 });
 

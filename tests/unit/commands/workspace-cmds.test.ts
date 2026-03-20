@@ -74,6 +74,19 @@ describe('newProjectCommand', () => {
     }
   });
 
+  test('creates assets directory with subdirs and registry', async () => {
+    await writeWorkspaceConfig(tmpDir, {});
+    const ctx = await WorkspaceResolver.resolve(tmpDir);
+
+    await newProjectCommand('asset-proj', ctx);
+
+    const projectDir = path.join(tmpDir, 'asset-proj');
+    expect(await fs.pathExists(path.join(projectDir, 'assets', 'images'))).toBe(true);
+    expect(await fs.pathExists(path.join(projectDir, 'assets', 'videos'))).toBe(true);
+    expect(await fs.pathExists(path.join(projectDir, 'assets', 'audio'))).toBe(true);
+    expect(await fs.pathExists(path.join(projectDir, 'assets', '.asset-registry.yaml'))).toBe(true);
+  });
+
   test('rejects duplicate project name', async () => {
     await writeWorkspaceConfig(tmpDir, {});
     const ctx = await WorkspaceResolver.resolve(tmpDir);

@@ -3,9 +3,9 @@ import fs from 'fs-extra';
 import * as path from 'path';
 import type { PipelineEngine } from '../core/pipeline.js';
 import { AdapterFactory } from '../llm/factory.js';
-import { DEFAULT_DRAFT_PROMPT } from '../llm/types.js';
 import { sanitizePath } from '../utils/path.js';
 import { DRAFT_FILENAME } from '../core/constants.js';
+import { TemplateResolver } from '../core/templates.js';
 
 export async function draftCommand(engine: PipelineEngine, source: string): Promise<void> {
   const safeName = sanitizePath(source);
@@ -46,7 +46,11 @@ export async function draftCommand(engine: PipelineEngine, source: string): Prom
   const { adapter, resolver } = AdapterFactory.create('draft', { projectDir });
   const skills = await resolver.resolve('draft');
 
-  const prompt = `${DEFAULT_DRAFT_PROMPT}\n\n${content}`;
+  // Resolve draft prompt: use template from meta.yaml if set, else built-in default
+  const meta = await engine.metadata.readMeta('01_inbox', safeName).catch(() => null);
+  const templateResolver = new TemplateResolver(projectDir);
+  const resolved = await templateResolver.resolveDraftPrompt(meta?.template);
+  const prompt = `${resolved.prompt}\n\n${content}`;
   const result = await adapter.execute({
     prompt,
     cwd: projectDir,

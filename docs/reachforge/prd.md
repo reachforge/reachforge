@@ -320,6 +320,7 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 
 #### FEAT-015: VS Code Extension
 - **Description**: Visual interface for the pipeline, leveraging the compiled binary via sidecar pattern.
+- **Repository**: Implemented in separate `reachforge-vscode` repository (not in this CLI codebase).
 - **Acceptance Criteria**:
   - Tree view showing pipeline stages and items.
   - One-click actions for draft, adapt, schedule, publish.

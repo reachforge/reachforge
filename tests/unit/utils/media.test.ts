@@ -145,13 +145,75 @@ describe('MediaManager.uploadImage', () => {
     vi.restoreAllMocks();
   });
 
-  test('returns null for platform with no upload endpoint', async () => {
+  test('returns null for platform with no upload endpoint (wechat)', async () => {
     vi.mocked(fs.pathExists).mockResolvedValue(true as never);
     vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('fake image data') as never);
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const result = await manager.uploadImage(ref, 'wechat', {});
     expect(result).toBeNull();
+
+    vi.restoreAllMocks();
+  });
+
+  test('uploads to Hashnode with file field name', async () => {
+    vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+    vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('hashnode image') as never);
+    let capturedBody: FormData | null = null;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+      capturedBody = opts.body;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ url: 'https://cdn.hashnode.com/img123.png' }),
+      };
+    }));
+
+    const result = await manager.uploadImage(ref, 'hashnode', { api_key: 'hn-key' });
+    expect(result).not.toBeNull();
+    expect(result?.cdnUrl).toBe('https://cdn.hashnode.com/img123.png');
+    expect(capturedBody).toBeDefined();
+
+    vi.unstubAllGlobals();
+  });
+
+  test('uploads to GitHub via REST content API with base64', async () => {
+    vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+    vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('github image') as never);
+    let capturedUrl = '';
+    let capturedPayload: any = null;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string, opts: any) => {
+      capturedUrl = url;
+      capturedPayload = JSON.parse(opts.body);
+      return {
+        ok: true,
+        status: 201,
+        json: async () => ({ content: { download_url: 'https://raw.githubusercontent.com/user/repo/main/assets/reach-uploads/img.png' } }),
+      };
+    }));
+
+    const result = await manager.uploadImage(ref, 'github', {
+      token: 'gh-token',
+      github_owner: 'testuser',
+      github_repo: 'testrepo',
+    });
+    expect(result).not.toBeNull();
+    expect(result?.cdnUrl).toContain('raw.githubusercontent.com');
+    expect(capturedUrl).toContain('api.github.com/repos/testuser/testrepo/contents/assets/reach-uploads/');
+    expect(capturedPayload.content).toBeDefined(); // base64 content
+    expect(capturedPayload.message).toContain('Upload image');
+
+    vi.unstubAllGlobals();
+  });
+
+  test('GitHub upload returns null when credentials are missing', async () => {
+    vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+    vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('data') as never);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await manager.uploadImage(ref, 'github', { token: 'gh-token' });
+    expect(result).toBeNull();
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('github_owner'));
 
     vi.restoreAllMocks();
   });

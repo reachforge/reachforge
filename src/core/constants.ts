@@ -33,6 +33,14 @@ export const LOCK_FILENAME = '.publish.lock';
 export const MASTER_FILENAME = 'master.md';
 export const DRAFT_FILENAME = 'draft.md';
 export const PLATFORM_VERSIONS_DIR = 'platform_versions';
+export const UPLOAD_CACHE_FILENAME = '.upload_cache.yaml';
+
+export const ASSETS_DIR = 'assets';
+export const ASSET_SUBDIRS = ['images', 'videos', 'audio'] as const;
+export const ASSET_REGISTRY_FILENAME = '.asset-registry.yaml';
+export const ASSET_PREFIX = '@assets/';
+
+export const TEMPLATES_DIR = 'templates';
 
 export const WORKSPACE_CONFIG_DIR = '.reach';
 export const WORKSPACE_CONFIG_FILE = 'config.yaml';

@@ -5,6 +5,7 @@ import { sanitizePath } from '../utils/path.js';
 import { WorkspaceResolver } from '../core/workspace.js';
 import { writeProjectConfig } from '../core/project-config.js';
 import { STAGES } from '../core/constants.js';
+import { AssetManager } from '../core/asset-manager.js';
 import type { WorkspaceContext } from '../core/workspace.js';
 
 export async function newProjectCommand(
@@ -30,6 +31,10 @@ export async function newProjectCommand(
   for (const stage of STAGES) {
     await fs.ensureDir(path.join(projectDir, stage));
   }
+
+  // Create assets directory with subdirs and empty registry
+  const assetMgr = new AssetManager(projectDir);
+  await assetMgr.initAssets();
 
   // Create project.yaml
   await writeProjectConfig(projectDir, {

@@ -101,15 +101,17 @@ export class MediaManager {
    - If not: log warning "Image file not found: {absolutePath}; skipping." and return null
 2. Read file as Buffer via `fs.readFile(ref.absolutePath)`
 3. Get file size in bytes from Buffer length
-4. Determine upload endpoint by platform:
-   | Platform | Endpoint | Method | Auth |
-   |----------|---------|--------|------|
-   | `devto` | `POST https://dev.to/api/images` | multipart/form-data with `image` field | `api-key` header |
-   | `hashnode` | Hashnode image upload API (varies) | multipart/form-data | `Authorization` header |
-   | `github` | GitHub content API or external CDN | Base64 in JSON body | `Authorization: Bearer` |
-   | `x` | Images uploaded through Postiz API as part of post | (handled by Postiz) | N/A |
-5. Send upload request via HttpClient
-6. Extract CDN URL from response
+4. Determine upload strategy by platform:
+   | Platform | Endpoint | Method | Auth | Field |
+   |----------|---------|--------|------|-------|
+   | `devto` | `POST https://dev.to/api/images` | multipart/form-data | `api-key` header | `image` |
+   | `hashnode` | `POST https://api.hashnode.com/upload` | multipart/form-data | `api-key` header | `file` |
+   | `github` | `PUT https://api.github.com/repos/{owner}/{repo}/contents/{path}` | JSON (base64) | `Authorization: Bearer` | `content` |
+   | `x` | Skipped (NO_UPLOAD_PLATFORMS) | N/A | N/A | N/A |
+   | `wechat` | Skipped (NO_UPLOAD_PLATFORMS) | N/A | N/A | N/A |
+   | `zhihu` | Skipped (NO_UPLOAD_PLATFORMS) | N/A | N/A | N/A |
+5. Send upload request (multipart for devto/hashnode, REST content API for github)
+6. Extract CDN URL from response (`url`/`cdn_url` for devto/hashnode, `content.download_url` for github)
 7. Return `MediaUploadResult { localPath: ref.localPath, cdnUrl, platform, sizeBytes, uploadedAt: now }`
 
 ### replaceUrls(content, uploads)

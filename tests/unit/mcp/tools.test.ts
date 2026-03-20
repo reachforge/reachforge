@@ -6,6 +6,10 @@ import {
   ScheduleToolSchema,
   PublishToolSchema,
   RollbackToolSchema,
+  ApproveToolSchema,
+  AssetAddToolSchema,
+  AssetListToolSchema,
+  AnalyticsToolSchema,
   MCP_TOOL_DEFINITIONS,
 } from '../../../src/mcp/tools.js';
 
@@ -41,11 +45,36 @@ describe('MCP Tool Schemas', () => {
     expect(RollbackToolSchema.safeParse({ project: 'my-post' }).success).toBe(true);
     expect(RollbackToolSchema.safeParse({}).success).toBe(false);
   });
+
+  test('ApproveToolSchema requires article', () => {
+    expect(ApproveToolSchema.safeParse({ article: 'my-draft' }).success).toBe(true);
+    expect(ApproveToolSchema.safeParse({}).success).toBe(false);
+  });
+
+  test('AssetAddToolSchema requires file, optional subdir', () => {
+    expect(AssetAddToolSchema.safeParse({ file: './logo.png' }).success).toBe(true);
+    expect(AssetAddToolSchema.safeParse({ file: './logo.png', subdir: 'images' }).success).toBe(true);
+    expect(AssetAddToolSchema.safeParse({ file: './logo.png', subdir: 'invalid' }).success).toBe(false);
+    expect(AssetAddToolSchema.safeParse({}).success).toBe(false);
+  });
+
+  test('AssetListToolSchema optional subdir', () => {
+    expect(AssetListToolSchema.safeParse({}).success).toBe(true);
+    expect(AssetListToolSchema.safeParse({ subdir: 'videos' }).success).toBe(true);
+    expect(AssetListToolSchema.safeParse({ subdir: 'invalid' }).success).toBe(false);
+  });
+
+  test('AnalyticsToolSchema optional date filters', () => {
+    expect(AnalyticsToolSchema.safeParse({}).success).toBe(true);
+    expect(AnalyticsToolSchema.safeParse({ from: '2026-03-01' }).success).toBe(true);
+    expect(AnalyticsToolSchema.safeParse({ from: '2026-03-01', to: '2026-03-31' }).success).toBe(true);
+    expect(AnalyticsToolSchema.safeParse({ from: 'invalid' }).success).toBe(false);
+  });
 });
 
 describe('MCP_TOOL_DEFINITIONS', () => {
-  test('has 6 tool definitions', () => {
-    expect(MCP_TOOL_DEFINITIONS).toHaveLength(6);
+  test('has 10 tool definitions', () => {
+    expect(MCP_TOOL_DEFINITIONS).toHaveLength(10);
   });
 
   test('all tools have name, description, and schema', () => {
@@ -65,5 +94,9 @@ describe('MCP_TOOL_DEFINITIONS', () => {
     expect(names).toContain('reach_schedule');
     expect(names).toContain('reach_publish');
     expect(names).toContain('reach_rollback');
+    expect(names).toContain('reach_approve');
+    expect(names).toContain('reach_asset_add');
+    expect(names).toContain('reach_asset_list');
+    expect(names).toContain('reach_analytics');
   });
 });

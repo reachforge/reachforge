@@ -10,13 +10,15 @@
 - **Hybrid Publishing Strategy**: Supports direct local API publishing and SaaS-bridged (e.g., Postiz) publishing.
 - **AI Adapter Pattern**: Automatically rewrites the master draft into optimal versions for different platforms (X, WeChat, Zhihu) via LLM.
 
-## Directory Pipeline (01-06)
+## Directory Pipeline (01-06) + Assets
+
 1. `📥_01_inbox`: Raw material entry.
 2. `✍️_02_drafts`: AI-generated long-form drafts.
-3. `🎯_03_master`: "Master draft/Source file" signed off by the Editor-in-Chief (User).
+3. `🎯_03_master`: "Master draft/Source file" signed off by the Editor-in-Chief (User). Use `reach approve` to promote from drafts.
 4. `🤖_04_adapted`: **Core Stage**! AI-generated multi-platform adapted version folders.
 5. `📅_05_scheduled`: Confirmed schedule, awaiting automatic/manual distribution bundles.
 6. `📤_06_sent`: Published history archive, including publication receipts.
+7. `🗂️_assets`: Shared asset library for images, videos, and audio — referenced via `@assets/` prefix in articles, never duplicated across stages.
 
 ## Quick Start
 
@@ -73,11 +75,15 @@ reach new my-tech-blog
 cd my-tech-blog
 
 reach status                          # View pipeline dashboard
+reach asset add ./photo.jpg           # Register asset to shared library
+reach asset list                      # List all registered assets
 reach draft my-idea.md                # Generate draft from inbox
+reach approve my-idea                 # Promote draft to master
 reach adapt my-article                # Adapt for all platforms
 reach schedule my-article 2026-03-20  # Schedule for publishing
 reach publish                         # Publish due content
 reach watch                           # Daemon mode: auto-publish on schedule
+reach analytics                       # View publishing success metrics
 ```
 
 ## Development

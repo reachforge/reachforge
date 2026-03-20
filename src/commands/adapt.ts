@@ -2,9 +2,9 @@ import chalk from 'chalk';
 import fs from 'fs-extra';
 import type { PipelineEngine } from '../core/pipeline.js';
 import { AdapterFactory } from '../llm/factory.js';
-import { PLATFORM_PROMPTS } from '../llm/types.js';
 import { sanitizePath } from '../utils/path.js';
 import { MASTER_FILENAME, PLATFORM_VERSIONS_DIR } from '../core/constants.js';
+import { TemplateResolver } from '../core/templates.js';
 
 const DEFAULT_PLATFORMS = ['x', 'wechat', 'zhihu'];
 
@@ -38,6 +38,8 @@ export async function adaptCommand(
 
   const projectDir = engine.projectDir;
   const { adapter, resolver } = AdapterFactory.create('adapt', { projectDir });
+  const meta = await engine.metadata.readMeta('03_master', safeName).catch(() => null);
+  const templateResolver = new TemplateResolver(projectDir);
 
   // Parallel adaptation via Promise.all
   const results = await Promise.all(
@@ -51,8 +53,8 @@ export async function adaptCommand(
       }
 
       const skills = await resolver.resolve('adapt', platform);
-      const platformPrompt = PLATFORM_PROMPTS[platform] ?? `Adapt this article for the ${platform} platform.`;
-      const prompt = `${platformPrompt}\n\n${content}`;
+      const resolved = await templateResolver.resolveAdaptPrompt(platform, meta?.template);
+      const prompt = `${resolved.prompt}\n\n${content}`;
 
       const result = await adapter.execute({
         prompt,

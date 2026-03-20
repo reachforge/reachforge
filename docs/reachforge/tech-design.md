@@ -5,7 +5,7 @@
 | **Document**     | reachforge Technical Design v1.0                       |
 | **Author**       | aipartnerup Engineering                            |
 | **Date**         | 2026-03-14                                         |
-| **Status**       | Draft                                              |
+| **Status**       | Implemented (architecture delivered, see notes below) |
 | **Version**      | 1.0                                                |
 | **PRD Reference**| [reachforge PRD v1.0](prd.md)                         |
 | **SRS Reference**| [reachforge SRS v1.0](srs.md)                         |
@@ -17,7 +17,16 @@
 
 ### 1.1 Background
 
-reachforge is currently a single-file monolith (`src/index.ts`, 290 lines) that implements a six-stage file-based content pipeline. All logic resides in one `ReachforgeLogic` object with five methods, CLI wiring via Commander, APCore module registration, and MCP server launch via apcore-mcp. Publishing is mocked with random URLs. There is no test suite, no modular architecture, and no real platform integration.
+> **Implementation Note (2026-03-20)**: This tech design has been fully implemented. The monolith has been refactored into the modular architecture described below. Additionally, the following architectural enhancements were made beyond the original design:
+> - **CLI Adapter Layer**: Replaced the direct GeminiProvider with CLI-based adapters (Claude, Gemini, Codex) that spawn subprocesses with skill injection and session persistence.
+> - **Refine Command**: Interactive multi-turn LLM refinement with `/save`, `/quit`, `/status`, `/diff` commands.
+> - **Approve Command**: Explicit `reach approve` workflow replacing manual file copy for draft-to-master promotion.
+> - **Asset Library**: Project-level `assets/` directory with `@assets/` reference resolution and `.asset-registry.yaml` tracking.
+> - **Workspace Management**: Multi-project workspace support with `reach init`, `reach new`, and automatic workspace resolution.
+> - **Media Upload**: CDN upload integration for Dev.to (multipart), Hashnode (multipart), and GitHub (REST content API with base64).
+> - **480 tests** covering all components (unit + integration + e2e).
+
+reachforge was originally a single-file monolith (`src/index.ts`, 290 lines). It has since been refactored into a modular plugin-based architecture with real platform integrations, a comprehensive test suite, and multi-LLM support.
 
 The PRD targets v0.2 (MVP) with real publishing to Dev.to and X via Postiz, plus a provider plugin architecture that enables future platform expansion. The SRS formalizes 67 functional requirements and 16 non-functional requirements across 16 features. This design document specifies **how** to build the system described by those requirements: the module boundaries, interfaces, data flows, error handling, and migration path from the current monolith to a plugin-based architecture.
 
