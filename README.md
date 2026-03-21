@@ -39,18 +39,37 @@ reach init ~/reach-workspace
 cd ~/reach-workspace
 ```
 
-Create a `.env` file **in the workspace directory** with your API keys:
+`reach init` auto-generates a `.env` template in your workspace (all values commented out). Edit it to add keys for the platforms you use:
 
 ```bash
 # ~/reach-workspace/.env
 
 # LLM adapter (claude, gemini, or codex)
-REACHFORGE_LLM_ADAPTER=claude
+# REACHFORGE_LLM_ADAPTER=claude
 
-# Platform API keys (for publishing)
-DEVTO_API_KEY=your-key        # Dev.to: Settings > Extensions > DEV API Keys
-POSTIZ_API_KEY=your-key       # Postiz (for X/Twitter): postiz.com Dashboard > API
+# Platform API keys — only for the platforms you publish to
+# DEVTO_API_KEY=your-key
+# POSTIZ_API_KEY=your-key
+# HASHNODE_API_KEY=your-key
+# HASHNODE_PUBLICATION_ID=your-id
+# GITHUB_TOKEN=your-token
+# GITHUB_OWNER=your-username
+# GITHUB_REPO=your-repo
 ```
+
+### What needs configuration and when
+
+| Task | Required Configuration | Without it |
+|------|----------------------|------------|
+| `reach draft` / `reach adapt` | None (uses local CLI) | Just install & auth the CLI (`claude`, `gemini`, or `codex`) |
+| Publish to **Dev.to** | `DEVTO_API_KEY` | Falls back to mock mode — publish "succeeds" but nothing is actually posted |
+| Publish to **X/Twitter** (via Postiz) | `POSTIZ_API_KEY` | Falls back to mock mode |
+| Publish to **Hashnode** | `HASHNODE_API_KEY` + `HASHNODE_PUBLICATION_ID` | Falls back to mock mode (both required) |
+| Publish to **GitHub Discussions** | `GITHUB_TOKEN` + `GITHUB_OWNER` + `GITHUB_REPO` | Falls back to mock mode (all three required) |
+| Gemini API mode | `GEMINI_API_KEY` | Error: `LLMNotConfiguredError` |
+| MCP server auth | `MCP_AUTH_KEY` | MCP server runs without authentication |
+
+> **Important:** When a platform API key is missing, `reach publish` silently uses a mock provider — the receipt shows "success" but no content is actually published. Use `--dry-run` or check `reach analytics` to verify real publishing.
 
 You can also use different adapters for different stages:
 

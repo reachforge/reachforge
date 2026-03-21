@@ -62,7 +62,7 @@ export async function adaptCommand(
         cwd: projectDir,
         skillPaths: skills.map(s => s.path),
         sessionId: null,
-        timeoutSec: 120,
+        timeoutSec: 300,
         extraArgs: [],
       });
 

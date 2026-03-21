@@ -172,7 +172,7 @@ reach init                    # Interactive — defaults to ~/reach-workspace
 reach init ~/my-workspace     # Explicit path
 ```
 
-Creates the `.reach/config.yaml` directory structure.
+Creates the `.reach/config.yaml` directory structure and a `.env` template with all configuration options commented out. Edit the `.env` file to add API keys for the platforms you want to publish to.
 
 ---
 
@@ -459,6 +459,20 @@ Exposes these MCP tools: `reachforge_status`, `reachforge_draft`, `reachforge_ad
 4. **Workspace `.env`** — `{workspace}/.env`
 5. **Workspace `config.yaml`** — `{workspace}/.reach/config.yaml`
 6. **Global config** — `~/.reach/config.yaml`
+
+### What Needs Configuration and When
+
+| Task | Required Configuration | Without it |
+|------|----------------------|------------|
+| `reach draft` / `reach adapt` | None (uses local CLI) | Just install & auth the CLI (`claude`, `gemini`, or `codex`) |
+| Publish to **Dev.to** | `DEVTO_API_KEY` | Falls back to mock mode — publish "succeeds" but nothing is actually posted |
+| Publish to **X/Twitter** (via Postiz) | `POSTIZ_API_KEY` | Falls back to mock mode |
+| Publish to **Hashnode** | `HASHNODE_API_KEY` + `HASHNODE_PUBLICATION_ID` | Falls back to mock mode (both required) |
+| Publish to **GitHub Discussions** | `GITHUB_TOKEN` + `GITHUB_OWNER` + `GITHUB_REPO` | Falls back to mock mode (all three required) |
+| Gemini API mode | `GEMINI_API_KEY` | Error: `LLMNotConfiguredError` |
+| MCP server auth | `MCP_AUTH_KEY` | MCP server runs without authentication |
+
+> **Important:** When a platform API key is missing, `reach publish` silently uses a mock provider — the receipt shows "success" but no content is actually published. Always use `reach publish --dry-run` first to preview, and check `reach analytics` to verify real publishing results.
 
 ### Workspace Configuration (`config.yaml`)
 

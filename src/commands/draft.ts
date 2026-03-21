@@ -57,12 +57,18 @@ export async function draftCommand(engine: PipelineEngine, source: string, optio
     cwd: projectDir,
     skillPaths: skills.map(s => s.path),
     sessionId: null,
-    timeoutSec: 120,
+    timeoutSec: 300,
     extraArgs: [],
   });
 
   if (!result.success) {
-    throw new Error(result.errorMessage ?? 'Draft generation failed');
+    const details = [
+      result.errorMessage,
+      result.errorCode ? `code: ${result.errorCode}` : null,
+      result.exitCode !== null && result.exitCode !== 0 ? `exit: ${result.exitCode}` : null,
+      !result.content ? 'LLM returned empty content' : null,
+    ].filter(Boolean).join('; ');
+    throw new Error(details || 'Draft generation failed (unknown reason)');
   }
 
   const draftName = safeName.replace(/\.[^/.]+$/, '');

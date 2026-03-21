@@ -66,6 +66,19 @@ async function getContext(): Promise<WorkspaceContext> {
 
 async function getEngine(): Promise<PipelineEngine> {
   const ctx = await getContext();
+
+  // Guard: if we resolved to a workspace root without a specific project,
+  // the user needs to cd into a project or use --project
+  if (ctx.isWorkspace && !ctx.projectName) {
+    const projects = await WorkspaceResolver.listProjects(ctx.workspaceRoot!);
+    const names = projects.map(p => p.name).join(', ');
+    throw new Error(
+      names
+        ? `You are in a workspace root, not a project. Use: cd <project> or reach --project <name>\nAvailable projects: ${names}`
+        : `You are in a workspace root with no projects. Create one first: reach new <name>`,
+    );
+  }
+
   return new PipelineEngine(ctx.projectDir);
 }
 
@@ -144,8 +157,14 @@ program
   .option('-a, --all', 'Show status across all projects in workspace')
   .action(withErrorHandler(async (options: { all?: boolean }) => {
     const ctx = await getContext();
-    const engine = new PipelineEngine(ctx.projectDir);
-    await statusCommand(engine, { ...options, json: program.opts().json }, ctx);
+    if (options.all) {
+      // --all mode works at workspace level
+      const engine = new PipelineEngine(ctx.projectDir);
+      await statusCommand(engine, { ...options, json: program.opts().json }, ctx);
+    } else {
+      const engine = await getEngine();
+      await statusCommand(engine, { json: program.opts().json }, ctx);
+    }
   }, 'status'));
 
 program
@@ -238,8 +257,8 @@ program
   .description('Create a new project in the current workspace')
   .action(withErrorHandler(async (projectName: string) => {
     const ctx = await getContext();
-    await newProjectCommand(projectName, ctx);
-  }));
+    await newProjectCommand(projectName, ctx, { json: program.opts().json });
+  }, 'new'));
 
 program
   .command('workspace')

@@ -6,11 +6,13 @@ import { WorkspaceResolver } from '../core/workspace.js';
 import { writeProjectConfig } from '../core/project-config.js';
 import { STAGES } from '../core/constants.js';
 import { AssetManager } from '../core/asset-manager.js';
+import { jsonSuccess } from '../core/json-output.js';
 import type { WorkspaceContext } from '../core/workspace.js';
 
 export async function newProjectCommand(
   projectName: string,
   context?: WorkspaceContext,
+  options: { json?: boolean } = {},
 ): Promise<void> {
   const safeName = sanitizePath(projectName);
 
@@ -43,6 +45,14 @@ export async function newProjectCommand(
     default_tags: [],
     history: [],
   });
+
+  if (options.json) {
+    process.stdout.write(jsonSuccess('new', {
+      project: safeName,
+      path: projectDir,
+    }));
+    return;
+  }
 
   console.log(chalk.green(`✅ Project "${safeName}" created at ${projectDir}`));
   console.log(chalk.dim('\nNext steps:'));

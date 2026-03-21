@@ -35,20 +35,21 @@ describe('ProjectConfigSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  test('validates minimal config (only name required)', () => {
-    const result = ProjectConfigSchema.safeParse({ name: 'minimal' });
+  test('validates minimal config (no required fields)', () => {
+    const result = ProjectConfigSchema.safeParse({});
     expect(result.success).toBe(true);
     expect(result.data!.platforms).toEqual([]);
     expect(result.data!.language).toBe('en');
     expect(result.data!.history).toEqual([]);
   });
 
-  test('rejects empty name', () => {
-    expect(ProjectConfigSchema.safeParse({ name: '' }).success).toBe(false);
+  test('accepts empty name', () => {
+    expect(ProjectConfigSchema.safeParse({ name: '' }).success).toBe(true);
   });
 
-  test('rejects missing name', () => {
-    expect(ProjectConfigSchema.safeParse({}).success).toBe(false);
+  test('accepts missing name', () => {
+    expect(ProjectConfigSchema.safeParse({}).success).toBe(true);
+    expect(ProjectConfigSchema.safeParse({}).data!.name).toBeUndefined();
   });
 
   test('accepts credentials override', () => {

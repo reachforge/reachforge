@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { PROJECT_CONFIG_FILE, WORKSPACE_CONFIG_DIR, WORKSPACE_CONFIG_FILE } from './constants.js';
 
 export const ProjectConfigSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().optional(),
   description: z.string().optional(),
   platforms: z.array(z.string()).default([]),
   language: z.string().default('en'),
@@ -42,7 +42,7 @@ export async function readProjectConfig(projectDir: string): Promise<ProjectConf
   }
 }
 
-export async function writeProjectConfig(projectDir: string, config: Partial<ProjectConfig> & { name: string }): Promise<void> {
+export async function writeProjectConfig(projectDir: string, config: Partial<ProjectConfig>): Promise<void> {
   const filePath = path.join(projectDir, PROJECT_CONFIG_FILE);
   await fs.ensureDir(projectDir);
   const full = ProjectConfigSchema.parse(config);

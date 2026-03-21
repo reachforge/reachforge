@@ -1,8 +1,11 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 import * as os from 'os';
+import { fileURLToPath } from 'url';
 import fs from 'fs-extra';
 import { STAGES, DEFAULT_WORKSPACE_NAME } from '../../../src/core/constants.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Isolate tests from real ~/reach-workspace by pointing homedir to a temp dir.
 // fakeHome must be initialized before workspace.ts module loads (module-level constants).
@@ -48,6 +51,28 @@ describe('initCommand', () => {
     await initCommand(tmpDir); // second call
 
     expect(await fs.pathExists(path.join(tmpDir, '.reach', 'config.yaml'))).toBe(true);
+  });
+
+  test('copies .env.example as .env in new workspace', async () => {
+    await initCommand(tmpDir);
+
+    const envPath = path.join(tmpDir, '.env');
+    expect(await fs.pathExists(envPath)).toBe(true);
+
+    const content = await fs.readFile(envPath, 'utf-8');
+    const example = await fs.readFile(path.resolve(__dirname, '../../../.env.example'), 'utf-8');
+    expect(content).toBe(example);
+  });
+
+  test('does not overwrite existing .env', async () => {
+    const envPath = path.join(tmpDir, '.env');
+    await fs.ensureDir(tmpDir);
+    await fs.writeFile(envPath, 'DEVTO_API_KEY=my-real-key\n');
+
+    await initCommand(tmpDir);
+
+    const content = await fs.readFile(envPath, 'utf-8');
+    expect(content).toBe('DEVTO_API_KEY=my-real-key\n');
   });
 
   test('creates target directory if it does not exist', async () => {

@@ -33,8 +33,6 @@ export class PipelineEngine {
   }
 
   async getStatus(): Promise<PipelineStatus> {
-    await this.initPipeline();
-
     const stages = {} as Record<PipelineStage, StageInfo>;
     let totalProjects = 0;
 
