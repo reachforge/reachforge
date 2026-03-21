@@ -19,8 +19,8 @@ function makeAdapterResult(prompt: string) {
   let content = `# Generated Article\n\n${prompt}`;
   if (prompt.includes('Twitter/X thread')) content = 'Thread about the topic.\n---\nSecond tweet with details.\n---\nFinal tweet with CTA.';
   else if (prompt.includes('Dev.to')) content = '---\ntitle: Dev.to Article\n---\nContent about the topic.';
-  else if (prompt.includes('WeChat')) content = '# WeChat 文章\n\nContent.';
-  else if (prompt.includes('Zhihu')) content = '## Zhihu 深度分析\n\nContent.';
+  else if (prompt.includes('WeChat')) content = '# WeChat Article\n\nContent.';
+  else if (prompt.includes('Zhihu')) content = '## Zhihu Analysis\n\nContent.';
   return { success: true, content, sessionId: null, usage: { inputTokens: 0, outputTokens: 0, cachedTokens: 0 }, costUsd: null, model: 'mock', errorMessage: null, errorCode: null, exitCode: 0, timedOut: false };
 }
 

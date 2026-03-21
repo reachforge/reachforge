@@ -8,6 +8,7 @@ import { PLATFORM_VERSIONS_DIR } from '../core/constants.js';
 import { markdownToHtml } from '../utils/markdown.js';
 import { AssetManager } from '../core/asset-manager.js';
 import { MediaManager } from '../utils/media.js';
+import { jsonSuccess } from '../core/json-output.js';
 
 // Map platform names to their credential keys in ReachforgeConfig
 function getCredentialsForPlatform(platform: string, config: ReachforgeConfig): Record<string, string> {
@@ -28,17 +29,33 @@ function getCredentialsForPlatform(platform: string, config: ReachforgeConfig): 
 
 export async function publishCommand(
   engine: PipelineEngine,
-  options: { dryRun?: boolean; draft?: boolean; config?: ReachforgeConfig } = {},
+  options: { dryRun?: boolean; draft?: boolean; json?: boolean; config?: ReachforgeConfig } = {},
 ): Promise<void> {
   await engine.initPipeline();
   const dueItems = await engine.findDueProjects();
 
+  const jsonPublished: Array<{ article: string; platform: string; status: 'success'; url?: string }> = [];
+  const jsonFailed: Array<{ article: string; platform: string; status: 'failed'; error?: string }> = [];
+  const jsonSkipped: string[] = [];
+
   if (dueItems.length === 0) {
+    if (options.json) {
+      process.stdout.write(jsonSuccess('publish', { published: [], failed: [], skipped: [] }));
+      return;
+    }
     console.log(chalk.gray('📭 No content due for publishing today.'));
     return;
   }
 
   if (options.dryRun) {
+    if (options.json) {
+      process.stdout.write(jsonSuccess('publish', {
+        published: [],
+        failed: [],
+        skipped: dueItems,
+      }));
+      return;
+    }
     console.log(chalk.yellow(`🔍 [DRY RUN] Would publish ${dueItems.length} item(s):`));
     dueItems.forEach(item => console.log(chalk.yellow(`  - ${item}`)));
     return;
@@ -52,14 +69,15 @@ export async function publishCommand(
   for (const item of dueItems) {
     // 1. Check if already locked (another process is publishing this item)
     if (await engine.metadata.isLocked('05_scheduled', item)) {
-      console.log(chalk.yellow(`  ⏭ "${item}" is already being published by another process. Skipping.`));
+      jsonSkipped.push(item);
+      if (!options.json) console.log(chalk.yellow(`  ⏭ "${item}" is already being published by another process. Skipping.`));
       continue;
     }
 
     // 2. Check for a crashed previous publish (receipt exists with status=publishing, but no lock)
     const existingReceipt = await engine.metadata.readReceipt('05_scheduled', item);
     if (existingReceipt && existingReceipt.status === 'publishing') {
-      console.log(chalk.yellow(`  🔄 Resuming interrupted publish for "${item}"...`));
+      if (!options.json) console.log(chalk.yellow(`  🔄 Resuming interrupted publish for "${item}"...`));
     }
 
     const itemPath = engine.getProjectPath('05_scheduled', item);
@@ -67,7 +85,8 @@ export async function publishCommand(
     const platformFiles = await fs.pathExists(platformsDir) ? await fs.readdir(platformsDir) : [];
 
     if (platformFiles.length === 0) {
-      console.log(chalk.yellow(`  ⏭ No platform versions found for "${item}", skipping`));
+      jsonSkipped.push(item);
+      if (!options.json) console.log(chalk.yellow(`  ⏭ No platform versions found for "${item}", skipping`));
       continue;
     }
 
@@ -82,20 +101,24 @@ export async function publishCommand(
     // (resolved absolute paths are longer and would inflate character counts for X validation)
     const validation = validateContent(contentByPlatform);
     if (!validation.allValid) {
-      console.log(chalk.red(`  ❌ Validation failed for "${item}":`));
-      for (const [platform, result] of Object.entries(validation.results)) {
-        if (!result.valid) {
-          result.errors.forEach(err => console.log(chalk.red(`     ${platform}: ${err}`)));
+      jsonSkipped.push(item);
+      if (!options.json) {
+        console.log(chalk.red(`  ❌ Validation failed for "${item}":`));
+        for (const [platform, result] of Object.entries(validation.results)) {
+          if (!result.valid) {
+            result.errors.forEach(err => console.log(chalk.red(`     ${platform}: ${err}`)));
+          }
         }
+        console.log(chalk.yellow(`  ⏭ Skipping "${item}" — fix validation errors and retry`));
       }
-      console.log(chalk.yellow(`  ⏭ Skipping "${item}" — fix validation errors and retry`));
       continue;
     }
 
     // 3. Acquire lock
     const locked = await engine.metadata.lockProject('05_scheduled', item);
     if (!locked) {
-      console.log(chalk.yellow(`  ⏭ "${item}" is already being published by another process. Skipping.`));
+      jsonSkipped.push(item);
+      if (!options.json) console.log(chalk.yellow(`  ⏭ "${item}" is already being published by another process. Skipping.`));
       continue;
     }
 
@@ -133,16 +156,18 @@ export async function publishCommand(
 
         // Skip already-succeeded platforms (resume scenario)
         if (entry.status === 'success') {
-          console.log(chalk.dim(`  ⏩ ${platform}: already published, skipping`));
+          if (!options.json) console.log(chalk.dim(`  ⏩ ${platform}: already published, skipping`));
           continue;
         }
 
         const provider = loader.getProviderOrMock(platform);
 
-        if (provider.id === 'mock') {
-          console.log(chalk.yellow(`  ⚠ [MOCK] ${platform} — no API key configured, using mock provider`));
-        } else {
-          console.log(chalk.dim(`  📤 Publishing ${platform} via ${provider.name}...`));
+        if (!options.json) {
+          if (provider.id === 'mock') {
+            console.log(chalk.yellow(`  ⚠ [MOCK] ${platform} — no API key configured, using mock provider`));
+          } else {
+            console.log(chalk.dim(`  📤 Publishing ${platform} via ${provider.name}...`));
+          }
         }
 
         // Mark as sending
@@ -159,12 +184,12 @@ export async function publishCommand(
           publishContent = mediaResult.processedContent;
           uploadCache = mediaResult.updatedCache;
           if (mediaResult.uploads.length > 0) {
-            console.log(chalk.dim(`  📎 Uploaded ${mediaResult.uploads.length} media file(s) for ${platform}`));
+            if (!options.json) console.log(chalk.dim(`  📎 Uploaded ${mediaResult.uploads.length} media file(s) for ${platform}`));
             await engine.metadata.writeUploadCache('05_scheduled', item, uploadCache);
           }
         } catch (mediaErr: unknown) {
           const msg = mediaErr instanceof Error ? mediaErr.message : String(mediaErr);
-          console.warn(chalk.yellow(`  ⚠ Media processing warning for ${platform}: ${msg}`));
+          if (!options.json) console.warn(chalk.yellow(`  ⚠ Media processing warning for ${platform}: ${msg}`));
           // Continue with unprocessed content — media errors are non-fatal
         }
 
@@ -181,15 +206,18 @@ export async function publishCommand(
           entry.error = result.error;
 
           if (result.status === 'success') {
-            console.log(chalk.green(`  ✔ ${platform}: ${result.url}`));
+            jsonPublished.push({ article: item, platform, status: 'success', url: result.url });
+            if (!options.json) console.log(chalk.green(`  ✔ ${platform}: ${result.url}`));
           } else {
-            console.log(chalk.red(`  ✘ ${platform}: ${result.error}`));
+            jsonFailed.push({ article: item, platform, status: 'failed', error: result.error });
+            if (!options.json) console.log(chalk.red(`  ✘ ${platform}: ${result.error}`));
           }
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
           entry.status = 'failed';
           entry.error = message;
-          console.log(chalk.red(`  ✘ ${platform}: ${message}`));
+          jsonFailed.push({ article: item, platform, status: 'failed', error: message });
+          if (!options.json) console.log(chalk.red(`  ✘ ${platform}: ${message}`));
         }
 
         // Update receipt after each platform
@@ -208,14 +236,22 @@ export async function publishCommand(
       // 10. Move to sent if at least one platform succeeded
       if (anySuccess) {
         await engine.moveProject(item, '05_scheduled', '06_sent');
-        console.log(chalk.green(`✅ Published and archived: ${item}`));
+        if (!options.json) console.log(chalk.green(`✅ Published and archived: ${item}`));
       } else {
-        console.log(chalk.red(`❌ All platforms failed for "${item}" — remains in 05_scheduled`));
+        if (!options.json) console.log(chalk.red(`❌ All platforms failed for "${item}" — remains in 05_scheduled`));
       }
     } catch (err) {
       // Release lock on unexpected errors
       await engine.metadata.unlockProject('05_scheduled', item);
       throw err;
     }
+  }
+
+  if (options.json) {
+    process.stdout.write(jsonSuccess('publish', {
+      published: jsonPublished,
+      failed: jsonFailed,
+      skipped: jsonSkipped,
+    }));
   }
 }

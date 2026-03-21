@@ -94,23 +94,50 @@ reach analytics                       # View publishing success metrics
 # Install dependencies
 bun install
 
-# Run development version
-bun dev status
-
 # Run tests
-bun test
+bun run test
+```
 
-# Compile to single-file binary (current platform)
-bun run build
+### Running in Development
 
-# Cross-compile (Windows)
-bun run build:win
+Use the `dev` script to run commands directly from TypeScript source (no build step required):
 
-# Cross-compile (macOS ARM)
-bun run build:macos
+```bash
+bun dev status                    # bun run src/index.ts status
+bun dev watch --all               # bun run src/index.ts watch --all
+bun dev publish --dry-run         # bun run src/index.ts publish --dry-run
+```
+
+### Building & Using the Binary
+
+Compile to a standalone single-file binary — no Bun or Node.js runtime needed on the target machine:
+
+```bash
+# Build for current platform
+bun run build                     # outputs: bin/reach
+
+# Run the compiled binary
+./bin/reach status
+./bin/reach watch --all -i 15
+
+# Install globally via symlink
+sudo ln -sf "$PWD/bin/reach" /usr/local/bin/reach
+reach status                      # now works anywhere
+```
+
+### Cross-compilation
+
+```bash
+bun run build:macos               # bin/reach-macos  (macOS ARM)
+bun run build:win                 # bin/reach.exe    (Windows x64)
 ```
 
 ## VSCode Extension & Mobile
 - **VSCode**: Core logic is fully compatible with the `VSCode Extension` TS environment, allowing direct invocation of compiled binaries via `Sidecar`.
 - **Claude/Gemini**: Native support for the `MCP (Model Context Protocol)`, allowing LLMs to directly manipulate your content pipeline.
 - **Mobile Future**: File processing logic layers can be reused later via `React Native`.
+
+
+## License
+
+Apache-2.0

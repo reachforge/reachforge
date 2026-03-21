@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import type { PipelineEngine } from '../core/pipeline.js';
+import { jsonSuccess } from '../core/json-output.js';
 import type { Receipt } from '../types/index.js';
 import { validateDate } from '../utils/path.js';
 
@@ -80,10 +81,15 @@ export async function collectAnalytics(
 
 export async function analyticsCommand(
   engine: PipelineEngine,
-  options: { from?: string; to?: string } = {},
+  options: { from?: string; to?: string; json?: boolean } = {},
 ): Promise<void> {
   await engine.initPipeline();
   const result = await collectAnalytics(engine, options);
+
+  if (options.json) {
+    process.stdout.write(jsonSuccess('analytics', result));
+    return;
+  }
 
   if (result.totalProjects === 0) {
     console.log(chalk.gray('No published items found in 06_sent.'));

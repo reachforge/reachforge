@@ -30,7 +30,7 @@ describe('ProjectConfigSchema', () => {
       language: 'en',
       tone: 'technical',
       default_tags: ['bun', 'ai'],
-      history: [{ phase: '冷启动', period: '2026-01 ~ 2026-02', note: '试水期' }],
+      history: [{ phase: 'Cold Start', period: '2026-01 ~ 2026-02', note: 'Pilot Phase' }],
     });
     expect(result.success).toBe(true);
   });

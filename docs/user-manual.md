@@ -401,18 +401,33 @@ Aggregates `receipt.yaml` from `06_sent/` and displays per-platform success rate
 
 ### `reach watch`
 
-Start a daemon that auto-publishes due content at intervals.
+Start a daemon that auto-publishes due content at intervals. Supports both project-level and workspace-level monitoring.
 
 ```bash
-reach watch                  # Check every 60 minutes (default)
-reach watch --interval 30    # Check every 30 minutes
+# Project mode (default)
+reach watch                     # Watch current project (60m interval)
+reach watch --interval 30       # Watch current project (30m interval)
+
+# Workspace mode
+reach watch --all               # Watch all projects in workspace
+reach watch --all -i 15         # Watch all projects, 15m interval
+
+# Daemon management
+reach watch --list              # Show all running watch daemons
+reach watch --stop              # Stop daemon for current project
+reach watch --stop my-project   # Stop daemon for specific project
 ```
 
 | Option | Description |
 |--------|-------------|
 | `-i, --interval <minutes>` | Check interval (minimum: 1, default: 60) |
+| `-a, --all` | Watch all projects in workspace |
+| `-l, --list` | List running watch daemons and their status |
+| `--stop [project]` | Stop a running watch daemon |
 
-Gracefully shuts down on `SIGINT` / `SIGTERM`.
+**Daemon registry:** Each running daemon writes a PID file under `.reach/watch/`. Use `--list` to see all running daemons with their PID, target project/workspace, and start time. PID files are automatically cleaned up on graceful shutdown (`SIGINT` / `SIGTERM`) or when stale entries are detected.
+
+**Workspace mode** (`--all`) re-scans projects on each tick, so newly created projects are picked up automatically without restarting the daemon.
 
 ---
 
@@ -444,6 +459,23 @@ Exposes these MCP tools: `reachforge_status`, `reachforge_draft`, `reachforge_ad
 4. **Workspace `.env`** — `{workspace}/.env`
 5. **Workspace `config.yaml`** — `{workspace}/.reach/config.yaml`
 6. **Global config** — `~/.reach/config.yaml`
+
+### Workspace Configuration (`config.yaml`)
+
+Created by `reach init`, located at `{workspace}/.reach/config.yaml` (or `~/.reach/config.yaml` for global config).
+
+```yaml
+# .reach/config.yaml
+default_workspace: ~/my-workspace
+credentials:
+  DEVTO_API_KEY: your-key
+  HASHNODE_API_KEY: your-key
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `default_workspace` | string (optional) | Default workspace path, used as fallback when no workspace is found via directory traversal |
+| `credentials` | key-value map (optional) | API keys and secrets; keys are variable names, values are the corresponding secrets |
 
 ### LLM Settings
 

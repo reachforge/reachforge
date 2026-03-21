@@ -2,17 +2,29 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 import * as os from 'os';
 import fs from 'fs-extra';
-import { initCommand } from '../../../src/commands/init.js';
-import { newProjectCommand } from '../../../src/commands/new-project.js';
-import { workspaceInfoCommand } from '../../../src/commands/workspace-info.js';
-import { WorkspaceResolver } from '../../../src/core/workspace.js';
-import { writeWorkspaceConfig, writeProjectConfig } from '../../../src/core/project-config.js';
 import { STAGES, DEFAULT_WORKSPACE_NAME } from '../../../src/core/constants.js';
+
+// Isolate tests from real ~/reach-workspace by pointing homedir to a temp dir.
+// fakeHome must be initialized before workspace.ts module loads (module-level constants).
+let fakeHome: string = fs.mkdtempSync(path.join(os.tmpdir(), 'reach-home-'));
+
+vi.mock('os', async () => {
+  const actual = await vi.importActual<typeof import('os')>('os');
+  return { ...actual, homedir: () => fakeHome };
+});
+
+// Must import AFTER mock so module-level constants use fakeHome
+const { initCommand } = await import('../../../src/commands/init.js');
+const { newProjectCommand } = await import('../../../src/commands/new-project.js');
+const { workspaceInfoCommand } = await import('../../../src/commands/workspace-info.js');
+const { WorkspaceResolver } = await import('../../../src/core/workspace.js');
+const { writeWorkspaceConfig, writeProjectConfig } = await import('../../../src/core/project-config.js');
 
 let tmpDir: string;
 
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-wscmd-'));
+  fakeHome = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-home-'));
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
@@ -20,6 +32,7 @@ beforeEach(async () => {
 afterEach(async () => {
   vi.restoreAllMocks();
   await fs.remove(tmpDir);
+  await fs.remove(fakeHome);
 });
 
 describe('initCommand', () => {

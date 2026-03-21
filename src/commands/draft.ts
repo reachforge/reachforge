@@ -6,10 +6,11 @@ import { AdapterFactory } from '../llm/factory.js';
 import { sanitizePath } from '../utils/path.js';
 import { DRAFT_FILENAME } from '../core/constants.js';
 import { TemplateResolver } from '../core/templates.js';
+import { jsonSuccess } from '../core/json-output.js';
 
-export async function draftCommand(engine: PipelineEngine, source: string): Promise<void> {
+export async function draftCommand(engine: PipelineEngine, source: string, options: { json?: boolean } = {}): Promise<void> {
   const safeName = sanitizePath(source);
-  console.log(chalk.cyan(`✍️ Generating AI draft for "${safeName}"...`));
+  if (!options.json) console.log(chalk.cyan(`✍️ Generating AI draft for "${safeName}"...`));
 
   await engine.initPipeline();
 
@@ -67,6 +68,15 @@ export async function draftCommand(engine: PipelineEngine, source: string): Prom
   const draftName = safeName.replace(/\.[^/.]+$/, '');
   await engine.writeProjectFile('02_drafts', draftName, DRAFT_FILENAME, result.content);
   await engine.metadata.writeMeta('02_drafts', draftName, { article: safeName, status: 'drafted' });
+
+  if (options.json) {
+    process.stdout.write(jsonSuccess('draft', {
+      source: safeName,
+      draft: draftName,
+      stage: '02_drafts' as const,
+    }));
+    return;
+  }
 
   console.log(chalk.green(`✅ Draft generated! Please check 02_drafts/${draftName}`));
 }

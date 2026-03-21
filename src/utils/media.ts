@@ -97,7 +97,7 @@ export class MediaManager {
       const fieldName = platform === 'hashnode' ? 'file' : 'image';
       formData.append(fieldName, new Blob([fileBuffer], { type: mimeType }), filename);
 
-      const authHeader = credentials['api_key']
+      const authHeader: Record<string, string> = credentials['api_key']
         ? { 'api-key': credentials['api_key'] }
         : credentials['token']
           ? { 'Authorization': `Bearer ${credentials['token']}` }

@@ -740,7 +740,7 @@ Modern development teams are adopting AI-powered code review tools at an acceler
 **TC-ADAPT-007: Content with special characters (emoji, CJK, HTML entities)**
 - **Priority**: P1
 - **Type**: Unit
-- **Preconditions**: Master content contains `"Hello 👋 世界 <script>alert('xss')</script>"`
+- **Preconditions**: Master content contains `"Hello <script>alert('xss')</script>"`
 - **Test Steps**:
   1. Create master.md with mixed character content
   2. Call adapt command

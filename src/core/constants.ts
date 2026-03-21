@@ -42,6 +42,9 @@ export const ASSET_PREFIX = '@assets/';
 
 export const TEMPLATES_DIR = 'templates';
 
+export const WATCH_DIR = 'watch';
+export const WATCH_PID_EXTENSION = '.pid.json';
+
 export const WORKSPACE_CONFIG_DIR = '.reach';
 export const WORKSPACE_CONFIG_FILE = 'config.yaml';
 export const PROJECT_CONFIG_FILE = 'project.yaml';

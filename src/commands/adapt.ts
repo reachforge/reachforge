@@ -5,16 +5,17 @@ import { AdapterFactory } from '../llm/factory.js';
 import { sanitizePath } from '../utils/path.js';
 import { MASTER_FILENAME, PLATFORM_VERSIONS_DIR } from '../core/constants.js';
 import { TemplateResolver } from '../core/templates.js';
+import { jsonSuccess } from '../core/json-output.js';
 
 const DEFAULT_PLATFORMS = ['x', 'wechat', 'zhihu'];
 
 export async function adaptCommand(
   engine: PipelineEngine,
   article: string,
-  options: { platforms?: string; force?: boolean } = {},
+  options: { platforms?: string; force?: boolean; json?: boolean } = {},
 ): Promise<void> {
   const safeName = sanitizePath(article);
-  console.log(chalk.cyan(`🤖 Starting AI adaptation for "${safeName}"...`));
+  if (!options.json) console.log(chalk.cyan(`🤖 Starting AI adaptation for "${safeName}"...`));
 
   await engine.initPipeline();
 
@@ -48,7 +49,7 @@ export async function adaptCommand(
 
       // Skip existing unless --force
       if (!options.force && await fs.pathExists(versionPath)) {
-        console.log(chalk.yellow(`  ⏭ ${platform}.md already exists, skipping (use --force to overwrite)`));
+        if (!options.json) console.log(chalk.yellow(`  ⏭ ${platform}.md already exists, skipping (use --force to overwrite)`));
         return { platform, skipped: true };
       }
 
@@ -70,7 +71,7 @@ export async function adaptCommand(
       }
 
       await engine.writeProjectFile('04_adapted', `${safeName}/${PLATFORM_VERSIONS_DIR}`, `${platform}.md`, result.content);
-      console.log(chalk.dim(`  ✔ ${platform} adaptation complete`));
+      if (!options.json) console.log(chalk.dim(`  ✔ ${platform} adaptation complete`));
       return { platform, skipped: false };
     })
   );
@@ -80,6 +81,17 @@ export async function adaptCommand(
     status: 'adapted',
     adapted_platforms: platforms,
   });
+
+  if (options.json) {
+    const adaptedItems = results.filter(r => !r.skipped).map(r => r.platform);
+    process.stdout.write(jsonSuccess('adapt', {
+      article: safeName,
+      adaptedPlatforms: platforms,
+      stage: '04_adapted' as const,
+      items: adaptedItems,
+    }));
+    return;
+  }
 
   const adapted = results.filter(r => !r.skipped).length;
   console.log(chalk.green(`✅ Adaptation complete! ${adapted}/${platforms.length} platforms. Check 04_adapted/${safeName}/${PLATFORM_VERSIONS_DIR}/`));

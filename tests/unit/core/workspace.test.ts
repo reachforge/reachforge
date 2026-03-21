@@ -1,20 +1,34 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 import * as os from 'os';
 import fs from 'fs-extra';
-import { WorkspaceResolver } from '../../../src/core/workspace.js';
-import { writeProjectConfig, writeWorkspaceConfig } from '../../../src/core/project-config.js';
+
+// Isolate tests from real ~/reach-workspace by pointing homedir to a temp dir.
+// fakeHome must be initialized before workspace.ts module loads (module-level constants).
+let fakeHome: string = fs.mkdtempSync(path.join(os.tmpdir(), 'reach-home-'));
+
+vi.mock('os', async () => {
+  const actual = await vi.importActual<typeof import('os')>('os');
+  return { ...actual, homedir: () => fakeHome };
+});
+
+// Must import AFTER mock so module-level constants use fakeHome
+const { WorkspaceResolver } = await import('../../../src/core/workspace.js');
+const { writeProjectConfig, writeWorkspaceConfig } = await import('../../../src/core/project-config.js');
 
 let tmpDir: string;
 
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-ws-'));
+  // Reset fakeHome each test to ensure clean isolation
+  fakeHome = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-home-'));
   delete process.env.REACHFORGE_WORKSPACE;
 });
 
 afterEach(async () => {
   delete process.env.REACHFORGE_WORKSPACE;
   await fs.remove(tmpDir);
+  await fs.remove(fakeHome);
 });
 
 async function createWorkspace(root: string, projects: string[] = []) {

@@ -11,6 +11,7 @@ import { ConfigManager } from './core/config.js';
 import { WorkspaceResolver } from './core/workspace.js';
 import type { WorkspaceContext } from './core/workspace.js';
 import { DEFAULT_WORKSPACE_NAME } from './core/constants.js';
+import { jsonError, errorToCode, errorToHint } from './core/json-output.js';
 
 import { statusCommand } from './commands/status.js';
 import { draftCommand } from './commands/draft.js';
@@ -31,13 +32,20 @@ import { analyticsCommand, collectAnalytics } from './commands/analytics.js';
 const program = new Command();
 
 // Error handler wrapper for CLI commands
-function withErrorHandler(fn: (...args: any[]) => Promise<void>) {
+function withErrorHandler(fn: (...args: any[]) => Promise<void>, commandName?: string) {
   return async (...args: any[]) => {
     try {
       await fn(...args);
     } catch (err: unknown) {
+      const isJson = program.opts().json;
       const message = err instanceof Error ? err.message : String(err);
-      console.error(chalk.red(`❌ Error: ${message}`));
+      if (isJson && commandName) {
+        const code = err instanceof Error ? errorToCode(err) : 'UNKNOWN_ERROR';
+        const hint = err instanceof Error ? errorToHint(err) : undefined;
+        process.stdout.write(jsonError(commandName, { message, code, hint }));
+      } else {
+        console.error(chalk.red(`❌ Error: ${message}`));
+      }
       process.exitCode = 1;
     }
   };
@@ -127,7 +135,8 @@ program
   .description('ReachForge: The Social Influence Engine')
   .version('ReachForge 0.1.0')
   .option('-w, --workspace <path>', 'Workspace root directory')
-  .option('-P, --project <name>', 'Project name within workspace');
+  .option('-P, --project <name>', 'Project name within workspace')
+  .option('--json', 'Output in JSON format');
 
 program
   .command('status')
@@ -136,24 +145,24 @@ program
   .action(withErrorHandler(async (options: { all?: boolean }) => {
     const ctx = await getContext();
     const engine = new PipelineEngine(ctx.projectDir);
-    await statusCommand(engine, options, ctx);
-  }));
+    await statusCommand(engine, { ...options, json: program.opts().json }, ctx);
+  }, 'status'));
 
 program
   .command('draft <source>')
   .description('Generate an AI draft from an inbox source')
   .action(withErrorHandler(async (source: string) => {
     const engine = await getEngine();
-    await draftCommand(engine, source);
-  }));
+    await draftCommand(engine, source, { json: program.opts().json });
+  }, 'draft'));
 
 program
   .command('approve <article>')
   .description('Promote a draft to master stage (02_drafts → 03_master)')
   .action(withErrorHandler(async (article: string) => {
     const engine = await getEngine();
-    await approveCommand(engine, article);
-  }));
+    await approveCommand(engine, article, { json: program.opts().json });
+  }, 'approve'));
 
 program
   .command('adapt <article>')
@@ -162,8 +171,8 @@ program
   .option('-f, --force', 'Overwrite existing platform versions')
   .action(withErrorHandler(async (article: string, options: { platforms?: string; force?: boolean }) => {
     const engine = await getEngine();
-    await adaptCommand(engine, article, options);
-  }));
+    await adaptCommand(engine, article, { ...options, json: program.opts().json });
+  }, 'adapt'));
 
 program
   .command('schedule <article> <date>')
@@ -171,8 +180,8 @@ program
   .option('-n, --dry-run', 'Preview without moving files')
   .action(withErrorHandler(async (article: string, date: string, options: { dryRun?: boolean }) => {
     const engine = await getEngine();
-    await scheduleCommand(engine, article, date, options);
-  }));
+    await scheduleCommand(engine, article, date, { ...options, json: program.opts().json });
+  }, 'schedule'));
 
 program
   .command('publish')
@@ -181,24 +190,29 @@ program
   .option('-d, --draft', 'Publish as draft (overrides frontmatter published field)')
   .action(withErrorHandler(async (options: { dryRun?: boolean; draft?: boolean }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
-    await publishCommand(engine, { ...options, config: config.getConfig() });
-  }));
+    await publishCommand(engine, { ...options, json: program.opts().json, config: config.getConfig() });
+  }, 'publish'));
 
 program
   .command('rollback <project>')
   .description('Move a project back one pipeline stage')
   .action(withErrorHandler(async (project: string) => {
     const engine = await getEngine();
-    await rollbackCommand(engine, project);
-  }));
+    await rollbackCommand(engine, project, { json: program.opts().json });
+  }, 'rollback'));
 
 program
   .command('watch')
   .description('Start the reach daemon to watch for due content')
   .option('-i, --interval <minutes>', 'Check interval in minutes (min: 1)', '60')
-  .action(withErrorHandler(async (options: { interval?: string }) => {
-    const engine = await getEngine();
-    await watchCommand(engine, options);
+  .option('-a, --all', 'Watch all projects in workspace')
+  .option('-l, --list', 'List running watch daemons')
+  .option('--stop [project]', 'Stop a running watch daemon')
+  .action(withErrorHandler(async (options: { interval?: string; all?: boolean; list?: boolean; stop?: string | true }) => {
+    const ctx = await getContext();
+    // Only create engine when needed (not for --list/--stop)
+    const engine = (options.list || options.stop !== undefined) ? null! : new PipelineEngine(ctx.projectDir);
+    await watchCommand(engine, options, ctx);
   }));
 
 program
@@ -250,8 +264,8 @@ program
   .option('--to <date>', 'Filter to date (YYYY-MM-DD)')
   .action(withErrorHandler(async (options: { from?: string; to?: string }) => {
     const engine = await getEngine();
-    await analyticsCommand(engine, options);
-  }));
+    await analyticsCommand(engine, { ...options, json: program.opts().json });
+  }, 'analytics'));
 
 const assetCmd = program
   .command('asset')
@@ -263,8 +277,8 @@ assetCmd
   .option('-s, --subdir <type>', 'Asset subdirectory (images, videos, audio)')
   .action(withErrorHandler(async (file: string, options: { subdir?: string }) => {
     const ctx = await getContext();
-    await assetAddCommand(ctx.projectDir, file, options);
-  }));
+    await assetAddCommand(ctx.projectDir, file, { ...options, json: program.opts().json });
+  }, 'asset.add'));
 
 assetCmd
   .command('list')
@@ -272,8 +286,8 @@ assetCmd
   .option('-s, --subdir <type>', 'Filter by subdirectory (images, videos, audio)')
   .action(withErrorHandler(async (options: { subdir?: string }) => {
     const ctx = await getContext();
-    await assetListCommand(ctx.projectDir, options);
-  }));
+    await assetListCommand(ctx.projectDir, { ...options, json: program.opts().json });
+  }, 'asset.list'));
 
 // Default action: when no command is given, check for workspace or show help
 program.action(withErrorHandler(async () => {
