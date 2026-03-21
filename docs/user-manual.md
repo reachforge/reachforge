@@ -47,7 +47,7 @@ curl -fsSL https://bun.sh/install | bash
 git clone <repo-url>
 cd reachforge
 bun install
-bun run build          # creates ./bin/reachforge
+bun run build          # creates ./bin/reach
 ```
 
 Cross-platform builds:
@@ -77,7 +77,7 @@ echo "Why AI pair programming changes everything..." > 01_inbox/ai-pairing.md
 reach draft ai-pairing.md
 
 # 5. Refine interactively
-reachforge refine ai-pairing
+reach refine ai-pairing
 
 # 6. Promote to master
 reach approve ai-pairing
@@ -206,7 +206,7 @@ Displays item counts per stage and items due today.
 Show workspace info and list all projects.
 
 ```bash
-reachforge workspace
+reach workspace
 ```
 
 ---
@@ -276,7 +276,7 @@ reach asset list --subdir images    # Only images
 Interactively refine a draft or master article with AI feedback.
 
 ```bash
-reachforge refine my-idea
+reach refine my-idea
 ```
 
 Opens an interactive session with these commands:
@@ -368,15 +368,15 @@ reach publish --draft
 
 ---
 
-### `reach rollback <article>`
+### `reach rollback <project>`
 
-Move an article back one pipeline stage.
+Move a project back one pipeline stage.
 
 ```bash
 reach rollback my-idea
 ```
 
-Moves the article to the previous stage (e.g., `05_scheduled` -> `04_adapted`). Cannot roll back from `01_inbox`.
+Moves the project to the previous stage (e.g., `05_scheduled` -> `04_adapted`). Cannot roll back from `01_inbox`.
 
 ---
 
@@ -445,7 +445,7 @@ reach mcp --transport sse --port 8001
 | `-t, --transport <type>` | `stdio` (default) or `sse` |
 | `-p, --port <number>` | Port for SSE transport (default: 8000) |
 
-Exposes these MCP tools: `reachforge_status`, `reachforge_draft`, `reachforge_adapt`, `reachforge_schedule`, `reachforge_publish`, `reachforge_rollback`.
+Exposes these MCP tools: `reach_status`, `reach_draft`, `reach_adapt`, `reach_approve`, `reach_schedule`, `reach_publish`, `reach_rollback`, `reach_asset_add`, `reach_asset_list`, `reach_analytics`.
 
 ---
 
@@ -545,7 +545,8 @@ When you run any command, reachforge resolves the workspace in this order:
 1. `--workspace` flag or `REACHFORGE_WORKSPACE` env var.
 2. Walk up from `cwd` looking for a `.reach/` directory.
 3. Check `cwd` for `project.yaml` (treat parent as workspace).
-4. Fall back to `~/reach-workspace`.
+4. Check `~/.reach/config.yaml` for `default_workspace`, or fall back to `~/reach-workspace`.
+5. Fallback: treat `cwd` as the project root (backward compatible).
 
 ---
 

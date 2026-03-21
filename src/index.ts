@@ -126,6 +126,20 @@ apcore.register('reach.publish', {
   },
 });
 
+apcore.register('reach.rollback', {
+  execute: async (inputs: { project: string }) => {
+    const engine = await getEngine();
+    await rollbackCommand(engine, inputs.project);
+  },
+});
+
+apcore.register('reach.asset.add', {
+  execute: async (inputs: { file: string; subdir?: string }) => {
+    const ctx = await getContext();
+    await assetAddCommand(ctx.projectDir, inputs.file, { subdir: inputs.subdir });
+  },
+});
+
 apcore.register('reach.asset.list', {
   execute: async (inputs: { subdir?: string }) => {
     const ctx = await getContext();
