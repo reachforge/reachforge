@@ -9,7 +9,7 @@
     "build": "mkdir -p bin && bun build ./src/index.ts --compile --outfile bin/reach",
     "build:macos": "bun build ./src/index.ts --compile --target bun-darwin-arm64 --outfile bin/reach-macos",
     "build:win": "bun build ./src/index.ts --compile --target bun-windows-x64 --outfile bin/reach.exe",
-    "lint": "eslint src/**/*.ts",
+    "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
