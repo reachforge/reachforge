@@ -4,7 +4,7 @@ import type { PipelineStage, PipelineStatus, StageInfo, StageTransition } from '
 import { ProjectNotFoundError, ReachforgeError } from '../types/index.js';
 import { STAGES, STAGE_STATUS_MAP, SCHEDULED_DIR_REGEX } from './constants.js';
 import { MetadataManager } from './metadata.js';
-import { sanitizePath } from '../utils/path.js';
+import { sanitizePath, parseScheduleTimestamp } from '../utils/path.js';
 
 export class PipelineEngine {
   public readonly metadata: MetadataManager;
@@ -133,11 +133,16 @@ export class PipelineEngine {
   }
 
   async findDueProjects(): Promise<string[]> {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const nowComparable = `${nowIso.split('T')[0]}T${nowIso.split('T')[1].slice(0, 8)}`;
+
     const items = await this.listProjects('05_scheduled');
     return items.filter(item => {
       const match = item.match(SCHEDULED_DIR_REGEX);
-      return match && match[1] <= today;
+      if (!match) return false;
+      const comparable = parseScheduleTimestamp(match[1]);
+      return comparable <= nowComparable;
     });
   }
 

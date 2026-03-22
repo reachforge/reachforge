@@ -30,10 +30,11 @@ describe('MCP Tool Schemas', () => {
     expect(AdaptToolSchema.safeParse({}).success).toBe(false);
   });
 
-  test('ScheduleToolSchema validates date format', () => {
+  test('ScheduleToolSchema accepts date as optional string', () => {
     expect(ScheduleToolSchema.safeParse({ article: 'post', date: '2026-03-20' }).success).toBe(true);
-    expect(ScheduleToolSchema.safeParse({ article: 'post', date: '03/20/2026' }).success).toBe(false);
-    expect(ScheduleToolSchema.safeParse({ article: 'post', date: 'tomorrow' }).success).toBe(false);
+    expect(ScheduleToolSchema.safeParse({ article: 'post', date: '03/20/2026' }).success).toBe(true);
+    expect(ScheduleToolSchema.safeParse({ article: 'post', date: 'tomorrow' }).success).toBe(true);
+    expect(ScheduleToolSchema.safeParse({ article: 'post' }).success).toBe(true);
   });
 
   test('PublishToolSchema optional dryRun', () => {
@@ -73,8 +74,8 @@ describe('MCP Tool Schemas', () => {
 });
 
 describe('MCP_TOOL_DEFINITIONS', () => {
-  test('has 10 tool definitions', () => {
-    expect(MCP_TOOL_DEFINITIONS).toHaveLength(10);
+  test('has 11 tool definitions', () => {
+    expect(MCP_TOOL_DEFINITIONS).toHaveLength(11);
   });
 
   test('all tools have name, description, and schema', () => {

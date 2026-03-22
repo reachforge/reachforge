@@ -57,7 +57,7 @@ describe('statusCommand --json', () => {
   });
 
   test('parses scheduled items with date prefix', async () => {
-    await fs.ensureDir(path.join(tmpDir, '05_scheduled', '2026-03-25-my-article'));
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', '2026-03-25T00-00-00-my-article'));
     await statusCommand(engine, { json: true });
     const result = JSON.parse(jsonOutput);
     const scheduled = result.data.stages['05_scheduled'];
@@ -67,7 +67,7 @@ describe('statusCommand --json', () => {
 
   test('includes dueToday', async () => {
     const today = new Date().toISOString().split('T')[0];
-    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${today}-urgent-post`));
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${today}T00-00-00-urgent-post`));
     await statusCommand(engine, { json: true });
     const result = JSON.parse(jsonOutput);
     expect(result.data.dueToday.length).toBeGreaterThan(0);
@@ -84,8 +84,8 @@ describe('scheduleCommand --json', () => {
     expect(result.command).toBe('schedule');
     expect(result.success).toBe(true);
     expect(result.data.article).toBe('my-article');
-    expect(result.data.date).toBe('2026-04-01');
-    expect(result.data.scheduledName).toBe('2026-04-01-my-article');
+    expect(result.data.date).toBe('2026-04-01T00-00-00');
+    expect(result.data.scheduledName).toBe('2026-04-01T00-00-00-my-article');
     expect(result.data.stage).toBe('05_scheduled');
   });
 
@@ -97,7 +97,7 @@ describe('scheduleCommand --json', () => {
     expect(result.command).toBe('schedule');
     expect(result.success).toBe(true);
     expect(result.data.article).toBe('my-article');
-    expect(result.data.scheduledName).toBe('2026-04-01-my-article');
+    expect(result.data.scheduledName).toBe('2026-04-01T00-00-00-my-article');
   });
 });
 

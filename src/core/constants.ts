@@ -19,7 +19,8 @@ export const STAGE_STATUS_MAP: Record<PipelineStage, ProjectStatus> = {
 };
 
 export const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-export const SCHEDULED_DIR_REGEX = /^(\d{4}-\d{2}-\d{2})-(.+)$/;
+// Matches both legacy "YYYY-MM-DD-name" and new "YYYY-MM-DDThh-mm-ss-name" formats
+export const SCHEDULED_DIR_REGEX = /^(\d{4}-\d{2}-\d{2}(?:T\d{2}-\d{2}-\d{2})?)-(.+)$/;
 
 export const DEFAULT_LLM_MODEL = 'gemini-pro';
 export const DEFAULT_WATCH_INTERVAL_MINUTES = 60;

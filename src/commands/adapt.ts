@@ -33,13 +33,29 @@ export async function adaptCommand(
   }
 
   const content = await fs.readFile(masterFile, 'utf-8');
-  const platforms = options.platforms
-    ? options.platforms.split(',').map(p => p.trim())
-    : DEFAULT_PLATFORMS;
+
+  const meta = await engine.metadata.readMeta('03_master', safeName).catch(() => null);
+
+  // Platform resolution: CLI flag > meta > project.yaml > default
+  let platforms: string[];
+  if (options.platforms) {
+    platforms = options.platforms.split(',').map(p => p.trim());
+  } else {
+    const projectPlatforms = meta?.adapted_platforms;
+    if (projectPlatforms && projectPlatforms.length > 0) {
+      platforms = projectPlatforms;
+    } else {
+      // Try reading from project.yaml
+      const { readProjectConfig } = await import('../core/project-config.js');
+      const projConfig = await readProjectConfig(engine.projectDir);
+      platforms = projConfig?.platforms && projConfig.platforms.length > 0
+        ? projConfig.platforms
+        : DEFAULT_PLATFORMS;
+    }
+  }
 
   const projectDir = engine.projectDir;
   const { adapter, resolver } = AdapterFactory.create('adapt', { projectDir });
-  const meta = await engine.metadata.readMeta('03_master', safeName).catch(() => null);
   const templateResolver = new TemplateResolver(projectDir);
 
   // Parallel adaptation via Promise.all

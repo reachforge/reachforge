@@ -99,10 +99,16 @@ reach asset list                      # List all registered assets
 reach draft my-idea.md                # Generate draft from inbox
 reach approve my-idea                 # Promote draft to master
 reach adapt my-article                # Adapt for all platforms
-reach schedule my-article 2026-03-20  # Schedule for publishing
+reach schedule my-article 2026-03-20         # Schedule for a date
+reach schedule my-article 2026-03-20T14:30   # Schedule for a date + time
+reach schedule my-article                    # Schedule for today (immediate)
 reach publish                         # Publish due content
 reach watch                           # Daemon mode: auto-publish on schedule
 reach analytics                       # View publishing success metrics
+
+# Or do it all in one shot:
+reach go "write about apcore framework"              # Full auto → publish now
+reach go "write about apcore framework" -s 2026-04-01  # Full auto → schedule
 ```
 
 ## Development

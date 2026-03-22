@@ -79,13 +79,13 @@ describe('PipelineEngine.moveProject', () => {
     await fs.ensureDir(path.join(tmpDir, '04_adapted', 'my-article'));
     await fs.writeFile(path.join(tmpDir, '04_adapted', 'my-article', 'meta.yaml'), 'article: my-article\nstatus: adapted\n');
 
-    const result = await engine.moveProject('my-article', '04_adapted', '05_scheduled', '2026-03-20-my-article');
+    const result = await engine.moveProject('my-article', '04_adapted', '05_scheduled', '2026-03-20T00-00-00-my-article');
 
     expect(result.from).toBe('04_adapted');
     expect(result.to).toBe('05_scheduled');
-    expect(result.project).toBe('2026-03-20-my-article');
+    expect(result.project).toBe('2026-03-20T00-00-00-my-article');
     expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'my-article'))).toBe(false);
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2026-03-20-my-article'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2026-03-20T00-00-00-my-article'))).toBe(true);
   });
 
   test('throws ProjectNotFoundError for missing source', async () => {
@@ -121,7 +121,7 @@ describe('PipelineEngine.moveProject', () => {
 describe('PipelineEngine.rollbackProject', () => {
   test('rolls back from scheduled to adapted, stripping date prefix', async () => {
     await engine.initPipeline();
-    const projDir = path.join(tmpDir, '05_scheduled', '2026-03-20-my-article');
+    const projDir = path.join(tmpDir, '05_scheduled', '2026-03-20T00-00-00-my-article');
     await fs.ensureDir(projDir);
     await fs.writeFile(path.join(projDir, 'meta.yaml'), 'article: my-article\nstatus: scheduled\n');
 
@@ -151,13 +151,13 @@ describe('PipelineEngine.findDueProjects', () => {
     const today = new Date().toISOString().split('T')[0];
     const past = '2020-01-01';
     const future = '2099-12-31';
-    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${past}-old-post`));
-    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${today}-today-post`));
-    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${future}-future-post`));
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${past}T00-00-00-old-post`));
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${today}T00-00-00-today-post`));
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${future}T00-00-00-future-post`));
 
     const due = await engine.findDueProjects();
-    expect(due).toContain(`${past}-old-post`);
-    expect(due).toContain(`${today}-today-post`);
-    expect(due).not.toContain(`${future}-future-post`);
+    expect(due).toContain(`${past}T00-00-00-old-post`);
+    expect(due).toContain(`${today}T00-00-00-today-post`);
+    expect(due).not.toContain(`${future}T00-00-00-future-post`);
   });
 });

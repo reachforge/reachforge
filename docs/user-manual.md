@@ -89,7 +89,7 @@ reach asset add ./hero-image.png
 reach adapt ai-pairing --platforms devto,hashnode,x
 
 # 9. Schedule
-reach schedule ai-pairing 2026-04-01
+reach schedule ai-pairing 2026-04-01  # or omit date to schedule for today
 
 # 10. Publish
 reach publish
@@ -321,12 +321,14 @@ reach adapt my-idea --force                       # Overwrite existing
 
 ---
 
-### `reach schedule <article> <date>`
+### `reach schedule <article> [date]`
 
 Move an adapted article to the scheduled stage.
 
 ```bash
-reach schedule my-idea 2026-04-01
+reach schedule my-idea 2026-04-01           # Date only (publishes anytime on that day)
+reach schedule my-idea 2026-04-01T14:30      # Date + time (publishes after 14:30)
+reach schedule my-idea                       # Defaults to today (publish immediately on next `reach publish`)
 reach schedule my-idea 2026-04-01 --dry-run
 ```
 
@@ -334,8 +336,9 @@ reach schedule my-idea 2026-04-01 --dry-run
 |--------|-------------|
 | `-n, --dry-run` | Preview what would be moved |
 
-- **Date format:** `YYYY-MM-DD`.
-- Creates `05_scheduled/2026-04-01-my-idea/` with a `meta.yaml` containing the publish date.
+- **Date formats:** `YYYY-MM-DD`, `YYYY-MM-DDTHH:MM`, or `YYYY-MM-DDTHH:MM:SS`. Defaults to today if omitted.
+- Creates `05_scheduled/YYYY-MM-DDThh-mm-ss-my-idea/` with a `meta.yaml` containing the publish date.
+- Backward compatible: legacy `YYYY-MM-DD-name` directories are still recognized.
 
 ---
 
@@ -399,6 +402,36 @@ Aggregates `receipt.yaml` from `06_sent/` and displays per-platform success rate
 
 ---
 
+### `reach go <prompt>`
+
+Full auto pipeline: create content from a prompt, draft, approve, adapt, schedule, and publish — all in one command.
+
+```bash
+reach go "write about apcore framework"                # Immediate: full pipeline → publish now
+reach go "write about apcore framework" -s 2026-04-01  # Deferred: full pipeline → schedule for later
+reach go "compare Bun vs Node.js" --dry-run            # Full pipeline but skip actual publishing
+reach go "AI pair programming tips" --draft             # Publish as draft on supported platforms
+```
+
+| Option | Description |
+|--------|-------------|
+| `-s, --schedule <date>` | Schedule for a future date (YYYY-MM-DD) instead of publishing immediately |
+| `-n, --dry-run` | Run full pipeline but skip actual publishing |
+| `-d, --draft` | Publish as draft on supported platforms |
+
+**Pipeline steps:**
+
+1. Creates an inbox item from the prompt text
+2. Generates an AI draft (`reach draft`)
+3. Auto-approves to master (`reach approve`)
+4. Adapts for all configured platforms (`reach adapt`)
+5. Schedules for today or the specified date (`reach schedule`)
+6. Publishes immediately (or skips if `--schedule` is set)
+
+Platforms are read from `project.yaml`. If the pipeline fails mid-way, the article is left at the last completed stage — you can resume manually from there.
+
+---
+
 ### `reach watch`
 
 Start a daemon that auto-publishes due content at intervals. Supports both project-level and workspace-level monitoring.
@@ -445,7 +478,7 @@ reach mcp --transport sse --port 8001
 | `-t, --transport <type>` | `stdio` (default) or `sse` |
 | `-p, --port <number>` | Port for SSE transport (default: 8000) |
 
-Exposes these MCP tools: `reach_status`, `reach_draft`, `reach_adapt`, `reach_approve`, `reach_schedule`, `reach_publish`, `reach_rollback`, `reach_asset_add`, `reach_asset_list`, `reach_analytics`.
+Exposes these MCP tools: `reach_status`, `reach_draft`, `reach_adapt`, `reach_approve`, `reach_schedule`, `reach_publish`, `reach_rollback`, `reach_asset_add`, `reach_asset_list`, `reach_go`, `reach_analytics`.
 
 ---
 
@@ -716,12 +749,13 @@ reach mcp --transport sse --port 8001
 | `reach_status` | — | Pipeline dashboard |
 | `reach_draft` | `source: string` | Generate draft from inbox item |
 | `reach_adapt` | `article: string`, `platforms?: string`, `force?: boolean` | Adapt for platforms |
-| `reach_schedule` | `article: string`, `date: string` | Schedule for publishing |
+| `reach_schedule` | `article: string`, `date?: string` | Schedule for publishing (date defaults to today) |
 | `reach_publish` | `dryRun?: boolean` | Publish due content |
 | `reach_rollback` | `project: string` | Roll back one stage |
 | `reach_approve` | `article: string` | Promote draft to master |
 | `reach_asset_add` | `file: string`, `subdir?: string` | Register media asset |
 | `reach_asset_list` | `subdir?: string` | List registered assets |
+| `reach_go` | `prompt: string`, `schedule?: string`, `dryRun?: boolean`, `draft?: boolean` | Full auto pipeline from prompt to publish |
 | `reach_analytics` | `from?: string`, `to?: string` | Publishing success metrics |
 
 ---

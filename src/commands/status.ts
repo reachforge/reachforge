@@ -7,7 +7,8 @@ import type { WorkspaceContext } from '../core/workspace.js';
 import { jsonSuccess } from '../core/json-output.js';
 import type { PipelineStage } from '../types/index.js';
 
-const DATE_PREFIX = /^(\d{4}-\d{2}-\d{2})-(.+)$/;
+// Matches both "YYYY-MM-DD-name" (legacy) and "YYYY-MM-DDThh-mm-ss-name" (new)
+const DATE_PREFIX = /^(\d{4}-\d{2}-\d{2})(?:T\d{2}-\d{2}-\d{2})?-(.+)$/;
 
 function formatStagesForJson(stages: Record<PipelineStage, { count: number; items: string[] }>) {
   const result = {} as Record<PipelineStage, { count: number; items: (string | { name: string; date: string })[] }>;

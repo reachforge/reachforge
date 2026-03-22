@@ -121,7 +121,7 @@ describe('scheduleCommand', () => {
 
     await scheduleCommand(engine, 'my-article', '2026-03-20');
 
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2026-03-20-my-article'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2026-03-20T00-00-00-my-article'))).toBe(true);
     expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'my-article'))).toBe(false);
   });
 
@@ -131,7 +131,7 @@ describe('scheduleCommand', () => {
     await scheduleCommand(engine, 'dry-test', '2026-03-20', { dryRun: true });
 
     expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'dry-test'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2026-03-20-dry-test'))).toBe(false);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2026-03-20T00-00-00-dry-test'))).toBe(false);
   });
 
   test('rejects invalid date', async () => {
@@ -142,7 +142,7 @@ describe('scheduleCommand', () => {
 describe('publishCommand', () => {
   test('publishes due items and moves to sent', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const projDir = path.join(tmpDir, '05_scheduled', `${today}-publish-test`);
+    const projDir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-publish-test`);
     const versionsDir = path.join(projDir, 'platform_versions');
     await fs.ensureDir(versionsDir);
     await fs.writeFile(path.join(versionsDir, 'x.md'), 'thread content');
@@ -150,13 +150,13 @@ describe('publishCommand', () => {
 
     await publishCommand(engine);
 
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}-publish-test`))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}T00-00-00-publish-test`))).toBe(true);
     expect(await fs.pathExists(projDir)).toBe(false);
   });
 
   test('dry-run does not publish', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const projDir = path.join(tmpDir, '05_scheduled', `${today}-dry-pub`);
+    const projDir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-dry-pub`);
     await fs.ensureDir(projDir);
 
     await publishCommand(engine, { dryRun: true });
@@ -171,7 +171,7 @@ describe('publishCommand', () => {
 
   test('blocks publish when validation fails', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const projDir = path.join(tmpDir, '05_scheduled', `${today}-invalid-content`);
+    const projDir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-invalid-content`);
     const versionsDir = path.join(projDir, 'platform_versions');
     await fs.ensureDir(versionsDir);
     // X content exceeding 280 chars
@@ -182,7 +182,7 @@ describe('publishCommand', () => {
 
     // Should remain in scheduled (validation blocked it)
     expect(await fs.pathExists(projDir)).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}-invalid-content`))).toBe(false);
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}T00-00-00-invalid-content`))).toBe(false);
   });
 });
 
@@ -222,7 +222,7 @@ describe('approveCommand', () => {
 
 describe('rollbackCommand', () => {
   test('rolls back a scheduled project', async () => {
-    const projDir = path.join(tmpDir, '05_scheduled', '2026-03-20-rollback-test');
+    const projDir = path.join(tmpDir, '05_scheduled', '2026-03-20T00-00-00-rollback-test');
     await fs.ensureDir(projDir);
     await fs.writeFile(path.join(projDir, 'meta.yaml'), 'article: rollback-test\nstatus: scheduled\n');
 

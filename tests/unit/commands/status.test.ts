@@ -55,7 +55,7 @@ describe('statusCommand', () => {
 
   test('shows due today items', async () => {
     const today = new Date().toISOString().split('T')[0];
-    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${today}-urgent-post`));
+    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${today}T00-00-00-urgent-post`));
 
     await statusCommand(engine);
     const output = logOutput.join('\n');

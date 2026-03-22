@@ -14,7 +14,7 @@ export const AdaptToolSchema = z.object({
 
 export const ScheduleToolSchema = z.object({
   article: z.string().min(1).describe('Name of the article in 04_adapted'),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD format').describe('Publish date'),
+  date: z.string().optional().describe('Publish date/time: YYYY-MM-DD, YYYY-MM-DDTHH:MM, or YYYY-MM-DDTHH:MM:SS (defaults to today)'),
 });
 
 export const PublishToolSchema = z.object({
@@ -41,6 +41,13 @@ export const AssetListToolSchema = z.object({
 export const AnalyticsToolSchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Filter from date (YYYY-MM-DD)'),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Filter to date (YYYY-MM-DD)'),
+});
+
+export const GoToolSchema = z.object({
+  prompt: z.string().min(1).describe('Free-text prompt describing the content to create'),
+  schedule: z.string().optional().describe('Schedule for a future date/time (YYYY-MM-DD or YYYY-MM-DDTHH:MM) instead of publishing immediately'),
+  dryRun: z.boolean().optional().describe('Run full pipeline but skip actual publishing'),
+  draft: z.boolean().optional().describe('Publish as draft on supported platforms'),
 });
 
 export const MCP_TOOL_DEFINITIONS = [
@@ -88,6 +95,11 @@ export const MCP_TOOL_DEFINITIONS = [
     name: 'reach_asset_list',
     description: 'List all registered assets in the project, optionally filtered by type',
     schema: AssetListToolSchema,
+  },
+  {
+    name: 'reach_go',
+    description: 'Full auto pipeline: create inbox item from prompt → draft → approve → adapt → schedule → publish. Use schedule param to defer publishing.',
+    schema: GoToolSchema,
   },
   {
     name: 'reach_analytics',

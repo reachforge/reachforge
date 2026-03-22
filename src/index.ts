@@ -28,6 +28,7 @@ import { refineCommand } from './commands/refine.js';
 import { approveCommand } from './commands/approve.js';
 import { assetAddCommand, assetListCommand } from './commands/asset.js';
 import { analyticsCommand, collectAnalytics } from './commands/analytics.js';
+import { goCommand } from './commands/go.js';
 
 const program = new Command();
 
@@ -102,9 +103,9 @@ apcore.register('reach.draft', {
   },
 });
 apcore.register('reach.adapt', {
-  execute: async (inputs: { article: string }) => {
+  execute: async (inputs: { article: string; platforms?: string; force?: boolean }) => {
     const engine = await getEngine();
-    await adaptCommand(engine, inputs.article);
+    await adaptCommand(engine, inputs.article, { platforms: inputs.platforms, force: inputs.force });
   },
 });
 apcore.register('reach.approve', {
@@ -114,15 +115,23 @@ apcore.register('reach.approve', {
   },
 });
 apcore.register('reach.schedule', {
-  execute: async (inputs: { article: string; date: string }) => {
+  execute: async (inputs: { article: string; date?: string }) => {
     const engine = await getEngine();
-    await scheduleCommand(engine, inputs.article, inputs.date);
+    const resolvedDate = inputs.date || new Date().toISOString().split('T')[0];
+    await scheduleCommand(engine, inputs.article, resolvedDate);
   },
 });
 apcore.register('reach.publish', {
   execute: async () => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await publishCommand(engine, { config: config.getConfig() });
+  },
+});
+
+apcore.register('reach.go', {
+  execute: async (inputs: { prompt: string; schedule?: string; dryRun?: boolean; draft?: boolean }) => {
+    const [engine, config] = await Promise.all([getEngine(), getConfig()]);
+    await goCommand(engine, inputs.prompt, { ...inputs, config: config.getConfig() });
   },
 });
 
@@ -208,12 +217,13 @@ program
   }, 'adapt'));
 
 program
-  .command('schedule <article> <date>')
-  .description('Schedule an article for publishing (date: YYYY-MM-DD)')
+  .command('schedule <article> [date]')
+  .description('Schedule an article for publishing (YYYY-MM-DD or YYYY-MM-DDTHH:MM, defaults to now)')
   .option('-n, --dry-run', 'Preview without moving files')
-  .action(withErrorHandler(async (article: string, date: string, options: { dryRun?: boolean }) => {
+  .action(withErrorHandler(async (article: string, date: string | undefined, options: { dryRun?: boolean }) => {
     const engine = await getEngine();
-    await scheduleCommand(engine, article, date, { ...options, json: program.opts().json });
+    const resolvedDate = date || new Date().toISOString().split('T')[0];
+    await scheduleCommand(engine, article, resolvedDate, { ...options, json: program.opts().json });
   }, 'schedule'));
 
 program
@@ -225,6 +235,17 @@ program
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await publishCommand(engine, { ...options, json: program.opts().json, config: config.getConfig() });
   }, 'publish'));
+
+program
+  .command('go <prompt>')
+  .description('Full auto: inbox → draft → approve → adapt → schedule → publish')
+  .option('-s, --schedule <date>', 'Schedule for a future date (YYYY-MM-DD) instead of publishing immediately')
+  .option('-n, --dry-run', 'Run full pipeline but skip actual publishing')
+  .option('-d, --draft', 'Publish as draft on supported platforms')
+  .action(withErrorHandler(async (prompt: string, options: { schedule?: string; dryRun?: boolean; draft?: boolean }) => {
+    const [engine, config] = await Promise.all([getEngine(), getConfig()]);
+    await goCommand(engine, prompt, { ...options, json: program.opts().json, config: config.getConfig() });
+  }, 'go'));
 
 program
   .command('rollback <project>')

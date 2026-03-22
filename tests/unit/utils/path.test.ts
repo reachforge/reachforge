@@ -1,5 +1,11 @@
 import { describe, test, expect } from 'vitest';
-import { sanitizePath, validateDate } from '../../../src/utils/path.js';
+import {
+  sanitizePath,
+  validateDate,
+  validateScheduleDate,
+  normalizeScheduleDate,
+  parseScheduleTimestamp,
+} from '../../../src/utils/path.js';
 import { PathTraversalError } from '../../../src/types/index.js';
 
 describe('sanitizePath', () => {
@@ -60,5 +66,66 @@ describe('validateDate', () => {
     expect(validateDate('2026-02-30')).toBe(false);
     expect(validateDate('2026-13-01')).toBe(false);
     expect(validateDate('2026-00-01')).toBe(false);
+  });
+});
+
+describe('validateScheduleDate', () => {
+  test('accepts date-only YYYY-MM-DD', () => {
+    expect(validateScheduleDate('2026-03-22')).toBe(true);
+  });
+
+  test('accepts date + time HH:MM', () => {
+    expect(validateScheduleDate('2026-03-22T14:30')).toBe(true);
+    expect(validateScheduleDate('2026-03-22T00:00')).toBe(true);
+    expect(validateScheduleDate('2026-03-22T23:59')).toBe(true);
+  });
+
+  test('accepts full datetime HH:MM:SS', () => {
+    expect(validateScheduleDate('2026-03-22T14:30:45')).toBe(true);
+    expect(validateScheduleDate('2026-03-22T00:00:00')).toBe(true);
+  });
+
+  test('rejects invalid date portion', () => {
+    expect(validateScheduleDate('2026-02-30')).toBe(false);
+    expect(validateScheduleDate('2026-13-01T14:30')).toBe(false);
+  });
+
+  test('rejects invalid time values', () => {
+    expect(validateScheduleDate('2026-03-22T25:00')).toBe(false);
+    expect(validateScheduleDate('2026-03-22T14:60')).toBe(false);
+    expect(validateScheduleDate('2026-03-22T14:30:61')).toBe(false);
+  });
+
+  test('rejects wrong formats', () => {
+    expect(validateScheduleDate('not-a-date')).toBe(false);
+    expect(validateScheduleDate('2026-03-22T14')).toBe(false);
+    expect(validateScheduleDate('2026/03/22')).toBe(false);
+    expect(validateScheduleDate('')).toBe(false);
+  });
+});
+
+describe('normalizeScheduleDate', () => {
+  test('date-only adds T00-00-00', () => {
+    expect(normalizeScheduleDate('2026-03-22')).toBe('2026-03-22T00-00-00');
+  });
+
+  test('HH:MM adds -00 seconds and replaces colons', () => {
+    expect(normalizeScheduleDate('2026-03-22T14:30')).toBe('2026-03-22T14-30-00');
+  });
+
+  test('full datetime replaces colons with hyphens', () => {
+    expect(normalizeScheduleDate('2026-03-22T14:30:45')).toBe('2026-03-22T14-30-45');
+  });
+});
+
+describe('parseScheduleTimestamp', () => {
+  test('new format converts hyphens to colons', () => {
+    expect(parseScheduleTimestamp('2026-03-22T14-30-00')).toBe('2026-03-22T14:30:00');
+    expect(parseScheduleTimestamp('2026-03-22T00-00-00')).toBe('2026-03-22T00:00:00');
+    expect(parseScheduleTimestamp('2026-12-31T23-59-59')).toBe('2026-12-31T23:59:59');
+  });
+
+  test('legacy date-only defaults to midnight', () => {
+    expect(parseScheduleTimestamp('2026-03-22')).toBe('2026-03-22T00:00:00');
   });
 });
