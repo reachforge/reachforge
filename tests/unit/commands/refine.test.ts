@@ -266,3 +266,71 @@ describe('refineCommand non-TTY', () => {
     expect(saved).toBe('Non-TTY result');
   });
 });
+
+// --- T05: --feedback flag ---
+
+describe('refineCommand --feedback', () => {
+  test('normalizes feedback into single-turn non-interactive path', async () => {
+    await createDraft('art', 'Original');
+    mockExecute.mockResolvedValue(successResult('Feedback result'));
+    const engine = new PipelineEngine(tmpDir);
+    await refineCommand(engine, 'art', { feedback: 'make it shorter' });
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    const prompt = mockExecute.mock.calls[0][0].prompt;
+    expect(prompt).toContain('make it shorter');
+
+    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art', DRAFT_FILENAME), 'utf-8');
+    expect(saved).toBe('Feedback result');
+  });
+
+  test('--feedback + --json outputs structured result on success', async () => {
+    await createDraft('art', 'Original');
+    mockExecute.mockResolvedValue(successResult('Better'));
+    const engine = new PipelineEngine(tmpDir);
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await refineCommand(engine, 'art', { feedback: 'improve', json: true });
+
+    const jsonCall = writeSpy.mock.calls.find(
+      c => typeof c[0] === 'string' && c[0].includes('"command":"refine"'),
+    );
+    expect(jsonCall).toBeDefined();
+    const parsed = JSON.parse(jsonCall![0] as string);
+    expect(parsed.data.article).toBe('art');
+    expect(parsed.data.updated).toBe(true);
+    expect(parsed.data.error).toBeUndefined();
+
+    writeSpy.mockRestore();
+  });
+
+  test('--feedback + --json includes error on LLM failure', async () => {
+    await createDraft('art', 'Original');
+    mockExecute.mockResolvedValue({
+      success: false,
+      content: '',
+      sessionId: null,
+      usage: { inputTokens: 0, outputTokens: 0, cachedTokens: 0 },
+      costUsd: null,
+      model: 'unknown',
+      errorMessage: 'API down',
+      errorCode: 'unknown',
+      exitCode: 1,
+      timedOut: false,
+    });
+    const engine = new PipelineEngine(tmpDir);
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await refineCommand(engine, 'art', { feedback: 'try something', json: true });
+
+    const jsonCall = writeSpy.mock.calls.find(
+      c => typeof c[0] === 'string' && c[0].includes('"command":"refine"'),
+    );
+    expect(jsonCall).toBeDefined();
+    const parsed = JSON.parse(jsonCall![0] as string);
+    expect(parsed.data.updated).toBe(false);
+    expect(parsed.data.error).toBe('API down');
+
+    writeSpy.mockRestore();
+  });
+});

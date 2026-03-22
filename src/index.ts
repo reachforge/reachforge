@@ -306,9 +306,13 @@ program
 program
   .command('refine <article>')
   .description('Interactively refine a draft article with AI feedback')
-  .action(withErrorHandler(async (article: string) => {
+  .option('-f, --feedback <text>', 'Non-interactive single refinement turn with the given feedback')
+  .action(withErrorHandler(async (article: string, options: { feedback?: string }) => {
     const engine = await getEngine();
-    await refineCommand(engine, article);
+    await refineCommand(engine, article, {
+      feedback: options.feedback,
+      json: program.opts().json,
+    });
   }));
 
 program

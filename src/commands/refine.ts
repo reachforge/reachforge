@@ -7,6 +7,7 @@ import { AdapterFactory } from '../llm/factory.js';
 import { SessionManager } from '../llm/session.js';
 import { sanitizePath } from '../utils/path.js';
 import { DRAFT_FILENAME, MASTER_FILENAME } from '../core/constants.js';
+import { jsonSuccess } from '../core/json-output.js';
 import type { PipelineStage } from '../types/index.js';
 
 export async function refineCommand(
@@ -15,10 +16,19 @@ export async function refineCommand(
   options?: {
     /** Override stdin for non-TTY/testing. If provided, runs one turn and saves. */
     inputLines?: string[];
+    /** Single-turn feedback (non-interactive). Implies inputLines. */
+    feedback?: string;
+    /** Output JSON envelope instead of human text. */
+    json?: boolean;
   },
 ): Promise<void> {
   const safeName = sanitizePath(article);
   if (!safeName) throw new Error('Article name is required');
+
+  // Normalize --feedback flag into inputLines for the non-interactive path
+  if (options?.feedback && !options.inputLines) {
+    options = { ...options, inputLines: [options.feedback] };
+  }
 
   await engine.initPipeline();
 
@@ -70,6 +80,7 @@ export async function refineCommand(
   // Non-TTY / test mode: single turn
   if (options?.inputLines) {
     const feedback = options.inputLines.join('\n').trim();
+    let errorMessage: string | null = null;
     if (feedback && feedback !== '/quit' && feedback !== '/save') {
       turnCount++;
       const prompt = buildRefinePrompt(latestContent, feedback);
@@ -84,12 +95,22 @@ export async function refineCommand(
       if (result.success && result.content) {
         latestContent = result.content;
         sessionId = result.sessionId ?? sessionId;
+      } else if (!result.success) {
+        errorMessage = result.errorMessage ?? 'LLM refinement failed';
       }
     }
     if (feedback !== '/quit') {
       await saveContent(engine, stage, safeName, filename, latestContent);
       if (sessionId) {
         await saveSession(sessionManager, safeName, adapter.name, sessionId, session, projectDir);
+      }
+      if (options?.json) {
+        process.stdout.write(jsonSuccess('refine', {
+          article: safeName,
+          stage,
+          updated: latestContent !== currentContent,
+          ...(errorMessage ? { error: errorMessage } : {}),
+        }));
       }
     }
     return;

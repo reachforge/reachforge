@@ -276,10 +276,15 @@ reach asset list --subdir images    # Only images
 Interactively refine a draft or master article with AI feedback.
 
 ```bash
-reach refine my-idea
+reach refine my-idea                                    # Interactive multi-turn session
+reach refine my-idea -f "make the intro more concise"   # Single-turn, non-interactive
 ```
 
-Opens an interactive session with these commands:
+| Option | Description |
+|--------|-------------|
+| `-f, --feedback <text>` | Non-interactive single refinement turn — applies the feedback, saves, and exits |
+
+**Interactive mode** opens a session with these commands:
 
 | Command | Action |
 |---------|--------|
@@ -293,7 +298,7 @@ Opens an interactive session with these commands:
 
 - Sessions are persisted in `.reach/sessions/` and automatically resumed.
 - Works on articles in both `02_drafts` and `03_master`.
-- Non-TTY mode: single-turn refinement from piped input.
+- `--feedback` mode is useful for scripting and piping (e.g., `reach refine my-idea -f "fix typos" --json`).
 
 ---
 
