@@ -3,7 +3,7 @@
 | Field            | Value                                              |
 |------------------|----------------------------------------------------|
 | **Document**     | reachforge SRS v1.0                                    |
-| **Author**       | aipartnerup Engineering                            |
+| **Author**       | aiperceivable Engineering                            |
 | **Date**         | 2026-03-14                                         |
 | **Status**       | Draft                                              |
 | **Version**      | 1.0                                                |
@@ -45,7 +45,7 @@ reachforge does NOT provide: a web UI (except via VS Code extension in Phase 4),
 | **Adaptation**     | AI-generated transformation of master content for a specific platform      |
 | **Receipt**        | A YAML record of publishing outcomes (URLs, timestamps, status)            |
 | **MCP**            | Model Context Protocol --- standard for AI agent tool integration          |
-| **APCore**         | aipartnerup Core framework for module registration and lifecycle           |
+| **APCore**         | aiperceivable Core framework for module registration and lifecycle           |
 | **SSE**            | Server-Sent Events transport for MCP                                       |
 | **Bun**            | JavaScript/TypeScript runtime used to execute reachforge                       |
 | **Gemini**         | Google's generative AI model used for content generation                   |
@@ -71,7 +71,7 @@ Section 2 describes the overall system context. Section 3 defines the data model
 
 ### 2.1 Product Perspective
 
-reachforge is a component within the **aipartnerup** ecosystem:
+reachforge is a component within the **aiperceivable** ecosystem:
 
 - **apcore-js**: Provides module registration, lifecycle management, and the foundational runtime. reachforge registers all pipeline operations as apcore modules.
 - **apcore-mcp**: Provides MCP server infrastructure. reachforge uses this to expose pipeline operations as AI-agent-callable tools.

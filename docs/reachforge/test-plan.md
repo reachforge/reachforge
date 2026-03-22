@@ -3,7 +3,7 @@
 | Field            | Value                                              |
 |------------------|----------------------------------------------------|
 | **Document**     | reachforge Test Plan v1.0                              |
-| **Author**       | aipartnerup QA Engineering                         |
+| **Author**       | aiperceivable QA Engineering                         |
 | **Date**         | 2026-03-14                                         |
 | **Status**       | Draft                                              |
 | **Version**      | 1.0                                                |

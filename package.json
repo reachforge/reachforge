@@ -1,6 +1,6 @@
 {
   "name": "reachforge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ReachForge: The Social Influence Engine for AI-Native Content.",
   "type": "module",
   "license": "Apache-2.0",
@@ -36,11 +36,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/aipartnerup/reachforge.git"
+    "url": "https://github.com/aiperceivable/reachforge.git"
   },
-  "homepage": "https://aipartnerup.com",
+  "homepage": "https://aiperceivable.com",
   "bugs": {
-    "url": "https://github.com/aipartnerup/reachforge/issues"
+    "url": "https://github.com/aiperceivable/reachforge/issues"
   },
   "apdev": {
     "base_package": "reachforge"

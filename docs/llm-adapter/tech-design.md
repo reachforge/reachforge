@@ -3,7 +3,7 @@
 | Field            | Value                                                  |
 |------------------|--------------------------------------------------------|
 | **Document**     | LLM Adapter Layer Tech Design v1.0                     |
-| **Author**       | aipartnerup Engineering                                |
+| **Author**       | aiperceivable Engineering                                |
 | **Date**         | 2026-03-17                                             |
 | **Status**       | Draft                                                  |
 | **Version**      | 1.0                                                    |

@@ -3,7 +3,7 @@
 | Field        | Value                                      |
 |--------------|--------------------------------------------|
 | **Document** | reachforge PRD v1.0                            |
-| **Author**   | aipartnerup Product Team                   |
+| **Author**   | aiperceivable Product Team                   |
 | **Date**     | 2026-03-14                                 |
 | **Status**   | Draft                                      |
 | **Version**  | 1.0                                        |
@@ -16,7 +16,7 @@ Today, independent developers and content creators face a fragmented, manual wor
 
 **reachforge** is an AI-native Social Influence Engine that eliminates this friction. It transforms a single raw idea into platform-optimized, publication-ready assets through a six-stage file-based pipeline. Users drop an idea into an inbox folder; AI generates a long-form draft; AI adapts that draft for each target platform; the user schedules it; and reach publishes automatically via direct APIs or SaaS bridges. No database, no complex setup --- directories are states, filenames are timestamps, YAML files are metadata.
 
-reachforge is part of the **aipartnerup** ecosystem (alongside apcore and apflow), designed for developers who think in files and terminals. The MVP targets two publishing paths --- native API integration with Dev.to and SaaS-bridged publishing to X via Postiz --- to validate the hybrid distribution architecture before expanding to additional platforms.
+reachforge is part of the **aiperceivable** ecosystem (alongside apcore and apflow), designed for developers who think in files and terminals. The MVP targets two publishing paths --- native API integration with Dev.to and SaaS-bridged publishing to X via Postiz --- to validate the hybrid distribution architecture before expanding to additional platforms.
 
 ---
 
@@ -133,10 +133,10 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 ### North Star
 **Any developer can go from idea to multi-platform publication in under 5 minutes, entirely from the terminal or through an AI agent.**
 
-### Strategic Positioning within aipartnerup
+### Strategic Positioning within aiperceivable
 - **apcore**: The foundational framework providing module registration, lifecycle management, and MCP server infrastructure.
 - **apflow**: Workflow orchestration and task automation.
-- **reachforge**: The user-facing content engine that leverages apcore for modularity and apflow for automation. reachforge is the flagship product that demonstrates the aipartnerup ecosystem's value.
+- **reachforge**: The user-facing content engine that leverages apcore for modularity and apflow for automation. reachforge is the flagship product that demonstrates the aiperceivable ecosystem's value.
 
 ### Strategy Phases
 1. **Validate** (v0.2): Prove the pipeline works end-to-end with real publishing to Dev.to + X.
@@ -160,7 +160,7 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 
 ### Moat Analysis (Honest Assessment)
 - **Weak moat**: The six-stage pipeline and CLI wrapper are straightforward to replicate. AI adaptation prompts can be copied.
-- **Medium moat**: Integration with apcore/apflow ecosystem creates switching costs for users invested in aipartnerup. MCP server support creates value for AI agent users.
+- **Medium moat**: Integration with apcore/apflow ecosystem creates switching costs for users invested in aiperceivable. MCP server support creates value for AI agent users.
 - **Potential moat**: If reachforge accumulates platform-specific prompt tuning, publishing heuristics, and a library of successful adaptation patterns, these become a knowledge moat. Community contributions to provider plugins would also strengthen defensibility.
 - **Honest conclusion**: reachforge's moat is currently thin. The primary defense is execution speed and developer experience quality, not technological barriers.
 
@@ -379,13 +379,13 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 ## 12. "What If We Don't Build This?" Analysis
 
 ### If reachforge is not built:
-1. **The aipartnerup ecosystem lacks a flagship user-facing product.** apcore and apflow are infrastructure; without reachforge, there is no demonstration of their value to end users.
+1. **The aiperceivable ecosystem lacks a flagship user-facing product.** apcore and apflow are infrastructure; without reachforge, there is no demonstration of their value to end users.
 2. **Developers continue with manual cross-posting.** The distribution tax persists. This is the status quo and is survivable --- people have lived with it for years.
 3. **The MCP/agentic content workflow opportunity goes unexplored.** No existing tool provides MCP-based content pipeline control. This is a genuine first-mover opportunity in the AI agent ecosystem, but the window is time-limited as the MCP ecosystem matures.
 4. **Competitors may fill the gap.** Postiz is open source and actively developed. If they add AI generation and adaptation features, the reachforge value proposition narrows significantly.
 
 ### Honest Assessment
-reachforge solves a real but not urgent problem. Developers can and do cross-post manually. The tool's value is in saving 30-60 minutes per article and enabling an agentic workflow that does not yet exist elsewhere. The strongest argument for building it is strategic: it validates the aipartnerup ecosystem and establishes a presence in the AI-native developer tools space before competitors arrive.
+reachforge solves a real but not urgent problem. Developers can and do cross-post manually. The tool's value is in saving 30-60 minutes per article and enabling an agentic workflow that does not yet exist elsewhere. The strongest argument for building it is strategic: it validates the aiperceivable ecosystem and establishes a presence in the AI-native developer tools space before competitors arrive.
 
 ---
 

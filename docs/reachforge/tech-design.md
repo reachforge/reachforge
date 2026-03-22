@@ -3,7 +3,7 @@
 | Field            | Value                                              |
 |------------------|----------------------------------------------------|
 | **Document**     | reachforge Technical Design v1.0                       |
-| **Author**       | aipartnerup Engineering                            |
+| **Author**       | aiperceivable Engineering                            |
 | **Date**         | 2026-03-14                                         |
 | **Status**       | Implemented (architecture delivered, see notes below) |
 | **Version**      | 1.0                                                |
@@ -97,7 +97,7 @@ C4Context
     System_Ext(postiz, "Postiz Cloud API", "SaaS bridge for X/Twitter publishing")
     System_Ext(hashnode, "Hashnode GraphQL API", "Developer blogging platform - GraphQL API")
     System_Ext(github, "GitHub API", "Discussions and file publishing via REST/GraphQL")
-    System_Ext(apcore, "apcore-js", "Module registration framework for aipartnerup ecosystem")
+    System_Ext(apcore, "apcore-js", "Module registration framework for aiperceivable ecosystem")
     System_Ext(apcore_mcp, "apcore-mcp", "MCP server infrastructure")
 
     Person(ai_agent, "AI Agent", "Claude Desktop or other MCP client that operates pipeline programmatically")
