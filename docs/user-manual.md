@@ -483,7 +483,7 @@ reach mcp --transport sse --port 8001
 | `-t, --transport <type>` | `stdio` (default) or `sse` |
 | `-p, --port <number>` | Port for SSE transport (default: 8000) |
 
-Exposes these MCP tools: `reach_status`, `reach_draft`, `reach_adapt`, `reach_approve`, `reach_schedule`, `reach_publish`, `reach_rollback`, `reach_asset_add`, `reach_asset_list`, `reach_go`, `reach_analytics`.
+Exposes these MCP tools: `reach_status`, `reach_draft`, `reach_approve`, `reach_adapt`, `reach_refine`, `reach_schedule`, `reach_publish`, `reach_go`, `reach_rollback`, `reach_asset_add`, `reach_asset_list`, `reach_analytics`.
 
 ---
 
@@ -758,6 +758,7 @@ reach mcp --transport sse --port 8001
 | `reach_publish` | `dryRun?: boolean` | Publish due content |
 | `reach_rollback` | `project: string` | Roll back one stage |
 | `reach_approve` | `article: string` | Promote draft to master |
+| `reach_refine` | `article: string`, `feedback: string` | Refine a draft/master with AI feedback |
 | `reach_asset_add` | `file: string`, `subdir?: string` | Register media asset |
 | `reach_asset_list` | `subdir?: string` | List registered assets |
 | `reach_go` | `prompt: string`, `schedule?: string`, `dryRun?: boolean`, `draft?: boolean` | Full auto pipeline from prompt to publish |

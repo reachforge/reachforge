@@ -89,32 +89,45 @@ async function getConfig() {
 }
 
 // APCore registration for MCP/programmatic access
+// TOOL_METADATA provides description + inputSchema so apcore-mcp exposes them to LLMs.
+import { TOOL_METADATA } from './mcp/tools.js';
+
 const apcore = new APCore();
+
+function meta(moduleId: string) {
+  return TOOL_METADATA[moduleId] ?? { description: '', inputSchema: {} };
+}
+
 apcore.register('reach.status', {
+  ...meta('reach.status'),
   execute: async () => {
     const engine = await getEngine();
     return engine.getStatus();
   },
 });
 apcore.register('reach.draft', {
+  ...meta('reach.draft'),
   execute: async (inputs: { source: string }) => {
     const engine = await getEngine();
     await draftCommand(engine, inputs.source);
   },
 });
-apcore.register('reach.adapt', {
-  execute: async (inputs: { article: string; platforms?: string; force?: boolean }) => {
-    const engine = await getEngine();
-    await adaptCommand(engine, inputs.article, { platforms: inputs.platforms, force: inputs.force });
-  },
-});
 apcore.register('reach.approve', {
+  ...meta('reach.approve'),
   execute: async (inputs: { article: string }) => {
     const engine = await getEngine();
     await approveCommand(engine, inputs.article);
   },
 });
+apcore.register('reach.adapt', {
+  ...meta('reach.adapt'),
+  execute: async (inputs: { article: string; platforms?: string; force?: boolean }) => {
+    const engine = await getEngine();
+    await adaptCommand(engine, inputs.article, { platforms: inputs.platforms, force: inputs.force });
+  },
+});
 apcore.register('reach.schedule', {
+  ...meta('reach.schedule'),
   execute: async (inputs: { article: string; date?: string }) => {
     const engine = await getEngine();
     const resolvedDate = inputs.date || new Date().toISOString().split('T')[0];
@@ -122,34 +135,42 @@ apcore.register('reach.schedule', {
   },
 });
 apcore.register('reach.publish', {
+  ...meta('reach.publish'),
   execute: async () => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await publishCommand(engine, { config: config.getConfig() });
   },
 });
-
 apcore.register('reach.go', {
+  ...meta('reach.go'),
   execute: async (inputs: { prompt: string; schedule?: string; dryRun?: boolean; draft?: boolean }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await goCommand(engine, inputs.prompt, { ...inputs, config: config.getConfig() });
   },
 });
-
+apcore.register('reach.refine', {
+  ...meta('reach.refine'),
+  execute: async (inputs: { article: string; feedback: string }) => {
+    const engine = await getEngine();
+    await refineCommand(engine, inputs.article, { feedback: inputs.feedback });
+  },
+});
 apcore.register('reach.rollback', {
+  ...meta('reach.rollback'),
   execute: async (inputs: { project: string }) => {
     const engine = await getEngine();
     await rollbackCommand(engine, inputs.project);
   },
 });
-
 apcore.register('reach.asset.add', {
+  ...meta('reach.asset.add'),
   execute: async (inputs: { file: string; subdir?: string }) => {
     const ctx = await getContext();
     await assetAddCommand(ctx.projectDir, inputs.file, { subdir: inputs.subdir });
   },
 });
-
 apcore.register('reach.asset.list', {
+  ...meta('reach.asset.list'),
   execute: async (inputs: { subdir?: string }) => {
     const ctx = await getContext();
     const { AssetManager } = await import('./core/asset-manager.js');
@@ -157,8 +178,8 @@ apcore.register('reach.asset.list', {
     return mgr.listAssets(inputs.subdir as import('./types/assets.js').AssetSubdir | undefined);
   },
 });
-
 apcore.register('reach.analytics', {
+  ...meta('reach.analytics'),
   execute: async (inputs: { from?: string; to?: string }) => {
     const engine = await getEngine();
     return collectAnalytics(engine, inputs);
