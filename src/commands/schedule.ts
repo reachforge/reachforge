@@ -17,34 +17,38 @@ export async function scheduleCommand(
   }
 
   await engine.initPipeline();
-  const dirDate = normalizeScheduleDate(date);
-  const targetName = `${dirDate}-${safeName}`;
+  const normalizedDate = normalizeScheduleDate(date);
 
   if (options.dryRun) {
     if (options.json) {
       process.stdout.write(jsonSuccess('schedule', {
         article: safeName,
-        date: dirDate,
-        scheduledName: targetName,
+        date: normalizedDate,
         stage: '05_scheduled' as const,
       }));
       return;
     }
-    console.log(chalk.yellow(`[DRY RUN] Would schedule: "${safeName}" → 05_scheduled/${targetName}`));
+    console.log(chalk.yellow(`[DRY RUN] Would schedule: "${safeName}" → 05_scheduled/ (${normalizedDate})`));
     return;
   }
 
-  const result = await engine.moveProject(safeName, '04_adapted', '05_scheduled', targetName);
+  // Move platform files from 04_adapted to 05_scheduled (same filenames)
+  await engine.moveArticle(safeName, '04_adapted', '05_scheduled');
+
+  // Store schedule in meta.yaml (not in directory name)
+  await engine.metadata.writeArticleMeta(safeName, {
+    status: 'scheduled',
+    schedule: normalizedDate,
+  });
 
   if (options.json) {
     process.stdout.write(jsonSuccess('schedule', {
       article: safeName,
-      date: dirDate,
-      scheduledName: targetName,
+      date: normalizedDate,
       stage: '05_scheduled' as const,
     }));
     return;
   }
 
-  console.log(chalk.magenta(`Scheduled: "${safeName}" moved to 05_scheduled as "${result.project}"`));
+  console.log(chalk.magenta(`📅 Scheduled: "${safeName}" for ${normalizedDate}`));
 }

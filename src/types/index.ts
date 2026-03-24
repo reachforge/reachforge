@@ -1,16 +1,9 @@
 export type {
   PipelineStage,
   ProjectStatus,
-  PlatformStatus,
-  ProjectMeta,
   StageTransition,
   StageInfo,
   PipelineStatus,
-  ReceiptEntry,
-  Receipt,
-  LockInfo,
-  PublishOptions,
-  PublishResult,
   LLMGenerateOptions,
   LLMAdaptOptions,
   ReachforgeConfig,
@@ -26,15 +19,9 @@ export type {
 } from '../providers/types.js';
 
 export {
-  ProjectMetaSchema,
-  ReceiptSchema,
   CredentialsSchema,
-  UploadCacheSchema,
-  PlatformStatusSchema,
-  ReceiptEntrySchema,
-  UploadRecordSchema,
 } from './schemas.js';
-export type { ProjectMetaInput, ReceiptInput, CredentialsInput } from './schemas.js';
+export type { CredentialsInput } from './schemas.js';
 
 export type { AssetEntry, AssetRegistry, AssetSource, AssetSubdir } from './assets.js';
 export { AssetEntrySchema, AssetRegistrySchema, AssetSourceSchema, AssetSubdirSchema } from './assets.js';

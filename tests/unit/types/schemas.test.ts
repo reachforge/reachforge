@@ -1,57 +1,39 @@
 import { describe, test, expect } from 'vitest';
 import {
-  ProjectMetaSchema,
-  ReceiptSchema,
   CredentialsSchema,
 } from '../../../src/types/index.js';
+import {
+  ArticleMetaSchema,
+  MultiArticleProjectMetaSchema,
+  PlatformPublishStatusSchema,
+} from '../../../src/types/schemas.js';
 
-describe('ProjectMetaSchema', () => {
-  test('validates a complete meta object', () => {
-    const result = ProjectMetaSchema.safeParse({
-      article: 'my-article',
+describe('ArticleMetaSchema', () => {
+  test('validates a complete article meta', () => {
+    const result = ArticleMetaSchema.safeParse({
       status: 'drafted',
-      publish_date: '2026-03-20',
+      schedule: '2026-03-25T09:00',
       adapted_platforms: ['x', 'devto'],
     });
     expect(result.success).toBe(true);
   });
 
-  test('validates minimal meta (only required fields)', () => {
-    const result = ProjectMetaSchema.safeParse({
-      article: 'test',
+  test('validates minimal meta (only status)', () => {
+    const result = ArticleMetaSchema.safeParse({
       status: 'inbox',
     });
     expect(result.success).toBe(true);
   });
 
-  test('rejects empty article', () => {
-    const result = ProjectMetaSchema.safeParse({
-      article: '',
-      status: 'drafted',
-    });
-    expect(result.success).toBe(false);
-  });
-
   test('rejects invalid status', () => {
-    const result = ProjectMetaSchema.safeParse({
-      article: 'test',
+    const result = ArticleMetaSchema.safeParse({
       status: 'unknown',
     });
     expect(result.success).toBe(false);
   });
 
-  test('rejects invalid date format', () => {
-    const result = ProjectMetaSchema.safeParse({
-      article: 'test',
-      status: 'scheduled',
-      publish_date: '03/20/2026',
-    });
-    expect(result.success).toBe(false);
-  });
-
-  test('validates platforms map with status', () => {
-    const result = ProjectMetaSchema.safeParse({
-      article: 'test',
+  test('validates platforms map with publish results', () => {
+    const result = ArticleMetaSchema.safeParse({
       status: 'published',
       platforms: {
         x: { status: 'success', url: 'https://x.com/post/123' },
@@ -62,57 +44,59 @@ describe('ProjectMetaSchema', () => {
   });
 });
 
-describe('ReceiptSchema', () => {
-  test('validates a complete receipt', () => {
-    const result = ReceiptSchema.safeParse({
-      status: 'completed',
-      published_at: '2026-03-20T10:30:00Z',
-      items: [
-        { platform: 'devto', status: 'success', url: 'https://dev.to/user/post' },
-        { platform: 'x', status: 'failed', error: 'Rate limit' },
-      ],
+describe('PlatformPublishStatusSchema', () => {
+  test('validates success status with url', () => {
+    const result = PlatformPublishStatusSchema.safeParse({
+      status: 'success',
+      url: 'https://dev.to/test',
+      published_at: '2026-03-25T09:05:00Z',
     });
     expect(result.success).toBe(true);
   });
 
-  test('validates publishing status with pending/sending entries', () => {
-    const result = ReceiptSchema.safeParse({
-      status: 'publishing',
-      published_at: '2026-03-20T10:30:00Z',
-      items: [
-        { platform: 'devto', status: 'pending' },
-        { platform: 'x', status: 'sending' },
-      ],
+  test('validates failed status with error', () => {
+    const result = PlatformPublishStatusSchema.safeParse({
+      status: 'failed',
+      error: 'API rate limit',
     });
     expect(result.success).toBe(true);
   });
 
-  test('rejects receipt with no items', () => {
-    const result = ReceiptSchema.safeParse({
-      status: 'completed',
-      published_at: '2026-03-20T10:30:00Z',
+  test('rejects invalid status', () => {
+    const result = PlatformPublishStatusSchema.safeParse({
+      status: 'unknown',
     });
     expect(result.success).toBe(false);
   });
+});
 
-  test('defaults status to completed when omitted (backward compat)', () => {
-    const result = ReceiptSchema.safeParse({
-      published_at: '2026-03-20T10:30:00Z',
-      items: [{ platform: 'devto', status: 'success' }],
+describe('MultiArticleProjectMetaSchema', () => {
+  test('validates complete project meta with multiple articles', () => {
+    const result = MultiArticleProjectMetaSchema.safeParse({
+      articles: {
+        teaser: { status: 'scheduled', schedule: '2026-03-25T09:00' },
+        'deep-dive': { status: 'adapted' },
+      },
     });
     expect(result.success).toBe(true);
+  });
+
+  test('defaults articles to empty object', () => {
+    const result = MultiArticleProjectMetaSchema.safeParse({});
+    expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.status).toBe('completed');
+      expect(result.data.articles).toEqual({});
     }
   });
 
-  test('rejects invalid platform status', () => {
-    const result = ReceiptSchema.safeParse({
-      status: 'completed',
-      published_at: '2026-03-20T10:30:00Z',
-      items: [{ platform: 'devto', status: 'unknown' }],
+  test('validates _locks map', () => {
+    const result = MultiArticleProjectMetaSchema.safeParse({
+      articles: { teaser: { status: 'scheduled' } },
+      _locks: {
+        teaser: { pid: 12345, started_at: '2026-03-25T09:00:00Z', hostname: 'test' },
+      },
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 });
 

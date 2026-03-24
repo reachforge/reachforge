@@ -19,9 +19,6 @@ export const STAGE_STATUS_MAP: Record<PipelineStage, ProjectStatus> = {
 };
 
 export const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-// Matches both legacy "YYYY-MM-DD-name" and new "YYYY-MM-DDThh-mm-ss-name" formats
-export const SCHEDULED_DIR_REGEX = /^(\d{4}-\d{2}-\d{2}(?:T\d{2}-\d{2}-\d{2})?)-(.+)$/;
-
 export const DEFAULT_LLM_MODEL = 'gemini-pro';
 export const DEFAULT_WATCH_INTERVAL_MINUTES = 60;
 export const MIN_WATCH_INTERVAL_MINUTES = 1;
@@ -29,12 +26,6 @@ export const DEFAULT_MCP_PORT = 8000;
 export const DEFAULT_MCP_TRANSPORT = 'stdio' as const;
 
 export const META_FILENAME = 'meta.yaml';
-export const RECEIPT_FILENAME = 'receipt.yaml';
-export const LOCK_FILENAME = '.publish.lock';
-export const MASTER_FILENAME = 'master.md';
-export const DRAFT_FILENAME = 'draft.md';
-export const PLATFORM_VERSIONS_DIR = 'platform_versions';
-export const UPLOAD_CACHE_FILENAME = '.upload_cache.yaml';
 
 export const ASSETS_DIR = 'assets';
 export const ASSET_SUBDIRS = ['images', 'videos', 'audio'] as const;

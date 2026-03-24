@@ -1,0 +1,16 @@
+{
+  "feature": "pipeline-engine-refactor",
+  "spec": "docs/features/pipeline-engine-refactor.md",
+  "status": "completed",
+  "createdAt": "2026-03-24",
+  "completedAt": "2026-03-24",
+  "tasks": [
+    { "id": "T01", "title": "listArticles()", "status": "completed" },
+    { "id": "T02", "title": "getArticleFiles()", "status": "completed" },
+    { "id": "T03", "title": "moveArticle()", "status": "completed" },
+    { "id": "T04", "title": "findDueArticles()", "status": "completed" },
+    { "id": "T05", "title": "rollbackArticle()", "status": "completed" },
+    { "id": "T06", "title": "readArticleContent(), writeArticleFile(), getArticlePath()", "status": "completed" },
+    { "id": "T07", "title": "Update getStatus() for multi-article", "status": "completed" }
+  ]
+}

@@ -44,8 +44,8 @@ describe('MCP Tool Schemas', () => {
     expect(PublishToolSchema.safeParse({ dryRun: true }).success).toBe(true);
   });
 
-  test('RollbackToolSchema requires project', () => {
-    expect(RollbackToolSchema.safeParse({ project: 'my-post' }).success).toBe(true);
+  test('RollbackToolSchema requires article', () => {
+    expect(RollbackToolSchema.safeParse({ article: 'my-post' }).success).toBe(true);
     expect(RollbackToolSchema.safeParse({}).success).toBe(false);
   });
 

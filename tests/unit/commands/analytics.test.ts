@@ -2,7 +2,6 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 import * as os from 'os';
 import fs from 'fs-extra';
-import yaml from 'js-yaml';
 import { PipelineEngine } from '../../../src/core/pipeline.js';
 import { analyticsCommand, collectAnalytics } from '../../../src/commands/analytics.js';
 
@@ -21,25 +20,39 @@ afterEach(async () => {
   await fs.remove(tmpDir);
 });
 
-async function createSentProject(name: string, receipt: object): Promise<void> {
-  const dir = path.join(tmpDir, '06_sent', name);
-  await fs.ensureDir(dir);
-  await fs.writeFile(path.join(dir, 'receipt.yaml'), yaml.dump(receipt, { lineWidth: -1 }));
+/** Create a published article with platform results in meta.yaml */
+async function createSentArticle(
+  name: string,
+  platforms: Record<string, { status: 'success' | 'failed'; url?: string; error?: string }>,
+  updatedAt: string,
+): Promise<void> {
+  // Create flat platform files in 06_sent
+  for (const platform of Object.keys(platforms)) {
+    await engine.writeArticleFile('06_sent', name, `Content for ${platform}`, platform);
+  }
+  // Write metadata, then patch updated_at (writeArticleMeta auto-sets it to now)
+  await engine.metadata.writeArticleMeta(name, {
+    status: 'published',
+    platforms,
+  });
+  // Patch updated_at directly in meta.yaml for date filtering tests
+  const meta = await engine.metadata.readProjectMeta();
+  meta.articles[name].updated_at = updatedAt;
+  const yamlMod = await import('js-yaml');
+  await fs.writeFile(path.join(tmpDir, 'meta.yaml'), yamlMod.dump(meta, { lineWidth: -1 }));
 }
 
 describe('collectAnalytics', () => {
-  test('returns empty result when no projects in 06_sent', async () => {
+  test('returns empty result when no articles in 06_sent', async () => {
     const result = await collectAnalytics(engine);
     expect(result.totalProjects).toBe(0);
     expect(Object.keys(result.platforms)).toHaveLength(0);
   });
 
-  test('aggregates single project with one platform', async () => {
-    await createSentProject('2026-03-14-test', {
-      status: 'completed',
-      published_at: '2026-03-14T10:00:00Z',
-      items: [{ platform: 'devto', status: 'success', url: 'https://dev.to/test' }],
-    });
+  test('aggregates single article with one platform', async () => {
+    await createSentArticle('test', {
+      devto: { status: 'success', url: 'https://dev.to/test' },
+    }, '2026-03-14T10:00:00Z');
 
     const result = await collectAnalytics(engine);
     expect(result.totalProjects).toBe(1);
@@ -47,23 +60,16 @@ describe('collectAnalytics', () => {
     expect(result.platforms['devto'].successRate).toBe(100);
   });
 
-  test('aggregates multiple projects with mixed results', async () => {
-    await createSentProject('2026-03-14-a', {
-      status: 'completed',
-      published_at: '2026-03-14T10:00:00Z',
-      items: [
-        { platform: 'devto', status: 'success', url: 'https://dev.to/a' },
-        { platform: 'x', status: 'success', url: 'https://x.com/a' },
-      ],
-    });
-    await createSentProject('2026-03-15-b', {
-      status: 'partial',
-      published_at: '2026-03-15T10:00:00Z',
-      items: [
-        { platform: 'devto', status: 'success', url: 'https://dev.to/b' },
-        { platform: 'x', status: 'failed', error: 'rate limit' },
-      ],
-    });
+  test('aggregates multiple articles with mixed results', async () => {
+    await createSentArticle('article-a', {
+      devto: { status: 'success', url: 'https://dev.to/a' },
+      x: { status: 'success', url: 'https://x.com/a' },
+    }, '2026-03-14T10:00:00Z');
+
+    await createSentArticle('article-b', {
+      devto: { status: 'success', url: 'https://dev.to/b' },
+      x: { status: 'failed', error: 'rate limit' },
+    }, '2026-03-15T10:00:00Z');
 
     const result = await collectAnalytics(engine);
     expect(result.totalProjects).toBe(2);
@@ -78,16 +84,13 @@ describe('collectAnalytics', () => {
   });
 
   test('filters by --from date', async () => {
-    await createSentProject('2026-03-10-old', {
-      status: 'completed',
-      published_at: '2026-03-10T10:00:00Z',
-      items: [{ platform: 'devto', status: 'success' }],
-    });
-    await createSentProject('2026-03-15-new', {
-      status: 'completed',
-      published_at: '2026-03-15T10:00:00Z',
-      items: [{ platform: 'devto', status: 'success' }],
-    });
+    await createSentArticle('old-article', {
+      devto: { status: 'success' },
+    }, '2026-03-10T10:00:00Z');
+
+    await createSentArticle('new-article', {
+      devto: { status: 'success' },
+    }, '2026-03-15T10:00:00Z');
 
     const result = await collectAnalytics(engine, { from: '2026-03-12' });
     expect(result.totalProjects).toBe(1);
@@ -95,25 +98,22 @@ describe('collectAnalytics', () => {
   });
 
   test('filters by --to date', async () => {
-    await createSentProject('2026-03-10-old', {
-      status: 'completed',
-      published_at: '2026-03-10T10:00:00Z',
-      items: [{ platform: 'devto', status: 'success' }],
-    });
-    await createSentProject('2026-03-15-new', {
-      status: 'completed',
-      published_at: '2026-03-15T10:00:00Z',
-      items: [{ platform: 'devto', status: 'success' }],
-    });
+    await createSentArticle('old-article', {
+      devto: { status: 'success' },
+    }, '2026-03-10T10:00:00Z');
+
+    await createSentArticle('new-article', {
+      devto: { status: 'success' },
+    }, '2026-03-15T10:00:00Z');
 
     const result = await collectAnalytics(engine, { to: '2026-03-12' });
     expect(result.totalProjects).toBe(1);
   });
 
   test('filters by both --from and --to', async () => {
-    await createSentProject('2026-03-10-a', { status: 'completed', published_at: '2026-03-10T10:00:00Z', items: [{ platform: 'x', status: 'success' }] });
-    await createSentProject('2026-03-12-b', { status: 'completed', published_at: '2026-03-12T10:00:00Z', items: [{ platform: 'x', status: 'success' }] });
-    await createSentProject('2026-03-15-c', { status: 'completed', published_at: '2026-03-15T10:00:00Z', items: [{ platform: 'x', status: 'success' }] });
+    await createSentArticle('a', { x: { status: 'success' } }, '2026-03-10T10:00:00Z');
+    await createSentArticle('b', { x: { status: 'success' } }, '2026-03-12T10:00:00Z');
+    await createSentArticle('c', { x: { status: 'success' } }, '2026-03-15T10:00:00Z');
 
     const result = await collectAnalytics(engine, { from: '2026-03-11', to: '2026-03-13' });
     expect(result.totalProjects).toBe(1);
@@ -124,21 +124,20 @@ describe('collectAnalytics', () => {
     await expect(collectAnalytics(engine, { to: '03/20/2026' })).rejects.toThrow('Invalid --to date');
   });
 
-  test('skips projects without receipt.yaml', async () => {
-    await fs.ensureDir(path.join(tmpDir, '06_sent', 'no-receipt'));
+  test('skips articles without platform data in meta', async () => {
+    // Article file exists in 06_sent but no platforms in meta
+    await engine.writeArticleFile('06_sent', 'no-platforms', 'content', 'x');
+    await engine.metadata.writeArticleMeta('no-platforms', { status: 'published' });
+
     const result = await collectAnalytics(engine);
     expect(result.totalProjects).toBe(0);
   });
 
-  test('handles all-failed receipt', async () => {
-    await createSentProject('2026-03-14-fail', {
-      status: 'partial',
-      published_at: '2026-03-14T10:00:00Z',
-      items: [
-        { platform: 'devto', status: 'failed', error: 'API error' },
-        { platform: 'x', status: 'failed', error: 'timeout' },
-      ],
-    });
+  test('handles all-failed article', async () => {
+    await createSentArticle('fail-article', {
+      devto: { status: 'failed', error: 'API error' },
+      x: { status: 'failed', error: 'timeout' },
+    }, '2026-03-14T10:00:00Z');
 
     const result = await collectAnalytics(engine);
     expect(result.overallSuccess).toBe(0);
@@ -154,11 +153,9 @@ describe('analyticsCommand', () => {
   });
 
   test('displays analytics for published items', async () => {
-    await createSentProject('2026-03-14-test', {
-      status: 'completed',
-      published_at: '2026-03-14T10:00:00Z',
-      items: [{ platform: 'devto', status: 'success', url: 'https://dev.to/test' }],
-    });
+    await createSentArticle('test', {
+      devto: { status: 'success', url: 'https://dev.to/test' },
+    }, '2026-03-14T10:00:00Z');
 
     await analyticsCommand(engine);
     const logs = (console.log as any).mock.calls.flat().join('\n');

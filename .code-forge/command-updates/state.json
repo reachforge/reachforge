@@ -1,0 +1,19 @@
+{
+  "feature": "command-updates",
+  "spec": "docs/features/command-updates.md",
+  "status": "completed",
+  "createdAt": "2026-03-24",
+  "completedAt": "2026-03-24",
+  "tasks": [
+    { "id": "T01", "title": "Refactor draftCommand", "status": "completed" },
+    { "id": "T02", "title": "Refactor approveCommand", "status": "completed" },
+    { "id": "T03", "title": "Refactor adaptCommand", "status": "completed" },
+    { "id": "T04", "title": "Refactor scheduleCommand", "status": "completed" },
+    { "id": "T05", "title": "Refactor publishCommand", "status": "completed" },
+    { "id": "T06", "title": "Refactor goCommand + --name option", "status": "completed" },
+    { "id": "T07", "title": "Refactor statusCommand", "status": "completed" },
+    { "id": "T08", "title": "Refactor rollbackCommand and refineCommand", "status": "completed" },
+    { "id": "T09", "title": "Update CLI registration (--name for go)", "status": "completed" },
+    { "id": "T10", "title": "Clean up unused constants", "status": "completed" }
+  ]
+}

@@ -3,7 +3,6 @@ import fs from 'fs-extra';
 import type { PipelineEngine } from '../core/pipeline.js';
 import { AdapterFactory } from '../llm/factory.js';
 import { sanitizePath } from '../utils/path.js';
-import { MASTER_FILENAME, PLATFORM_VERSIONS_DIR } from '../core/constants.js';
 import { TemplateResolver } from '../core/templates.js';
 import { jsonSuccess } from '../core/json-output.js';
 
@@ -19,22 +18,14 @@ export async function adaptCommand(
 
   await engine.initPipeline();
 
-  // Check master.md exists, with helpful error if draft.md exists instead
-  const masterPath = engine.getProjectPath('03_master', safeName);
-  const masterFile = `${masterPath}/${MASTER_FILENAME}`;
+  // Read master: 03_master/{article}.md
+  const masterFile = engine.getArticlePath('03_master', safeName);
   if (!await fs.pathExists(masterFile)) {
-    const draftFile = `${masterPath}/draft.md`;
-    if (await fs.pathExists(draftFile)) {
-      throw new Error(
-        `Master article not found at 03_master/${safeName}/${MASTER_FILENAME}. Did you mean to rename draft.md to master.md?`
-      );
-    }
-    throw new Error(`Master article not found at 03_master/${safeName}/${MASTER_FILENAME}`);
+    throw new Error(`Master article not found at 03_master/${safeName}.md`);
   }
-
   const content = await fs.readFile(masterFile, 'utf-8');
 
-  const meta = await engine.metadata.readMeta('03_master', safeName).catch(() => null);
+  const meta = await engine.metadata.readArticleMeta(safeName);
 
   // Platform resolution: CLI flag > meta > project.yaml > default
   let platforms: string[];
@@ -45,7 +36,6 @@ export async function adaptCommand(
     if (projectPlatforms && projectPlatforms.length > 0) {
       platforms = projectPlatforms;
     } else {
-      // Try reading from project.yaml
       const { readProjectConfig } = await import('../core/project-config.js');
       const projConfig = await readProjectConfig(engine.projectDir);
       platforms = projConfig?.platforms && projConfig.platforms.length > 0
@@ -61,11 +51,11 @@ export async function adaptCommand(
   // Parallel adaptation via Promise.all
   const results = await Promise.all(
     platforms.map(async (platform) => {
-      const versionPath = `${engine.getProjectPath('04_adapted', safeName)}/${PLATFORM_VERSIONS_DIR}/${platform}.md`;
+      const versionPath = engine.getArticlePath('04_adapted', safeName, platform);
 
       // Skip existing unless --force
       if (!options.force && await fs.pathExists(versionPath)) {
-        if (!options.json) console.log(chalk.yellow(`  ⏭ ${platform}.md already exists, skipping (use --force to overwrite)`));
+        if (!options.json) console.log(chalk.yellow(`  ⏭ ${safeName}.${platform}.md already exists, skipping (use --force to overwrite)`));
         return { platform, skipped: true };
       }
 
@@ -86,14 +76,14 @@ export async function adaptCommand(
         throw new Error(`Adaptation for ${platform} failed: ${result.errorMessage ?? 'Unknown error'}`);
       }
 
-      await engine.writeProjectFile('04_adapted', `${safeName}/${PLATFORM_VERSIONS_DIR}`, `${platform}.md`, result.content);
+      // Write flat file: 04_adapted/{article}.{platform}.md
+      await engine.writeArticleFile('04_adapted', safeName, result.content, platform);
       if (!options.json) console.log(chalk.dim(`  ✔ ${platform} adaptation complete`));
       return { platform, skipped: false };
     })
   );
 
-  await engine.metadata.writeMeta('04_adapted', safeName, {
-    article: safeName,
+  await engine.metadata.writeArticleMeta(safeName, {
     status: 'adapted',
     adapted_platforms: platforms,
   });
@@ -110,5 +100,5 @@ export async function adaptCommand(
   }
 
   const adapted = results.filter(r => !r.skipped).length;
-  console.log(chalk.green(`✅ Adaptation complete! ${adapted}/${platforms.length} platforms. Check 04_adapted/${safeName}/${PLATFORM_VERSIONS_DIR}/`));
+  console.log(chalk.green(`✅ Adaptation complete! ${adapted}/${platforms.length} platforms. Check 04_adapted/`));
 }

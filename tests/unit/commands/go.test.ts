@@ -113,15 +113,15 @@ describe('goCommand', () => {
     // Content should have passed through all stages up to at least 05_scheduled
     // It may stay in 05_scheduled if platform validation blocks publish (e.g. X 280-char limit)
     // or move to 06_sent if all validations pass (mock content is short)
-    const scheduled = await engine.listProjects('05_scheduled');
-    const sent = await engine.listProjects('06_sent');
+    const scheduled = await engine.listArticles('05_scheduled');
+    const sent = await engine.listArticles('06_sent');
     expect(scheduled.length + sent.length).toBe(1);
 
-    // inbox stays (source material), drafts cleared (approved → master), master stays (source of truth)
-    expect(await engine.listProjects('01_inbox')).toContain(slug);
-    expect(await engine.listProjects('02_drafts')).toEqual([]);
-    expect(await engine.listProjects('03_master')).toContain(slug);
-    expect(await engine.listProjects('04_adapted')).toEqual([]);
+    // inbox stays (source material), drafts cleared (approved -> master), master stays (source of truth)
+    expect(await engine.listArticles('01_inbox')).toContain(slug);
+    expect(await engine.listArticles('02_drafts')).toEqual([]);
+    expect(await engine.listArticles('03_master')).toContain(slug);
+    expect(await engine.listArticles('04_adapted')).toEqual([]);
   });
 
   test('schedule mode: stops at 05_scheduled, does not publish', async () => {
@@ -130,27 +130,31 @@ describe('goCommand', () => {
     const slug = 'write-about-apcore';
 
     // Should be in scheduled, NOT sent
-    const scheduled = await engine.listProjects('05_scheduled');
+    const scheduled = await engine.listArticles('05_scheduled');
     expect(scheduled.length).toBe(1);
-    expect(scheduled[0]).toBe('2099-12-31T00-00-00-write-about-apcore');
+    expect(scheduled[0]).toBe(slug);
 
-    const sent = await engine.listProjects('06_sent');
+    const sent = await engine.listArticles('06_sent');
     expect(sent).toEqual([]);
   });
 
-  test('schedule mode with time: normalizes to directory format', async () => {
+  test('schedule mode with time: stores normalized date in meta', async () => {
     await goCommand(engine, 'time test', { schedule: '2099-12-31T14:30' });
 
-    const scheduled = await engine.listProjects('05_scheduled');
+    const scheduled = await engine.listArticles('05_scheduled');
     expect(scheduled.length).toBe(1);
-    expect(scheduled[0]).toBe('2099-12-31T14-30-00-time-test');
+    expect(scheduled[0]).toBe('time-test');
+
+    // Date stored in meta.yaml, not directory name
+    const meta = await engine.metadata.readArticleMeta('time-test');
+    expect(meta?.schedule).toBe('2099-12-31T14-30-00');
   });
 
   test('--dry-run passes through to publish', async () => {
     await goCommand(engine, 'dry run test', { dryRun: true });
 
     // With dry-run, content stays in scheduled (publish previewed but not executed)
-    const scheduled = await engine.listProjects('05_scheduled');
+    const scheduled = await engine.listArticles('05_scheduled');
     expect(scheduled.length).toBe(1);
   });
 
@@ -168,11 +172,11 @@ describe('goCommand', () => {
     ).rejects.toThrow('API down');
 
     // Inbox item should exist (step 1 succeeded)
-    const inbox = await engine.listProjects('01_inbox');
+    const inbox = await engine.listArticles('01_inbox');
     expect(inbox).toContain('fail-test');
 
     // Draft should NOT exist (step 2 failed)
-    const drafts = await engine.listProjects('02_drafts');
+    const drafts = await engine.listArticles('02_drafts');
     expect(drafts).toEqual([]);
   });
 

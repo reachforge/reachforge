@@ -3,7 +3,9 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 
 // --- Zod Schemas (used for MCP input validation and JSON Schema generation) ---
 
-export const StatusToolSchema = z.object({});
+export const StatusToolSchema = z.object({
+  article: z.string().optional().describe('Filter status to a specific article. Omit to show all articles in the project'),
+});
 
 export const DraftToolSchema = z.object({
   source: z.string().min(1).describe('Name of the file or directory in 01_inbox to draft from (e.g., "my-idea.md" or "my-idea")'),
@@ -29,7 +31,7 @@ export const PublishToolSchema = z.object({
 });
 
 export const RollbackToolSchema = z.object({
-  project: z.string().min(1).describe('Name of the project to move back one pipeline stage'),
+  article: z.string().min(1).describe('Name of the article to move back one pipeline stage'),
 });
 
 export const RefineToolSchema = z.object({
@@ -48,6 +50,7 @@ export const AssetListToolSchema = z.object({
 
 export const GoToolSchema = z.object({
   prompt: z.string().min(1).describe('Free-text prompt describing the content to create (e.g., "write about apcore framework")'),
+  name: z.string().optional().describe('Explicit article name. If omitted, auto-generated from prompt as a URL-safe slug'),
   schedule: z.string().optional().describe('If set, schedule for this date/time instead of publishing immediately. Format: YYYY-MM-DD or YYYY-MM-DDTHH:MM'),
   dryRun: z.boolean().optional().describe('If true, run the full pipeline but skip the actual publish step'),
   draft: z.boolean().optional().describe('If true, publish as draft on platforms that support it'),
@@ -75,31 +78,31 @@ function jsonSchema(zodSchema: z.ZodType): Record<string, unknown> {
  */
 export const TOOL_METADATA: Record<string, { description: string; inputSchema: Record<string, unknown> }> = {
   'reach.status': {
-    description: 'Show pipeline dashboard: item counts per stage (01_inbox through 06_sent) and items due for publishing today. Call this first to understand the current state before taking any action.',
+    description: 'Show pipeline dashboard: per-article status across all stages (01_inbox through 06_sent), and articles due for publishing. Optionally filter to a single article. Call this first to understand the current state.',
     inputSchema: jsonSchema(StatusToolSchema),
   },
   'reach.draft': {
-    description: 'Generate an AI draft from a source in 01_inbox. The source can be a file (e.g., "idea.md") or a directory. Produces draft.md + meta.yaml in 02_drafts. This is typically the first step after placing content in the inbox.',
+    description: 'Generate an AI draft for a specific article from 01_inbox. The source can be a file (e.g., "idea.md") or a directory. Creates {article}.md in 02_drafts. This is typically the first step after placing content in the inbox.',
     inputSchema: jsonSchema(DraftToolSchema),
   },
   'reach.approve': {
-    description: 'Promote a draft from 02_drafts to 03_master (renames draft.md to master.md). This is the editorial sign-off step — call this after reviewing the draft, before adapting for platforms.',
+    description: 'Promote a specific article from 02_drafts to 03_master. This is the editorial sign-off step — call this after reviewing the draft, before adapting for platforms.',
     inputSchema: jsonSchema(ApproveToolSchema),
   },
   'reach.adapt': {
-    description: 'Generate platform-specific versions from a master article in 03_master. Creates adapted content in 04_adapted/platform_versions/ for each platform (e.g., x.md, devto.md). Call this after reach.approve, before reach.schedule.',
+    description: 'Generate platform-specific versions from a master article in 03_master. Creates {article}.{platform}.md files in 04_adapted (e.g., teaser.x.md, teaser.devto.md). Call this after reach.approve, before reach.schedule.',
     inputSchema: jsonSchema(AdaptToolSchema),
   },
   'reach.schedule': {
-    description: 'Move an adapted article from 04_adapted to 05_scheduled with a publish date. Omit the date to schedule for immediate publishing. Call this after reach.adapt, before reach.publish.',
+    description: 'Schedule a specific article for publishing. Moves platform files from 04_adapted to 05_scheduled and stores the schedule time in meta.yaml. Omit the date to schedule for immediate publishing.',
     inputSchema: jsonSchema(ScheduleToolSchema),
   },
   'reach.publish': {
-    description: 'Publish all scheduled content in 05_scheduled that is due (date/time <= now). Sends content to configured platform APIs and moves successful items to 06_sent with a receipt.yaml. Call this as the final step, or let reach.watch handle it automatically.',
+    description: 'Publish all articles in 05_scheduled that are due (schedule time <= now). Sends content to configured platform APIs, records results in meta.yaml per article per platform, and moves successful articles to 06_sent.',
     inputSchema: jsonSchema(PublishToolSchema),
   },
   'reach.go': {
-    description: 'Full auto pipeline in one call: creates inbox item from prompt, drafts via AI, approves, adapts for all configured platforms, schedules, and publishes. Use the "schedule" param to defer publishing to a future date instead of immediate. This is the fastest way to go from idea to published content.',
+    description: 'Full auto pipeline: creates article from prompt, drafts via AI, approves, adapts for all configured platforms, schedules, and publishes. Use "name" param for explicit article name, or let it auto-generate from prompt. Use "schedule" to defer publishing.',
     inputSchema: jsonSchema(GoToolSchema),
   },
   'reach.refine': {
@@ -107,7 +110,7 @@ export const TOOL_METADATA: Record<string, { description: string; inputSchema: R
     inputSchema: jsonSchema(RefineToolSchema),
   },
   'reach.rollback': {
-    description: 'Move a project back one pipeline stage (e.g., from 05_scheduled back to 04_adapted, or from 04_adapted back to 03_master). Useful for undoing a schedule or re-adapting content.',
+    description: 'Move a specific article back one pipeline stage (e.g., from 05_scheduled back to 04_adapted). Useful for undoing a schedule or re-adapting content.',
     inputSchema: jsonSchema(RollbackToolSchema),
   },
   'reach.asset.add': {
@@ -119,7 +122,7 @@ export const TOOL_METADATA: Record<string, { description: string; inputSchema: R
     inputSchema: jsonSchema(AssetListToolSchema),
   },
   'reach.analytics': {
-    description: 'Show publishing analytics: per-platform success rates aggregated from receipt.yaml files in 06_sent. Optionally filter by date range.',
+    description: 'Show publishing analytics: per-platform success rates aggregated from meta.yaml publish results. Optionally filter by date range.',
     inputSchema: jsonSchema(AnalyticsToolSchema),
   },
 };

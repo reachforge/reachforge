@@ -1,0 +1,14 @@
+{
+  "feature": "filename-parser",
+  "spec": "docs/features/filename-parser.md",
+  "status": "completed",
+  "createdAt": "2026-03-24",
+  "completedAt": "2026-03-24",
+  "tasks": [
+    { "id": "T01", "title": "Constants and types (PLATFORM_IDS, ParsedFilename, ADAPTED_STAGES)", "status": "completed" },
+    { "id": "T02", "title": "isAdaptedStage()", "status": "completed" },
+    { "id": "T03", "title": "parseArticleFilename()", "status": "completed" },
+    { "id": "T04", "title": "buildArticleFilename()", "status": "completed" },
+    { "id": "T05", "title": "validateArticleName()", "status": "completed" }
+  ]
+}

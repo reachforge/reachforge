@@ -59,59 +59,64 @@ describe('E2E: Full Pipeline (inbox → sent)', () => {
     // 1. Create inbox content
     await fs.writeFile(path.join(tmpDir, '01_inbox', 'bun-vs-node.md'), 'Compare Bun and Node.js performance');
 
-    // Verify status shows 1 item in inbox
+    // Verify status shows 1 item in inbox (getStatus uses listArticles — flat .md files)
     let status = await engine.getStatus();
-    expect(status.stages['01_inbox'].count).toBe(1);
+    expect(status.stages['01_inbox'].count).toBe(1); // bun-vs-node.md is a .md file
     expect(status.totalProjects).toBe(1);
 
     // 2. Generate draft
     await draftCommand(engine, 'bun-vs-node.md');
 
-    expect(await fs.pathExists(path.join(tmpDir, '02_drafts', 'bun-vs-node', 'draft.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '02_drafts', 'bun-vs-node', 'meta.yaml'))).toBe(true);
-    const draftMeta = await engine.metadata.readMeta('02_drafts', 'bun-vs-node');
+    // Flat file: 02_drafts/bun-vs-node.md
+    expect(await fs.pathExists(path.join(tmpDir, '02_drafts', 'bun-vs-node.md'))).toBe(true);
+    const draftMeta = await engine.metadata.readArticleMeta('bun-vs-node');
     expect(draftMeta?.status).toBe('drafted');
 
     // 3. Promote to master via approve command
     await approveCommand(engine, 'bun-vs-node');
 
-    const masterDir = path.join(tmpDir, '03_master', 'bun-vs-node');
-    expect(await fs.pathExists(path.join(masterDir, 'master.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '02_drafts', 'bun-vs-node'))).toBe(false);
+    // Flat file: 03_master/bun-vs-node.md
+    expect(await fs.pathExists(path.join(tmpDir, '03_master', 'bun-vs-node.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '02_drafts', 'bun-vs-node.md'))).toBe(false);
 
     // 4. Adapt for multiple platforms
     await adaptCommand(engine, 'bun-vs-node', { platforms: 'x,devto' });
 
+    // Flat files: 04_adapted/bun-vs-node.x.md, 04_adapted/bun-vs-node.devto.md
     const xContent = await fs.readFile(
-      path.join(tmpDir, '04_adapted', 'bun-vs-node', 'platform_versions', 'x.md'), 'utf-8'
+      path.join(tmpDir, '04_adapted', 'bun-vs-node.x.md'), 'utf-8'
     );
     const devtoContent = await fs.readFile(
-      path.join(tmpDir, '04_adapted', 'bun-vs-node', 'platform_versions', 'devto.md'), 'utf-8'
+      path.join(tmpDir, '04_adapted', 'bun-vs-node.devto.md'), 'utf-8'
     );
     expect(xContent).toContain('Thread');
     expect(devtoContent).toContain('Dev.to Article');
 
-    const adaptMeta = await engine.metadata.readMeta('04_adapted', 'bun-vs-node');
+    const adaptMeta = await engine.metadata.readArticleMeta('bun-vs-node');
     expect(adaptMeta?.status).toBe('adapted');
     expect(adaptMeta?.adapted_platforms).toEqual(['x', 'devto']);
 
     // 5. Schedule for today
     await scheduleCommand(engine, 'bun-vs-node', today);
 
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', `${today}T00-00-00-bun-vs-node`))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'bun-vs-node'))).toBe(false);
+    // Flat files moved to 05_scheduled/
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'bun-vs-node.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'bun-vs-node.devto.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'bun-vs-node.x.md'))).toBe(false);
 
     // 6. Publish (mock mode)
     await publishCommand(engine);
 
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}T00-00-00-bun-vs-node`))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', `${today}T00-00-00-bun-vs-node`))).toBe(false);
+    // Flat files moved to 06_sent/
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'bun-vs-node.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'bun-vs-node.devto.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'bun-vs-node.x.md'))).toBe(false);
 
-    // Verify receipt
-    const receipt = await engine.metadata.readReceipt('06_sent', `${today}T00-00-00-bun-vs-node`);
-    expect(receipt).not.toBeNull();
-    expect(receipt!.items.length).toBeGreaterThanOrEqual(1);
-    expect(receipt!.items.every(i => i.status === 'success')).toBe(true);
+    // Verify publish results in meta.yaml
+    const pubMeta = await engine.metadata.readArticleMeta('bun-vs-node');
+    expect(pubMeta).not.toBeNull();
+    expect(pubMeta!.status).toBe('published');
+    expect(pubMeta!.platforms).toBeDefined();
 
     // Final status: everything moved through
     status = await engine.getStatus();
@@ -120,54 +125,49 @@ describe('E2E: Full Pipeline (inbox → sent)', () => {
 
   test('rollback flow: schedule → rollback → re-schedule', async () => {
 
-    // Setup: create an adapted article
-    const adaptedDir = path.join(tmpDir, '04_adapted', 'rollback-article');
-    await fs.ensureDir(path.join(adaptedDir, 'platform_versions'));
-    await fs.writeFile(path.join(adaptedDir, 'platform_versions', 'x.md'), 'tweet content');
-    await fs.writeFile(path.join(adaptedDir, 'meta.yaml'), 'article: rollback-article\nstatus: adapted\n');
+    // Setup: create adapted article as flat files
+    await engine.writeArticleFile('04_adapted', 'rollback-article', 'tweet content', 'x');
+    await engine.metadata.writeArticleMeta('rollback-article', { status: 'adapted' });
 
     // Schedule
     await scheduleCommand(engine, 'rollback-article', '2026-12-25');
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2026-12-25T00-00-00-rollback-article'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'rollback-article.x.md'))).toBe(true);
 
     // Rollback
     await rollbackCommand(engine, 'rollback-article');
-    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'rollback-article'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2026-12-25T00-00-00-rollback-article'))).toBe(false);
+    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'rollback-article.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'rollback-article.x.md'))).toBe(false);
 
     // Re-schedule with different date
     await scheduleCommand(engine, 'rollback-article', '2026-12-31');
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2026-12-31T00-00-00-rollback-article'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'rollback-article.x.md'))).toBe(true);
   });
 
   test('validation blocks publish for invalid X content', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const projDir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-bad-thread`);
-    await fs.ensureDir(path.join(projDir, 'platform_versions'));
-    // X content exceeding 280 chars in one segment
-    await fs.writeFile(path.join(projDir, 'platform_versions', 'x.md'), 'a'.repeat(300));
-    await fs.writeFile(path.join(projDir, 'meta.yaml'), 'article: bad-thread\nstatus: scheduled\n');
+    // Create flat scheduled file with invalid X content (exceeding 280 chars)
+    await engine.writeArticleFile('05_scheduled', 'bad-thread', 'a'.repeat(300), 'x');
+    await engine.metadata.writeArticleMeta('bad-thread', { status: 'scheduled', schedule: today });
 
     await publishCommand(engine);
 
     // Should NOT move to sent — validation failed
-    expect(await fs.pathExists(projDir)).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}T00-00-00-bad-thread`))).toBe(false);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'bad-thread.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'bad-thread.x.md'))).toBe(false);
   });
 
   test('publish with mixed valid/invalid platforms only publishes valid ones', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const projDir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-mixed`);
-    await fs.ensureDir(path.join(projDir, 'platform_versions'));
     // devto is valid (has heading), but x exceeds 280
-    await fs.writeFile(path.join(projDir, 'platform_versions', 'devto.md'), '# Valid Article\n\nContent here');
-    await fs.writeFile(path.join(projDir, 'platform_versions', 'x.md'), 'a'.repeat(300));
-    await fs.writeFile(path.join(projDir, 'meta.yaml'), 'article: mixed\nstatus: scheduled\n');
+    await engine.writeArticleFile('05_scheduled', 'mixed', '# Valid Article\n\nContent here', 'devto');
+    await engine.writeArticleFile('05_scheduled', 'mixed', 'a'.repeat(300), 'x');
+    await engine.metadata.writeArticleMeta('mixed', { status: 'scheduled', schedule: today });
 
     await publishCommand(engine);
 
-    // Validation fails for x → entire project blocked
-    expect(await fs.pathExists(projDir)).toBe(true);
+    // Validation fails for x → entire article blocked
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'mixed.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'mixed.devto.md'))).toBe(true);
   });
 });
 
@@ -181,8 +181,8 @@ describe('E2E: Error & Edge Cases', () => {
 
     await expect(draftCommand(engine, 'fail-test.md')).rejects.toThrow('API connection refused');
 
-    // No residual directory in 02_drafts
-    const drafts = await engine.listProjects('02_drafts');
+    // No residual files in 02_drafts
+    const drafts = await engine.listArticles('02_drafts');
     expect(drafts).toEqual([]);
 
     // Source should still be in inbox
@@ -195,97 +195,89 @@ describe('E2E: Error & Edge Cases', () => {
 
   test('future date schedule does not publish today', async () => {
 
-    // Create adapted article and schedule for far future
-    const adaptedDir = path.join(tmpDir, '04_adapted', 'future-post');
-    await fs.ensureDir(path.join(adaptedDir, 'platform_versions'));
-    await fs.writeFile(path.join(adaptedDir, 'platform_versions', 'x.md'), 'Short tweet.');
-    await fs.writeFile(path.join(adaptedDir, 'meta.yaml'), 'article: future-post\nstatus: adapted\n');
+    // Create adapted article as flat file and schedule for far future
+    await engine.writeArticleFile('04_adapted', 'future-post', 'Short tweet.', 'x');
+    await engine.metadata.writeArticleMeta('future-post', { status: 'adapted' });
 
     await scheduleCommand(engine, 'future-post', '2099-12-31');
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2099-12-31T00-00-00-future-post'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'future-post.x.md'))).toBe(true);
 
     // Publish should skip it (not due yet)
     await publishCommand(engine);
 
     // Still in scheduled, NOT in sent
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2099-12-31T00-00-00-future-post'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', '2099-12-31T00-00-00-future-post'))).toBe(false);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'future-post.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'future-post.x.md'))).toBe(false);
   });
 
   test('--force flag overwrites existing platform versions', async () => {
-    // Create master
-    const masterDir = path.join(tmpDir, '03_master', 'force-test');
-    await fs.ensureDir(masterDir);
-    await fs.writeFile(path.join(masterDir, 'master.md'), '# Original Article\n\nOriginal content.');
+    // Create master as flat file
+    await engine.writeArticleFile('03_master', 'force-test', '# Original Article\n\nOriginal content.');
 
     // First adapt
     await adaptCommand(engine, 'force-test', { platforms: 'x' });
     const firstContent = await fs.readFile(
-      path.join(tmpDir, '04_adapted', 'force-test', 'platform_versions', 'x.md'), 'utf-8'
+      path.join(tmpDir, '04_adapted', 'force-test.x.md'), 'utf-8'
     );
 
     // Second adapt without --force should skip
     await adaptCommand(engine, 'force-test', { platforms: 'x' });
     const unchangedContent = await fs.readFile(
-      path.join(tmpDir, '04_adapted', 'force-test', 'platform_versions', 'x.md'), 'utf-8'
+      path.join(tmpDir, '04_adapted', 'force-test.x.md'), 'utf-8'
     );
     expect(unchangedContent).toBe(firstContent);
 
     // Third adapt with --force should overwrite
     await adaptCommand(engine, 'force-test', { platforms: 'x', force: true });
     const overwrittenContent = await fs.readFile(
-      path.join(tmpDir, '04_adapted', 'force-test', 'platform_versions', 'x.md'), 'utf-8'
+      path.join(tmpDir, '04_adapted', 'force-test.x.md'), 'utf-8'
     );
     // Content is regenerated (same mock output, but meta.yaml updated_at changes)
     expect(overwrittenContent).toBeDefined();
   });
 
   test('dry-run schedule + dry-run publish leaves no side effects', async () => {
-    const adaptedDir = path.join(tmpDir, '04_adapted', 'dryrun-test');
-    await fs.ensureDir(path.join(adaptedDir, 'platform_versions'));
-    await fs.writeFile(path.join(adaptedDir, 'platform_versions', 'x.md'), 'dry run tweet');
-    await fs.writeFile(path.join(adaptedDir, 'meta.yaml'), 'article: dryrun-test\nstatus: adapted\n');
+    await engine.writeArticleFile('04_adapted', 'dryrun-test', 'dry run tweet', 'x');
+    await engine.metadata.writeArticleMeta('dryrun-test', { status: 'adapted' });
 
     // Dry-run schedule
     await scheduleCommand(engine, 'dryrun-test', '2026-03-20', { dryRun: true });
 
     // Article still in adapted, NOT in scheduled
-    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'dryrun-test'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', '2026-03-20T00-00-00-dryrun-test'))).toBe(false);
+    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'dryrun-test.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'dryrun-test.x.md'))).toBe(false);
 
     // Actually schedule, then dry-run publish
     await scheduleCommand(engine, 'dryrun-test', new Date().toISOString().split('T')[0]);
     await publishCommand(engine, { dryRun: true });
 
     // Should still be in scheduled (dry-run didn't publish)
-    const scheduled = await engine.listProjects('05_scheduled');
+    const scheduled = await engine.listArticles('05_scheduled');
     expect(scheduled.length).toBe(1);
-    const sent = await engine.listProjects('06_sent');
+    const sent = await engine.listArticles('06_sent');
     expect(sent.length).toBe(0);
   });
 
   test('batch publish processes multiple due items', async () => {
     const today = new Date().toISOString().split('T')[0];
 
-    // Create 3 due projects
+    // Create 3 due articles as flat files
     for (const name of ['batch-a', 'batch-b', 'batch-c']) {
-      const dir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-${name}`);
-      await fs.ensureDir(path.join(dir, 'platform_versions'));
-      await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), `Tweet for ${name}`);
-      await fs.writeFile(path.join(dir, 'meta.yaml'), `article: ${name}\nstatus: scheduled\n`);
+      await engine.writeArticleFile('05_scheduled', name, `Tweet for ${name}`, 'x');
+      await engine.metadata.writeArticleMeta(name, { status: 'scheduled', schedule: today });
     }
 
     await publishCommand(engine);
 
     // All 3 should be in sent
-    const sent = await engine.listProjects('06_sent');
+    const sent = await engine.listArticles('06_sent');
     expect(sent.length).toBe(3);
-    expect(sent).toContain(`${today}T00-00-00-batch-a`);
-    expect(sent).toContain(`${today}T00-00-00-batch-b`);
-    expect(sent).toContain(`${today}T00-00-00-batch-c`);
+    expect(sent).toContain('batch-a');
+    expect(sent).toContain('batch-b');
+    expect(sent).toContain('batch-c');
 
     // None left in scheduled
-    const scheduled = await engine.listProjects('05_scheduled');
+    const scheduled = await engine.listArticles('05_scheduled');
     expect(scheduled.length).toBe(0);
   });
 
@@ -298,7 +290,8 @@ describe('E2E: Error & Edge Cases', () => {
 
     await draftCommand(engine, 'dir-input');
 
-    const draft = await fs.readFile(path.join(tmpDir, '02_drafts', 'dir-input', 'draft.md'), 'utf-8');
+    // Draft is written as flat file: 02_drafts/dir-input.md
+    const draft = await fs.readFile(path.join(tmpDir, '02_drafts', 'dir-input.md'), 'utf-8');
     // mock echoes prompt — main.md content is included in prompt, notes.txt is not
     expect(draft).toContain('Main content for draft');
     expect(draft).not.toContain('Just notes');
@@ -308,67 +301,63 @@ describe('E2E: Error & Edge Cases', () => {
 describe('E2E: Receipt verification', () => {
   test('receipt records all platform results with correct structure', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const dir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-receipt-check`);
-    await fs.ensureDir(path.join(dir, 'platform_versions'));
-    await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), 'Tweet.');
-    await fs.writeFile(path.join(dir, 'platform_versions', 'wechat.md'), 'WeChat content');
-    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: receipt-check\nstatus: scheduled\n');
+    // Create scheduled flat files for 2 platforms
+    await engine.writeArticleFile('05_scheduled', 'receipt-check', 'Tweet.', 'x');
+    await engine.writeArticleFile('05_scheduled', 'receipt-check', 'WeChat content', 'wechat');
+    await engine.metadata.writeArticleMeta('receipt-check', { status: 'scheduled', schedule: today });
 
     await publishCommand(engine);
 
-    const receipt = await engine.metadata.readReceipt('06_sent', `${today}T00-00-00-receipt-check`);
-    expect(receipt).not.toBeNull();
-    expect(receipt!.published_at).toBeDefined();
-    expect(receipt!.items.length).toBe(2);
+    // Verify publish results in meta.yaml (not receipt.yaml)
+    const meta = await engine.metadata.readArticleMeta('receipt-check');
+    expect(meta).not.toBeNull();
+    expect(meta!.status).toBe('published');
+    expect(meta!.platforms).toBeDefined();
 
     // Check each platform is recorded
-    const platforms = receipt!.items.map(i => i.platform).sort();
+    const platforms = Object.keys(meta!.platforms!).sort();
     expect(platforms).toEqual(['wechat', 'x']);
 
-    // Each item has required fields
-    for (const item of receipt!.items) {
-      expect(item.status).toBe('success');
-      expect(item.url).toBeDefined();
-      expect(typeof item.url).toBe('string');
+    // Each platform has required fields
+    for (const platform of platforms) {
+      expect(meta!.platforms![platform].status).toBe('success');
+      expect(meta!.platforms![platform].url).toBeDefined();
+      expect(typeof meta!.platforms![platform].url).toBe('string');
     }
   });
 });
 
 describe('E2E: Publishing state management', () => {
-  test('no .publish.lock file in 06_sent after successful publish', async () => {
+  test('no .publish.lock after successful publish', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const dir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-lock-clean`);
-    await fs.ensureDir(path.join(dir, 'platform_versions'));
-    await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), 'Tweet.');
-    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: lock-clean\nstatus: scheduled\n');
+    await engine.writeArticleFile('05_scheduled', 'lock-clean', 'Tweet.', 'x');
+    await engine.metadata.writeArticleMeta('lock-clean', { status: 'scheduled', schedule: today });
 
     await publishCommand(engine);
 
-    const sentDir = path.join(tmpDir, '06_sent', `${today}T00-00-00-lock-clean`);
-    expect(await fs.pathExists(sentDir)).toBe(true);
-    expect(await fs.pathExists(path.join(sentDir, '.publish.lock'))).toBe(false);
+    // File should be in 06_sent
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'lock-clean.x.md'))).toBe(true);
+    // Article should not be locked
+    const isLocked = await engine.metadata.isArticleLocked('lock-clean');
+    expect(isLocked).toBe(false);
   });
 
-  test('receipt status is completed when all platforms succeed', async () => {
+  test('meta status is published when all platforms succeed', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const dir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-all-ok`);
-    await fs.ensureDir(path.join(dir, 'platform_versions'));
-    await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), 'Tweet.');
-    await fs.writeFile(path.join(dir, 'platform_versions', 'wechat.md'), 'WeChat content');
-    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: all-ok\nstatus: scheduled\n');
+    await engine.writeArticleFile('05_scheduled', 'all-ok', 'Tweet.', 'x');
+    await engine.writeArticleFile('05_scheduled', 'all-ok', 'WeChat content', 'wechat');
+    await engine.metadata.writeArticleMeta('all-ok', { status: 'scheduled', schedule: today });
 
     await publishCommand(engine);
 
-    const receipt = await engine.metadata.readReceipt('06_sent', `${today}T00-00-00-all-ok`);
-    expect(receipt!.status).toBe('completed');
+    const meta = await engine.metadata.readArticleMeta('all-ok');
+    expect(meta!.status).toBe('published');
   });
 
-  test('receipt status is partial when all platforms fail', async () => {
+  test('meta status is failed when all platforms fail', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const dir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-all-fail`);
-    await fs.ensureDir(path.join(dir, 'platform_versions'));
-    await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), 'Tweet content');
-    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: all-fail\nstatus: scheduled\n');
+    await engine.writeArticleFile('05_scheduled', 'all-fail', 'Tweet content', 'x');
+    await engine.metadata.writeArticleMeta('all-fail', { status: 'scheduled', schedule: today });
 
     // Temporarily replace MockProvider.publish to always fail
     const { MockProvider } = await import('../../src/providers/mock.js');
@@ -383,42 +372,21 @@ describe('E2E: Publishing state management', () => {
     MockProvider.prototype.publish = origPublish;
 
     // Should remain in scheduled (all failed)
-    expect(await fs.pathExists(dir)).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'all-fail.x.md'))).toBe(true);
 
-    const receipt = await engine.metadata.readReceipt('05_scheduled', `${today}T00-00-00-all-fail`);
-    expect(receipt).not.toBeNull();
-    expect(receipt!.status).toBe('partial');
-    expect(receipt!.items.every(i => i.status === 'failed')).toBe(true);
-  });
-
-  test('old receipt without status field parses with default completed', async () => {
-    // Simulate a legacy receipt (pre-status field)
-    const yamlMod = await import('js-yaml');
-    await fs.ensureDir(path.join(tmpDir, '06_sent', '2026-01-01-legacy'));
-    const legacyReceipt = {
-      published_at: '2026-01-01T00:00:00Z',
-      items: [
-        { platform: 'devto', status: 'success', url: 'https://dev.to/test' },
-      ],
-    };
-    await fs.writeFile(
-      path.join(tmpDir, '06_sent', '2026-01-01-legacy', 'receipt.yaml'),
-      yamlMod.dump(legacyReceipt),
-    );
-
-    const receipt = await engine.metadata.readReceipt('06_sent', '2026-01-01-legacy');
-    expect(receipt).not.toBeNull();
-    expect(receipt!.status).toBe('completed');
+    const meta = await engine.metadata.readArticleMeta('all-fail');
+    expect(meta).not.toBeNull();
+    expect(meta!.status).toBe('failed');
+    expect(meta!.platforms).toBeDefined();
+    expect(meta!.platforms!['x'].status).toBe('failed');
   });
 });
 
 describe('E2E: Content format conversion', () => {
   test('html contentFormat triggers markdown-to-html conversion', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const dir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-html-fmt`);
-    await fs.ensureDir(path.join(dir, 'platform_versions'));
-    await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), '# Hello\n\n**Bold** text.');
-    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: html-fmt\nstatus: scheduled\n');
+    await engine.writeArticleFile('05_scheduled', 'html-fmt', '# Hello\n\n**Bold** text.', 'x');
+    await engine.metadata.writeArticleMeta('html-fmt', { status: 'scheduled', schedule: today });
 
     // Patch ProviderLoader to return a provider with contentFormat='html'
     const { ProviderLoader } = await import('../../src/providers/loader.js');
@@ -460,13 +428,12 @@ describe('E2E: Asset reference resolution in publish', () => {
     await fs.writeFile(path.join(assetsDir, 'hero.png'), 'png-data');
 
     // Create scheduled article with @assets/ reference in content
-    const dir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-asset-test`);
-    await fs.ensureDir(path.join(dir, 'platform_versions'));
-    await fs.writeFile(
-      path.join(dir, 'platform_versions', 'wechat.md'),
+    await engine.writeArticleFile(
+      '05_scheduled', 'asset-test',
       '# Article\n\n![hero](@assets/images/hero.png)\n\nBody text.',
+      'wechat',
     );
-    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: asset-test\nstatus: scheduled\n');
+    await engine.metadata.writeArticleMeta('asset-test', { status: 'scheduled', schedule: today });
 
     // Capture the content sent to provider
     const { ProviderLoader } = await import('../../src/providers/loader.js');
@@ -499,20 +466,19 @@ describe('E2E: Asset reference resolution in publish', () => {
   test('media processing is called for devto platform with local images', async () => {
     const today = new Date().toISOString().split('T')[0];
 
-    // Create a scheduled devto article with a local image reference
-    const dir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-media-test`);
-    const versionsDir = path.join(dir, 'platform_versions');
-    await fs.ensureDir(versionsDir);
+    // Create scheduled devto article with a local image reference
+    // For flat-file pipeline, relative image paths resolve from the project root
+    await engine.writeArticleFile(
+      '05_scheduled', 'media-test',
+      '---\ntitle: Media Test\n---\n\n![diagram](./images/diagram.png)\n\nContent here.',
+      'devto',
+    );
+    await engine.metadata.writeArticleMeta('media-test', { status: 'scheduled', schedule: today });
+
     // Create the local image file so MediaManager can find it
-    const imgDir = path.join(dir, 'images');
+    const imgDir = path.join(tmpDir, 'images');
     await fs.ensureDir(imgDir);
     await fs.writeFile(path.join(imgDir, 'diagram.png'), 'fake-png-data');
-
-    await fs.writeFile(
-      path.join(versionsDir, 'devto.md'),
-      '---\ntitle: Media Test\n---\n\n![diagram](./images/diagram.png)\n\nContent here.',
-    );
-    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: media-test\nstatus: scheduled\n');
 
     // Capture content sent to provider to verify media processing ran
     const { ProviderLoader } = await import('../../src/providers/loader.js');
@@ -538,61 +504,50 @@ describe('E2E: Asset reference resolution in publish', () => {
     ProviderLoader.prototype.getProviderOrMock = origGetProviderOrMock;
 
     // The article should have been published (moved to 06_sent)
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}T00-00-00-media-test`))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'media-test.devto.md'))).toBe(true);
     // Content was captured (media processing ran, though upload would fail without real API)
     expect(capturedContent).toContain('diagram');
   });
 
   test('media processing is non-fatal - publish continues on upload failure', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const dir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-media-fail`);
-    const versionsDir = path.join(dir, 'platform_versions');
-    await fs.ensureDir(versionsDir);
 
     // Reference a non-existent image — MediaManager will warn but not throw
-    await fs.writeFile(
-      path.join(versionsDir, 'devto.md'),
+    await engine.writeArticleFile(
+      '05_scheduled', 'media-fail',
       '---\ntitle: Fail Test\n---\n\n![missing](./images/gone.png)\n\nContent.',
+      'devto',
     );
-    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: media-fail\nstatus: scheduled\n');
+    await engine.metadata.writeArticleMeta('media-fail', { status: 'scheduled', schedule: today });
 
     await publishCommand(engine);
 
     // Should still publish successfully despite media warnings
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}T00-00-00-media-fail`))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'media-fail.devto.md'))).toBe(true);
   });
 
   test('@assets/ references do not inflate X validation character count', async () => {
     const today = new Date().toISOString().split('T')[0];
 
-    // Create a short X thread with an @assets/ reference
-    // The @assets/ ref is short, but the resolved absolute path would be long
-    const dir = path.join(tmpDir, '05_scheduled', `${today}T00-00-00-x-asset`);
-    await fs.ensureDir(path.join(dir, 'platform_versions'));
     // Content under 280 chars with @assets/ reference
     const xContent = 'Check out this image @assets/images/hero.png - amazing!';
     expect(xContent.length).toBeLessThan(280);
-    await fs.writeFile(path.join(dir, 'platform_versions', 'x.md'), xContent);
-    await fs.writeFile(path.join(dir, 'meta.yaml'), 'article: x-asset\nstatus: scheduled\n');
+    await engine.writeArticleFile('05_scheduled', 'x-asset', xContent, 'x');
+    await engine.metadata.writeArticleMeta('x-asset', { status: 'scheduled', schedule: today });
 
     await publishCommand(engine);
 
     // Should have published successfully (validation passes on original short content)
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', `${today}T00-00-00-x-asset`))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'x-asset.x.md'))).toBe(true);
   });
 });
 
-describe('E2E: Multi-project pipeline', () => {
-  test('handles multiple projects at different stages', async () => {
-    // Create projects at various stages
-    await fs.ensureDir(path.join(tmpDir, '01_inbox', 'idea-1'));
-    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-1', 'main.md'), 'Idea 1');
-
-    await fs.ensureDir(path.join(tmpDir, '02_drafts', 'draft-2'));
-    await fs.writeFile(path.join(tmpDir, '02_drafts', 'draft-2', 'meta.yaml'), 'article: draft-2\nstatus: drafted\n');
-
-    await fs.ensureDir(path.join(tmpDir, '06_sent', '2026-01-01-old-post'));
-    await fs.writeFile(path.join(tmpDir, '06_sent', '2026-01-01-old-post', 'meta.yaml'), 'article: old-post\nstatus: published\n');
+describe('E2E: Multi-article pipeline', () => {
+  test('handles multiple articles at different stages', async () => {
+    // getStatus now uses listArticles (flat .md files)
+    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-1.md'), 'Idea 1');
+    await fs.writeFile(path.join(tmpDir, '02_drafts', 'draft-2.md'), 'Draft 2');
+    await fs.writeFile(path.join(tmpDir, '06_sent', 'old-post.x.md'), 'Old post');
 
     const status = await engine.getStatus();
     expect(status.stages['01_inbox'].count).toBe(1);

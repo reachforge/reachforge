@@ -6,7 +6,6 @@ import type { CLIAdapter, AdapterResult, ResolvedSkill } from '../llm/types.js';
 import { AdapterFactory } from '../llm/factory.js';
 import { SessionManager } from '../llm/session.js';
 import { sanitizePath } from '../utils/path.js';
-import { DRAFT_FILENAME, MASTER_FILENAME } from '../core/constants.js';
 import { jsonSuccess } from '../core/json-output.js';
 import type { PipelineStage } from '../types/index.js';
 
@@ -239,14 +238,15 @@ export function printContentPreview(content: string): void {
 // --- Internal helpers ---
 
 async function locateArticle(engine: PipelineEngine, safeName: string) {
-  const draftPath = `${engine.getProjectPath('02_drafts', safeName)}/${DRAFT_FILENAME}`;
+  // Check flat file: 02_drafts/{article}.md or 03_master/{article}.md
+  const draftPath = engine.getArticlePath('02_drafts', safeName);
   if (await fs.pathExists(draftPath)) {
-    return { stage: '02_drafts' as PipelineStage, filename: DRAFT_FILENAME, filePath: draftPath };
+    return { stage: '02_drafts' as PipelineStage, filename: `${safeName}.md`, filePath: draftPath };
   }
 
-  const masterPath = `${engine.getProjectPath('03_master', safeName)}/${MASTER_FILENAME}`;
+  const masterPath = engine.getArticlePath('03_master', safeName);
   if (await fs.pathExists(masterPath)) {
-    return { stage: '03_master' as PipelineStage, filename: MASTER_FILENAME, filePath: masterPath };
+    return { stage: '03_master' as PipelineStage, filename: `${safeName}.md`, filePath: masterPath };
   }
 
   throw new Error(`Article '${safeName}' not found in 02_drafts or 03_master`);
@@ -262,13 +262,12 @@ async function saveContent(
   engine: PipelineEngine,
   stage: PipelineStage,
   article: string,
-  filename: string,
+  _filename: string,
   content: string,
 ): Promise<void> {
-  await engine.writeProjectFile(stage, article, filename, content);
-  await engine.metadata.writeMeta(stage, article, {
+  await engine.writeArticleFile(stage, article, content);
+  await engine.metadata.writeArticleMeta(article, {
     status: stage === '02_drafts' ? 'drafted' : 'master',
-    updated_at: new Date().toISOString(),
   });
 }
 

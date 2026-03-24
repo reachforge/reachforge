@@ -95,4 +95,28 @@ The recommended implementation order follows the migration plan in the tech desi
 
 ---
 
+## Multi-Article Refactor Features
+
+> Added: 2026-03-24. See [Multi-Article Tech Design](../multi-article/tech-design.md) for architecture context.
+
+These features refactor the pipeline from single-article-per-project to multi-article-per-project.
+
+| # | Feature | Description | Dependencies | Priority | Status |
+|---|---------|-------------|--------------|----------|--------|
+| 1 | [filename-parser](filename-parser.md) | Parse/build `{article}.{platform}.md` filenames | — | P0 | draft |
+| 2 | [multi-article-metadata](multi-article-metadata.md) | Centralized multi-article meta.yaml schema | filename-parser | P0 | draft |
+| 3 | [pipeline-engine-refactor](pipeline-engine-refactor.md) | File-level pipeline operations | filename-parser, multi-article-metadata | P0 | draft |
+| 4 | [command-updates](command-updates.md) | Update all CLI commands for article param | pipeline-engine-refactor, multi-article-metadata | P0 | draft |
+| 5 | [mcp-tool-updates](mcp-tool-updates.md) | Update MCP tool schemas | command-updates | P1 | draft |
+
+### Execution Order
+
+1. **filename-parser** — no dependencies, pure utility
+2. **multi-article-metadata** — depends on filename-parser for constants
+3. **pipeline-engine-refactor** — depends on both above
+4. **command-updates** — depends on pipeline engine + metadata
+5. **mcp-tool-updates** — depends on commands being updated
+
+---
+
 *Each component has a dedicated feature spec linked above with implementation-level detail.*

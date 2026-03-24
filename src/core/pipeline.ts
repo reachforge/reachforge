@@ -2,9 +2,9 @@ import * as path from 'path';
 import fs from 'fs-extra';
 import type { PipelineStage, PipelineStatus, StageInfo, StageTransition } from '../types/index.js';
 import { ProjectNotFoundError, ReachforgeError } from '../types/index.js';
-import { STAGES, STAGE_STATUS_MAP, SCHEDULED_DIR_REGEX } from './constants.js';
+import { STAGES, STAGE_STATUS_MAP } from './constants.js';
 import { MetadataManager } from './metadata.js';
-import { sanitizePath, parseScheduleTimestamp } from '../utils/path.js';
+import { parseArticleFilename, buildArticleFilename } from './filename-parser.js';
 
 export class PipelineEngine {
   public readonly metadata: MetadataManager;
@@ -23,146 +23,163 @@ export class PipelineEngine {
     );
   }
 
-  async listProjects(stage: PipelineStage): Promise<string[]> {
-    const dirPath = path.join(this.workingDir, stage);
-    if (!await fs.pathExists(dirPath)) return [];
-    const items = await fs.readdir(dirPath);
-    return items
-      .filter(item => !item.startsWith('.') && !item.endsWith('.yaml'))
-      .sort();
-  }
-
   async getStatus(): Promise<PipelineStatus> {
     const stages = {} as Record<PipelineStage, StageInfo>;
     let totalProjects = 0;
 
     for (const stage of STAGES) {
-      const items = await this.listProjects(stage);
+      const items = await this.listArticles(stage);
       stages[stage] = { count: items.length, items };
       totalProjects += items.length;
     }
 
-    const dueToday = await this.findDueProjects();
+    const dueToday = await this.findDueArticles();
     return { stages, totalProjects, dueToday };
   }
 
-  async moveProject(
-    project: string,
+  async listArticles(stage: PipelineStage): Promise<string[]> {
+    const dirPath = path.join(this.workingDir, stage);
+    if (!await fs.pathExists(dirPath)) return [];
+    const items = await fs.readdir(dirPath);
+    const articles = new Set<string>();
+
+    for (const item of items) {
+      if (item.startsWith('.') || !item.endsWith('.md')) continue;
+      const parsed = parseArticleFilename(item, stage);
+      articles.add(parsed.article);
+    }
+
+    return [...articles].sort();
+  }
+
+  async getArticleFiles(article: string, stage: PipelineStage): Promise<string[]> {
+    const dirPath = path.join(this.workingDir, stage);
+    if (!await fs.pathExists(dirPath)) return [];
+    const items = await fs.readdir(dirPath);
+    const files: string[] = [];
+
+    for (const item of items) {
+      if (item.startsWith('.') || !item.endsWith('.md')) continue;
+      const parsed = parseArticleFilename(item, stage);
+      if (parsed.article === article) {
+        files.push(item);
+      }
+    }
+
+    return files.sort();
+  }
+
+  async moveArticle(
+    article: string,
     fromStage: PipelineStage,
     toStage: PipelineStage,
-    newName?: string,
   ): Promise<StageTransition> {
-    const sourcePath = path.join(this.workingDir, fromStage, project);
-    const targetName = newName ?? project;
-    const targetPath = path.join(this.workingDir, toStage, targetName);
+    const files = await this.getArticleFiles(article, fromStage);
 
-    if (!await fs.pathExists(sourcePath)) {
-      throw new ProjectNotFoundError(project, fromStage);
+    if (files.length === 0) {
+      throw new ProjectNotFoundError(article, fromStage);
     }
 
-    if (await fs.pathExists(targetPath)) {
-      throw new ReachforgeError(
-        `Project "${targetName}" already exists in ${toStage}.`,
-        'Target directory already exists',
-        'Choose a different name or remove the existing project.',
-      );
+    // Check all targets are free before moving anything
+    for (const file of files) {
+      const targetPath = path.join(this.workingDir, toStage, file);
+      if (await fs.pathExists(targetPath)) {
+        throw new ReachforgeError(
+          `Article "${article}" already exists in ${toStage}.`,
+          `File "${file}" already exists in target stage`,
+          'Remove the existing file or choose a different name.',
+        );
+      }
     }
 
-    // Safe move: copy then remove (handles cross-device and interrupted moves)
-    await fs.copy(sourcePath, targetPath);
-    // Verify copy succeeded before removing source
-    if (await fs.pathExists(targetPath)) {
-      await fs.remove(sourcePath);
-    } else {
-      throw new ReachforgeError(
-        `Failed to move project "${project}": copy verification failed.`,
-        'File copy to target did not complete',
-      );
+    // Copy then remove
+    for (const file of files) {
+      const sourcePath = path.join(this.workingDir, fromStage, file);
+      const targetPath = path.join(this.workingDir, toStage, file);
+      await fs.copy(sourcePath, targetPath);
+      if (await fs.pathExists(targetPath)) {
+        await fs.remove(sourcePath);
+      } else {
+        throw new ReachforgeError(
+          `Failed to move article "${article}": copy verification failed.`,
+          `File "${file}" copy did not complete`,
+        );
+      }
     }
 
     // Update metadata
     const newStatus = STAGE_STATUS_MAP[toStage] || 'inbox';
-    const metaUpdate: Partial<import('../types/index.js').ProjectMeta> = { status: newStatus };
-
-    // Extract publish_date from scheduled directory name
-    if (toStage === '05_scheduled') {
-      const match = targetName.match(SCHEDULED_DIR_REGEX);
-      if (match) {
-        metaUpdate.publish_date = match[1];
-      }
-    }
-
-    await this.metadata.writeMeta(toStage, targetName, metaUpdate);
+    await this.metadata.writeArticleMeta(article, { status: newStatus });
 
     return {
       from: fromStage,
       to: toStage,
-      project: targetName,
+      project: article,
+      article,
       timestamp: new Date().toISOString(),
     };
   }
 
-  async rollbackProject(project: string): Promise<StageTransition> {
-    // Find the project across stages (search from last to first)
+  async findDueArticles(): Promise<string[]> {
+    const articles = await this.listArticles('05_scheduled');
+    if (articles.length === 0) return [];
+
+    // Read meta once for all articles (avoid N+1)
+    const meta = await this.metadata.readProjectMeta();
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const due: string[] = [];
+
+    for (const article of articles) {
+      const articleMeta = meta.articles[article];
+      if (!articleMeta?.schedule) {
+        due.push(article);
+      } else if (articleMeta.schedule <= nowIso) {
+        due.push(article);
+      }
+    }
+
+    return due;
+  }
+
+  async rollbackArticle(article: string): Promise<StageTransition> {
     for (let i = STAGES.length - 1; i >= 0; i--) {
       const stage = STAGES[i];
-      const items = await this.listProjects(stage);
-      const found = items.find(item => item === project || item.endsWith(`-${project}`));
+      const articles = await this.listArticles(stage);
 
-      if (found) {
+      if (articles.includes(article)) {
         if (i === 0) {
           throw new ReachforgeError(
-            'Cannot rollback: project is already in the first stage.',
-            `Project "${found}" is in ${stage}`,
+            'Cannot rollback: article is already in the first stage.',
+            `Article "${article}" is in ${stage}`,
           );
         }
 
         const prevStage = STAGES[i - 1];
-        // Strip date prefix if rolling back from scheduled
-        let targetName = found;
-        if (stage === '05_scheduled') {
-          const match = found.match(SCHEDULED_DIR_REGEX);
-          if (match) targetName = match[2];
-        }
-
-        return this.moveProject(found, stage, prevStage, targetName);
+        return this.moveArticle(article, stage, prevStage);
       }
     }
 
-    throw new ProjectNotFoundError(project, 'any stage');
+    throw new ProjectNotFoundError(article, 'any stage');
   }
 
-  async findDueProjects(): Promise<string[]> {
-    const now = new Date();
-    const nowIso = now.toISOString();
-    const nowComparable = `${nowIso.split('T')[0]}T${nowIso.split('T')[1].slice(0, 8)}`;
-
-    const items = await this.listProjects('05_scheduled');
-    return items.filter(item => {
-      const match = item.match(SCHEDULED_DIR_REGEX);
-      if (!match) return false;
-      const comparable = parseScheduleTimestamp(match[1]);
-      return comparable <= nowComparable;
-    });
-  }
-
-  async readProjectContent(stage: PipelineStage, project: string, filename: string): Promise<string> {
-    const safe = sanitizePath(filename);
-    const filePath = path.join(this.workingDir, stage, project, safe);
+  async readArticleContent(stage: PipelineStage, article: string, platform?: string): Promise<string> {
+    const filename = buildArticleFilename(article, platform ?? null);
+    const filePath = path.join(this.workingDir, stage, filename);
     if (!await fs.pathExists(filePath)) {
-      throw new ProjectNotFoundError(`${project}/${safe}`, stage);
+      throw new ProjectNotFoundError(article, stage);
     }
     return fs.readFile(filePath, 'utf-8');
   }
 
-  async writeProjectFile(stage: PipelineStage, project: string, filename: string, content: string): Promise<void> {
-    const safe = sanitizePath(filename);
-    const filePath = path.join(this.workingDir, stage, project, safe);
-    await fs.ensureDir(path.dirname(filePath));
+  async writeArticleFile(stage: PipelineStage, article: string, content: string, platform?: string): Promise<void> {
+    const filename = buildArticleFilename(article, platform ?? null);
+    const filePath = path.join(this.workingDir, stage, filename);
     await fs.writeFile(filePath, content);
   }
 
-  getProjectPath(stage: PipelineStage, project: string): string {
-    return path.join(this.workingDir, stage, project);
+  getArticlePath(stage: PipelineStage, article: string, platform?: string): string {
+    const filename = buildArticleFilename(article, platform ?? null);
+    return path.join(this.workingDir, stage, filename);
   }
 }

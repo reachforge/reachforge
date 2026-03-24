@@ -43,8 +43,8 @@ describe('statusCommand', () => {
   });
 
   test('shows item counts', async () => {
-    await fs.ensureDir(path.join(tmpDir, '01_inbox', 'idea-1'));
-    await fs.ensureDir(path.join(tmpDir, '01_inbox', 'idea-2'));
+    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-1.md'), 'raw');
+    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-2.md'), 'raw');
 
     await statusCommand(engine);
     const output = logOutput.join('\n');
@@ -54,8 +54,11 @@ describe('statusCommand', () => {
   });
 
   test('shows due today items', async () => {
-    const today = new Date().toISOString().split('T')[0];
-    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${today}T00-00-00-urgent-post`));
+    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'urgent-post.x.md'), 'content');
+    await engine.metadata.writeArticleMeta('urgent-post', {
+      status: 'scheduled',
+      schedule: '2020-01-01',
+    });
 
     await statusCommand(engine);
     const output = logOutput.join('\n');

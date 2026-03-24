@@ -5,30 +5,6 @@ import { STAGES } from '../core/constants.js';
 import { WorkspaceResolver } from '../core/workspace.js';
 import type { WorkspaceContext } from '../core/workspace.js';
 import { jsonSuccess } from '../core/json-output.js';
-import type { PipelineStage } from '../types/index.js';
-
-// Matches both "YYYY-MM-DD-name" (legacy) and "YYYY-MM-DDThh-mm-ss-name" (new)
-const DATE_PREFIX = /^(\d{4}-\d{2}-\d{2})(?:T\d{2}-\d{2}-\d{2})?-(.+)$/;
-
-function formatStagesForJson(stages: Record<PipelineStage, { count: number; items: string[] }>) {
-  const result = {} as Record<PipelineStage, { count: number; items: (string | { name: string; date: string })[] }>;
-  for (const stage of STAGES) {
-    const info = stages[stage];
-    if (stage === '05_scheduled') {
-      result[stage] = {
-        count: info.count,
-        items: info.items.map((item) => {
-          const m = DATE_PREFIX.exec(item);
-          return m ? { name: m[2], date: m[1] } : item;
-        }),
-      };
-    } else {
-      result[stage] = { count: info.count, items: info.items };
-    }
-  }
-  return result;
-}
-
 async function printProjectStatus(engine: PipelineEngine, projectName?: string): Promise<number> {
   const status = await engine.getStatus();
 
@@ -73,7 +49,7 @@ export async function statusCommand(
           const status = await projEngine.getStatus();
           projectStatuses.push({
             project: proj.name,
-            stages: formatStagesForJson(status.stages),
+            stages: status.stages,
             dueToday: status.dueToday,
             totalProjects: status.totalProjects,
           });
@@ -115,7 +91,7 @@ export async function statusCommand(
     const status = await engine.getStatus();
     process.stdout.write(jsonSuccess('status', {
       project: context?.projectName ?? '',
-      stages: formatStagesForJson(status.stages),
+      stages: status.stages,
       dueToday: status.dueToday,
       totalProjects: status.totalProjects,
     }));

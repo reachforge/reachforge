@@ -4,6 +4,7 @@ import type { ReachforgeConfig } from '../types/index.js';
 import { validateScheduleDate } from '../utils/path.js';
 import { InvalidDateError } from '../types/index.js';
 import { jsonSuccess } from '../core/json-output.js';
+import { validateArticleName } from '../core/filename-parser.js';
 import { draftCommand } from './draft.js';
 import { approveCommand } from './approve.js';
 import { adaptCommand } from './adapt.js';
@@ -35,6 +36,7 @@ export function slugify(prompt: string): string {
 }
 
 export interface GoOptions {
+  name?: string;
   schedule?: string;
   dryRun?: boolean;
   draft?: boolean;
@@ -56,7 +58,9 @@ export async function goCommand(
   prompt: string,
   options: GoOptions = {},
 ): Promise<void> {
-  const slug = slugify(prompt);
+  const slug = options.name ?? slugify(prompt);
+  validateArticleName(slug);
+
   const scheduleDate = options.schedule || new Date().toISOString().split('T')[0];
 
   if (options.schedule && !validateScheduleDate(options.schedule)) {
@@ -76,10 +80,9 @@ export async function goCommand(
   log(chalk.bold(`\n  reach go: "${prompt}"\n`));
 
   try {
-    // Step 1: Create inbox item as a directory with content.md
-    // draftCommand reads dirs with priority: main.md > index.md > first .md
+    // Step 1: Create inbox item as flat .md file
     step(0);
-    await engine.writeProjectFile('01_inbox', slug, 'content.md', prompt);
+    await engine.writeArticleFile('01_inbox', slug, prompt);
 
     // Step 2: Draft
     step(1);

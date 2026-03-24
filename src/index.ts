@@ -100,9 +100,20 @@ function meta(moduleId: string) {
 
 apcore.register('reach.status', {
   ...meta('reach.status'),
-  execute: async () => {
+  execute: async (inputs?: { article?: string }) => {
     const engine = await getEngine();
-    return engine.getStatus();
+    const status = await engine.getStatus();
+    if (inputs?.article) {
+      // Filter to single article: only show stages where this article appears
+      for (const stage of Object.keys(status.stages) as Array<keyof typeof status.stages>) {
+        const info = status.stages[stage];
+        const filtered = info.items.filter(item => item === inputs.article);
+        status.stages[stage] = { count: filtered.length, items: filtered };
+      }
+      status.dueToday = status.dueToday.filter(a => a === inputs.article);
+      status.totalProjects = Object.values(status.stages).reduce((sum, s) => sum + s.count, 0);
+    }
+    return status;
   },
 });
 apcore.register('reach.draft', {
@@ -143,7 +154,7 @@ apcore.register('reach.publish', {
 });
 apcore.register('reach.go', {
   ...meta('reach.go'),
-  execute: async (inputs: { prompt: string; schedule?: string; dryRun?: boolean; draft?: boolean }) => {
+  execute: async (inputs: { prompt: string; name?: string; schedule?: string; dryRun?: boolean; draft?: boolean }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await goCommand(engine, inputs.prompt, { ...inputs, config: config.getConfig() });
   },
@@ -157,9 +168,9 @@ apcore.register('reach.refine', {
 });
 apcore.register('reach.rollback', {
   ...meta('reach.rollback'),
-  execute: async (inputs: { project: string }) => {
+  execute: async (inputs: { article: string }) => {
     const engine = await getEngine();
-    await rollbackCommand(engine, inputs.project);
+    await rollbackCommand(engine, inputs.article);
   },
 });
 apcore.register('reach.asset.add', {
@@ -260,20 +271,21 @@ program
 program
   .command('go <prompt>')
   .description('Full auto: inbox → draft → approve → adapt → schedule → publish')
+  .option('--name <name>', 'Explicit article name (default: auto-generated from prompt)')
   .option('-s, --schedule <date>', 'Schedule for a future date (YYYY-MM-DD) instead of publishing immediately')
   .option('-n, --dry-run', 'Run full pipeline but skip actual publishing')
   .option('-d, --draft', 'Publish as draft on supported platforms')
-  .action(withErrorHandler(async (prompt: string, options: { schedule?: string; dryRun?: boolean; draft?: boolean }) => {
+  .action(withErrorHandler(async (prompt: string, options: { name?: string; schedule?: string; dryRun?: boolean; draft?: boolean }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await goCommand(engine, prompt, { ...options, json: program.opts().json, config: config.getConfig() });
   }, 'go'));
 
 program
-  .command('rollback <project>')
-  .description('Move a project back one pipeline stage')
-  .action(withErrorHandler(async (project: string) => {
+  .command('rollback <article>')
+  .description('Move an article back one pipeline stage')
+  .action(withErrorHandler(async (article: string) => {
     const engine = await getEngine();
-    await rollbackCommand(engine, project, { json: program.opts().json });
+    await rollbackCommand(engine, article, { json: program.opts().json });
   }, 'rollback'));
 
 program

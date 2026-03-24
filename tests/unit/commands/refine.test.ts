@@ -10,7 +10,7 @@ import {
   refineCommand,
 } from '../../../src/commands/refine.js';
 import { PipelineEngine } from '../../../src/core/pipeline.js';
-import { STAGES, DRAFT_FILENAME, MASTER_FILENAME } from '../../../src/core/constants.js';
+import { STAGES } from '../../../src/core/constants.js';
 
 // Mock AdapterFactory
 const mockExecute = vi.fn();
@@ -32,6 +32,7 @@ vi.mock('../../../src/llm/factory.js', () => ({
 }));
 
 let tmpDir: string;
+let engine: PipelineEngine;
 
 beforeEach(async () => {
   vi.clearAllMocks();
@@ -39,6 +40,7 @@ beforeEach(async () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reach-refine-'));
+  engine = new PipelineEngine(tmpDir);
   // Create pipeline stages
   for (const stage of STAGES) {
     await fs.ensureDir(path.join(tmpDir, stage));
@@ -50,16 +52,13 @@ afterEach(async () => {
   await fs.remove(tmpDir);
 });
 
+// Flat file helpers: 02_drafts/{name}.md and 03_master/{name}.md
 async function createDraft(name: string, content: string = '# Draft\n\nContent here.') {
-  const dir = path.join(tmpDir, '02_drafts', name);
-  await fs.ensureDir(dir);
-  await fs.writeFile(path.join(dir, DRAFT_FILENAME), content);
+  await engine.writeArticleFile('02_drafts', name, content);
 }
 
 async function createMaster(name: string, content: string = '# Master\n\nMaster content.') {
-  const dir = path.join(tmpDir, '03_master', name);
-  await fs.ensureDir(dir);
-  await fs.writeFile(path.join(dir, MASTER_FILENAME), content);
+  await engine.writeArticleFile('03_master', name, content);
 }
 
 function successResult(content: string): any {
@@ -141,7 +140,6 @@ describe('printContentPreview', () => {
 
 describe('refineCommand article lookup', () => {
   test('throws when article doesn\'t exist in drafts or master', async () => {
-    const engine = new PipelineEngine(tmpDir);
     await expect(
       refineCommand(engine, 'nonexistent', { inputLines: ['/quit'] }),
     ).rejects.toThrow('not found in 02_drafts or 03_master');
@@ -150,25 +148,22 @@ describe('refineCommand article lookup', () => {
   test('locates article in 02_drafts when it exists there', async () => {
     await createDraft('my-art');
     mockExecute.mockResolvedValue(successResult('Revised draft'));
-    const engine = new PipelineEngine(tmpDir);
     await refineCommand(engine, 'my-art', { inputLines: ['/save'] });
-    // Should save to 02_drafts
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'my-art', DRAFT_FILENAME), 'utf-8');
+    // Should save to 02_drafts/my-art.md (flat file)
+    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'my-art.md'), 'utf-8');
     expect(saved).toContain('Draft');
   });
 
   test('locates article in 03_master when not in 02_drafts', async () => {
     await createMaster('my-art');
-    const engine = new PipelineEngine(tmpDir);
     await refineCommand(engine, 'my-art', { inputLines: ['/save'] });
-    const saved = await fs.readFile(path.join(tmpDir, '03_master', 'my-art', MASTER_FILENAME), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '03_master', 'my-art.md'), 'utf-8');
     expect(saved).toContain('Master');
   });
 
   test('starts new session when no session file exists', async () => {
     await createDraft('my-art');
     mockExecute.mockResolvedValue(successResult('Revised'));
-    const engine = new PipelineEngine(tmpDir);
     await refineCommand(engine, 'my-art', { inputLines: ['make it better'] });
     const output = (console.log as any).mock.calls.map((c: any[]) => c.join(' ')).join('\n');
     expect(output).toContain('Starting new refinement session');
@@ -181,28 +176,25 @@ describe('refineCommand slash commands', () => {
   test('/save command writes content to draft file and exits', async () => {
     await createDraft('art', 'Original content');
     mockExecute.mockResolvedValue(successResult('Better content'));
-    const engine = new PipelineEngine(tmpDir);
     // Send feedback then save
     await refineCommand(engine, 'art', { inputLines: ['improve it'] });
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art', DRAFT_FILENAME), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Better content');
   });
 
   test('/quit command exits without writing', async () => {
     await createDraft('art', 'Original content');
-    const engine = new PipelineEngine(tmpDir);
     await refineCommand(engine, 'art', { inputLines: ['/quit'] });
-    const content = await fs.readFile(path.join(tmpDir, '02_drafts', 'art', DRAFT_FILENAME), 'utf-8');
+    const content = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
     expect(content).toBe('Original content');
   });
 
   test('successful LLM turn updates content and saves session', async () => {
     await createDraft('art', 'Original');
     mockExecute.mockResolvedValue(successResult('Updated content'));
-    const engine = new PipelineEngine(tmpDir);
     await refineCommand(engine, 'art', { inputLines: ['revise it'] });
-    // Content should be updated
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art', DRAFT_FILENAME), 'utf-8');
+    // Content should be updated (flat file)
+    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Updated content');
     // Session should be saved
     const sessionPath = path.join(tmpDir, '.reach', 'sessions', 'art', 'draft.json');
@@ -223,10 +215,9 @@ describe('refineCommand slash commands', () => {
       exitCode: 1,
       timedOut: false,
     });
-    const engine = new PipelineEngine(tmpDir);
     // Non-TTY mode: even on failure, it tries to save original content
     await refineCommand(engine, 'art', { inputLines: ['do something'] });
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art', DRAFT_FILENAME), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Original');
   });
 
@@ -244,10 +235,9 @@ describe('refineCommand slash commands', () => {
       exitCode: 1,
       timedOut: false,
     });
-    const engine = new PipelineEngine(tmpDir);
     // Even on auth failure, non-TTY saves the original (no changes were made)
     await refineCommand(engine, 'art', { inputLines: ['do something'] });
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art', DRAFT_FILENAME), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Original');
   });
 });
@@ -258,11 +248,10 @@ describe('refineCommand non-TTY', () => {
   test('reads input, executes one turn, saves, exits', async () => {
     await createDraft('art', 'Original');
     mockExecute.mockResolvedValue(successResult('Non-TTY result'));
-    const engine = new PipelineEngine(tmpDir);
     await refineCommand(engine, 'art', { inputLines: ['make it concise'] });
 
     expect(mockExecute).toHaveBeenCalledTimes(1);
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art', DRAFT_FILENAME), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Non-TTY result');
   });
 });
@@ -273,21 +262,19 @@ describe('refineCommand --feedback', () => {
   test('normalizes feedback into single-turn non-interactive path', async () => {
     await createDraft('art', 'Original');
     mockExecute.mockResolvedValue(successResult('Feedback result'));
-    const engine = new PipelineEngine(tmpDir);
     await refineCommand(engine, 'art', { feedback: 'make it shorter' });
 
     expect(mockExecute).toHaveBeenCalledTimes(1);
     const prompt = mockExecute.mock.calls[0][0].prompt;
     expect(prompt).toContain('make it shorter');
 
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art', DRAFT_FILENAME), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Feedback result');
   });
 
   test('--feedback + --json outputs structured result on success', async () => {
     await createDraft('art', 'Original');
     mockExecute.mockResolvedValue(successResult('Better'));
-    const engine = new PipelineEngine(tmpDir);
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
     await refineCommand(engine, 'art', { feedback: 'improve', json: true });
@@ -318,7 +305,6 @@ describe('refineCommand --feedback', () => {
       exitCode: 1,
       timedOut: false,
     });
-    const engine = new PipelineEngine(tmpDir);
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
     await refineCommand(engine, 'art', { feedback: 'try something', json: true });

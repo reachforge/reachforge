@@ -30,7 +30,8 @@ afterEach(async () => {
 
 describe('statusCommand --json', () => {
   test('outputs valid JSON envelope', async () => {
-    await fs.ensureDir(path.join(tmpDir, '01_inbox', 'idea-1'));
+    // Flat file in inbox
+    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-1.md'), 'raw');
     await statusCommand(engine, { json: true });
     const result = JSON.parse(jsonOutput);
     expect(result.jsonVersion).toBe(1);
@@ -39,9 +40,9 @@ describe('statusCommand --json', () => {
   });
 
   test('includes project stages with counts', async () => {
-    await fs.ensureDir(path.join(tmpDir, '01_inbox', 'idea-1'));
-    await fs.ensureDir(path.join(tmpDir, '01_inbox', 'idea-2'));
-    await fs.ensureDir(path.join(tmpDir, '02_drafts', 'draft-1'));
+    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-1.md'), 'raw');
+    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-2.md'), 'raw');
+    await fs.writeFile(path.join(tmpDir, '02_drafts', 'draft-1.md'), 'draft');
 
     await statusCommand(engine, { json: true });
     const result = JSON.parse(jsonOutput);
@@ -56,28 +57,38 @@ describe('statusCommand --json', () => {
     expect(stages['06_sent'].count).toBe(0);
   });
 
-  test('parses scheduled items with date prefix', async () => {
-    await fs.ensureDir(path.join(tmpDir, '05_scheduled', '2026-03-25T00-00-00-my-article'));
+  test('parses scheduled items as article names', async () => {
+    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'my-article.x.md'), 'content');
+    await engine.metadata.writeArticleMeta('my-article', {
+      status: 'scheduled',
+      schedule: '2026-03-25T00:00',
+    });
     await statusCommand(engine, { json: true });
     const result = JSON.parse(jsonOutput);
     const scheduled = result.data.stages['05_scheduled'];
     expect(scheduled.count).toBe(1);
-    expect(scheduled.items[0]).toEqual({ name: 'my-article', date: '2026-03-25' });
+    expect(scheduled.items[0]).toBe('my-article');
   });
 
   test('includes dueToday', async () => {
-    const today = new Date().toISOString().split('T')[0];
-    await fs.ensureDir(path.join(tmpDir, '05_scheduled', `${today}T00-00-00-urgent-post`));
+    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'urgent-post.x.md'), 'content');
+    await engine.metadata.writeArticleMeta('urgent-post', {
+      status: 'scheduled',
+      schedule: '2020-01-01',
+    });
     await statusCommand(engine, { json: true });
     const result = JSON.parse(jsonOutput);
     expect(result.data.dueToday.length).toBeGreaterThan(0);
-    expect(result.data.dueToday[0]).toContain('urgent-post');
+    expect(result.data.dueToday[0]).toBe('urgent-post');
   });
 });
 
 describe('scheduleCommand --json', () => {
   test('outputs JSON', async () => {
-    await fs.ensureDir(path.join(tmpDir, '04_adapted', 'my-article'));
+    // Create adapted platform file (flat file)
+    await fs.writeFile(path.join(tmpDir, '04_adapted', 'my-article.x.md'), 'content');
+    await engine.metadata.writeArticleMeta('my-article', { status: 'adapted' });
+
     await scheduleCommand(engine, 'my-article', '2026-04-01', { json: true });
     const result = JSON.parse(jsonOutput);
     expect(result.jsonVersion).toBe(1);
@@ -85,31 +96,34 @@ describe('scheduleCommand --json', () => {
     expect(result.success).toBe(true);
     expect(result.data.article).toBe('my-article');
     expect(result.data.date).toBe('2026-04-01T00-00-00');
-    expect(result.data.scheduledName).toBe('2026-04-01T00-00-00-my-article');
     expect(result.data.stage).toBe('05_scheduled');
   });
 
   test('dry-run outputs JSON', async () => {
-    await fs.ensureDir(path.join(tmpDir, '04_adapted', 'my-article'));
+    await fs.writeFile(path.join(tmpDir, '04_adapted', 'my-article.x.md'), 'content');
+
     await scheduleCommand(engine, 'my-article', '2026-04-01', { dryRun: true, json: true });
     const result = JSON.parse(jsonOutput);
     expect(result.jsonVersion).toBe(1);
     expect(result.command).toBe('schedule');
     expect(result.success).toBe(true);
     expect(result.data.article).toBe('my-article');
-    expect(result.data.scheduledName).toBe('2026-04-01T00-00-00-my-article');
+    expect(result.data.date).toBe('2026-04-01T00-00-00');
   });
 });
 
 describe('rollbackCommand --json', () => {
   test('outputs JSON', async () => {
-    await fs.ensureDir(path.join(tmpDir, '02_drafts', 'my-article'));
+    // Flat file in 02_drafts
+    await fs.writeFile(path.join(tmpDir, '02_drafts', 'my-article.md'), 'draft content');
+    await engine.metadata.writeArticleMeta('my-article', { status: 'drafted' });
+
     await rollbackCommand(engine, 'my-article', { json: true });
     const result = JSON.parse(jsonOutput);
     expect(result.jsonVersion).toBe(1);
     expect(result.command).toBe('rollback');
     expect(result.success).toBe(true);
-    expect(result.data.project).toBe('my-article');
+    expect(result.data.article).toBe('my-article');
     expect(result.data.from).toBe('02_drafts');
     expect(result.data.to).toBe('01_inbox');
     expect(result.data.timestamp).toBeDefined();
