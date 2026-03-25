@@ -5,6 +5,44 @@ import { STAGES } from '../core/constants.js';
 import { WorkspaceResolver } from '../core/workspace.js';
 import type { WorkspaceContext } from '../core/workspace.js';
 import { jsonSuccess } from '../core/json-output.js';
+import type { PipelineStage } from '../types/index.js';
+
+async function printArticleDetail(engine: PipelineEngine, article: string): Promise<void> {
+  const meta = await engine.metadata.readArticleMeta(article);
+  if (!meta) {
+    console.log(chalk.red(`Article "${article}" not found in meta.yaml`));
+    return;
+  }
+
+  console.log(chalk.blue.bold(`\n📄 Article: ${article}`));
+  console.log(`   Status:    ${chalk.yellow(meta.status)}`);
+
+  // Find which stage(s) the article is in
+  for (const stage of STAGES) {
+    const files = await engine.getArticleFiles(article, stage);
+    if (files.length > 0) {
+      console.log(`   Stage:     ${chalk.cyan(stage)}`);
+      files.forEach(f => console.log(chalk.dim(`     └─ ${f}`)));
+    }
+  }
+
+  if (meta.schedule) {
+    console.log(`   Schedule:  ${chalk.magenta(meta.schedule)}`);
+  }
+  if (meta.adapted_platforms?.length) {
+    console.log(`   Platforms: ${meta.adapted_platforms.join(', ')}`);
+  }
+  if (meta.platforms) {
+    console.log('   Results:');
+    for (const [platform, status] of Object.entries(meta.platforms)) {
+      const icon = status.status === 'success' ? chalk.green('✔') : status.status === 'failed' ? chalk.red('✘') : chalk.gray('○');
+      const detail = status.url ?? status.error ?? '';
+      console.log(`     ${icon} ${platform}: ${status.status}${detail ? ` — ${detail}` : ''}`);
+    }
+  }
+  console.log('');
+}
+
 async function printProjectStatus(engine: PipelineEngine, projectName?: string): Promise<number> {
   const status = await engine.getStatus();
 
@@ -34,10 +72,30 @@ async function printProjectStatus(engine: PipelineEngine, projectName?: string):
 
 export async function statusCommand(
   engine: PipelineEngine,
-  options: { all?: boolean; json?: boolean } = {},
+  options: { all?: boolean; article?: string; json?: boolean } = {},
   context?: WorkspaceContext,
 ): Promise<void> {
-  // --all mode: show all projects in workspace (check before single-project --json)
+  // Per-article detail mode
+  if (options.article) {
+    if (options.json) {
+      const meta = await engine.metadata.readArticleMeta(options.article);
+      const stageFiles: Record<string, string[]> = {};
+      for (const stage of STAGES) {
+        const files = await engine.getArticleFiles(options.article, stage);
+        if (files.length > 0) stageFiles[stage] = files;
+      }
+      process.stdout.write(jsonSuccess('status', {
+        article: options.article,
+        meta,
+        stages: stageFiles,
+      }));
+      return;
+    }
+    await printArticleDetail(engine, options.article);
+    return;
+  }
+
+  // --all mode: show all projects in workspace
   if (options.all && context?.workspaceRoot) {
     const projects = await WorkspaceResolver.listProjects(context.workspaceRoot);
 

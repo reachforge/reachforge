@@ -539,7 +539,7 @@ sequenceDiagram
 | `reach adapt <article>` | article (required) | `--platforms`, `--force`, `--json` | Adapt for platforms |
 | `reach schedule <article> [date]` | article (required), date (optional) | `--dry-run`, `--json` | Schedule publishing |
 | `reach publish` | — | `--dry-run`, `--draft`, `--json` | Publish all due |
-| `reach status` | — | `--all`, `--json` | Dashboard |
+| `reach status [article]` | article (optional) | `--all`, `--json` | Dashboard or single-article detail |
 | `reach go <prompt>` | prompt (required) | `--name`, `--schedule`, `--dry-run`, `--json` | Full auto-pipeline |
 | `reach rollback <article>` | article (required) | `--json` | Back one stage |
 | `reach refine <article>` | article (required) | `--feedback`, `--json` | AI refinement |

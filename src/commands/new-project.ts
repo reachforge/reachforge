@@ -46,6 +46,9 @@ export async function newProjectCommand(
     history: [],
   });
 
+  // Initialize empty meta.yaml for multi-article tracking
+  await fs.writeFile(path.join(projectDir, 'meta.yaml'), 'articles: {}\n');
+
   if (options.json) {
     process.stdout.write(jsonSuccess('new', {
       project: safeName,

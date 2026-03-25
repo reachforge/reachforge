@@ -24,22 +24,21 @@ afterEach(async () => {
 async function createSentArticle(
   name: string,
   platforms: Record<string, { status: 'success' | 'failed'; url?: string; error?: string }>,
-  updatedAt: string,
+  publishedAt: string,
 ): Promise<void> {
   // Create flat platform files in 06_sent
   for (const platform of Object.keys(platforms)) {
     await engine.writeArticleFile('06_sent', name, `Content for ${platform}`, platform);
   }
-  // Write metadata, then patch updated_at (writeArticleMeta auto-sets it to now)
+  // Add published_at to each successful platform for date filtering
+  const platformsWithDates: Record<string, any> = {};
+  for (const [p, data] of Object.entries(platforms)) {
+    platformsWithDates[p] = { ...data, published_at: publishedAt };
+  }
   await engine.metadata.writeArticleMeta(name, {
     status: 'published',
-    platforms,
+    platforms: platformsWithDates,
   });
-  // Patch updated_at directly in meta.yaml for date filtering tests
-  const meta = await engine.metadata.readProjectMeta();
-  meta.articles[name].updated_at = updatedAt;
-  const yamlMod = await import('js-yaml');
-  await fs.writeFile(path.join(tmpDir, 'meta.yaml'), yamlMod.dump(meta, { lineWidth: -1 }));
 }
 
 describe('collectAnalytics', () => {

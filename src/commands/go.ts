@@ -58,7 +58,7 @@ export async function goCommand(
   prompt: string,
   options: GoOptions = {},
 ): Promise<void> {
-  const slug = options.name ?? slugify(prompt);
+  let slug = options.name ?? slugify(prompt);
   validateArticleName(slug);
 
   const scheduleDate = options.schedule || new Date().toISOString().split('T')[0];
@@ -68,6 +68,18 @@ export async function goCommand(
   }
 
   await engine.initPipeline();
+
+  // Resolve slug collision: append -2, -3, etc. if article already exists
+  if (!options.name) {
+    const existing = await engine.metadata.readArticleMeta(slug);
+    if (existing) {
+      let suffix = 2;
+      while (await engine.metadata.readArticleMeta(`${slug}-${suffix}`)) {
+        suffix++;
+      }
+      slug = `${slug}-${suffix}`;
+    }
+  }
 
   const log = (msg: string) => { if (!options.json) console.log(msg); };
   let currentStep = 0;

@@ -201,24 +201,23 @@ apcore.register('reach.analytics', {
 program
   .name('reach')
   .description('ReachForge: The Social Influence Engine')
-  .version('ReachForge 0.1.0')
+  .version('ReachForge 0.2.0')
   .option('-w, --workspace <path>', 'Workspace root directory')
   .option('-P, --project <name>', 'Project name within workspace')
   .option('--json', 'Output in JSON format');
 
 program
-  .command('status')
-  .description('Check the dashboard status of the content pipeline')
+  .command('status [article]')
+  .description('Show pipeline dashboard, or detail for a specific article')
   .option('-a, --all', 'Show status across all projects in workspace')
-  .action(withErrorHandler(async (options: { all?: boolean }) => {
+  .action(withErrorHandler(async (article: string | undefined, options: { all?: boolean }) => {
     const ctx = await getContext();
     if (options.all) {
-      // --all mode works at workspace level
       const engine = new PipelineEngine(ctx.projectDir);
       await statusCommand(engine, { ...options, json: program.opts().json }, ctx);
     } else {
       const engine = await getEngine();
-      await statusCommand(engine, { json: program.opts().json }, ctx);
+      await statusCommand(engine, { article, json: program.opts().json }, ctx);
     }
   }, 'status'));
 

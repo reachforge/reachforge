@@ -40,8 +40,13 @@ export async function collectAnalytics(
     const articleMeta = meta.articles[article];
     if (!articleMeta?.platforms) continue;
 
-    // Date filtering: use updated_at as publish date proxy
-    const pubDate = articleMeta.updated_at?.split('T')[0];
+    // Date filtering: use earliest published_at from platform results
+    const publishDates = Object.values(articleMeta.platforms)
+      .map(p => p.published_at)
+      .filter((d): d is string => !!d);
+    const pubDate = publishDates.length > 0
+      ? publishDates.sort()[0].split('T')[0]
+      : articleMeta.updated_at?.split('T')[0];
     if (options.from && pubDate && pubDate < options.from) continue;
     if (options.to && pubDate && pubDate > options.to) continue;
 

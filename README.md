@@ -5,20 +5,27 @@
 **ReachForge** is an **AI-native Social Influence Engine** for end-users. It adopts a "File-as-State" design philosophy, transforming inspiration fragments into multi-platform viral assets through a lightweight six-stage pipeline.
 
 ## Core Design Philosophy
-- **Directory-based Sync**: No database required. Folders represent states, filenames act as timestamps, and YAML files store metadata.
+- **File-as-State**: No database required. Flat `.md` files flow through 6 pipeline stages. A single `meta.yaml` at project root tracks all article states.
+- **Multi-Article Projects**: One project holds multiple articles, each independently targeting different platforms and schedules.
 - **Bun Driven**: Extreme execution efficiency and single-file binary distribution, perfectly suited for CLI and desktop environments.
 - **Hybrid Publishing Strategy**: Supports direct local API publishing and SaaS-bridged (e.g., Postiz) publishing.
 - **AI Adapter Pattern**: Automatically rewrites the master draft into optimal versions for different platforms (X, WeChat, Zhihu) via LLM.
 
-## Directory Pipeline (01-06) + Assets
+## Pipeline (01-06) + Assets
 
-1. `📥_01_inbox`: Raw material entry.
-2. `✍️_02_drafts`: AI-generated long-form drafts.
-3. `🎯_03_master`: "Master draft/Source file" signed off by the Editor-in-Chief (User). Use `reach approve` to promote from drafts.
-4. `🤖_04_adapted`: **Core Stage**! AI-generated multi-platform adapted version folders.
-5. `📅_05_scheduled`: Confirmed schedule, awaiting automatic/manual distribution bundles.
-6. `📤_06_sent`: Published history archive, including publication receipts.
-7. `🗂️_assets`: Shared asset library for images, videos, and audio — referenced via `@assets/` prefix in articles, never duplicated across stages.
+Each project contains 6 stage directories. Articles are flat `.md` files that move between stages:
+
+| Stage | Files | Description |
+|-------|-------|-------------|
+| `01_inbox` | `{article}.md` | Raw material entry |
+| `02_drafts` | `{article}.md` | AI-generated drafts |
+| `03_master` | `{article}.md` | Editor-approved master version |
+| `04_adapted` | `{article}.{platform}.md` | Platform-specific versions (e.g., `teaser.x.md`, `teaser.devto.md`) |
+| `05_scheduled` | `{article}.{platform}.md` | Scheduled for publishing (date in `meta.yaml`) |
+| `06_sent` | `{article}.{platform}.md` | Published archive (results in `meta.yaml`) |
+| `assets/` | images, videos, audio | Shared asset library — referenced via `@assets/` prefix |
+
+Platform IDs: `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`
 
 ## Quick Start
 
@@ -90,25 +97,31 @@ REACHFORGE_ADAPT_ADAPTER=claude   # Use Claude for platform adaptation
 ### 3. Create a Project & Run
 
 ```bash
-reach new my-tech-blog
-cd my-tech-blog
+reach new product-launch
+cd product-launch
 
-reach status                          # View pipeline dashboard
-reach asset add ./photo.jpg           # Register asset to shared library
-reach asset list                      # List all registered assets
-reach draft my-idea.md                # Generate draft from inbox
-reach approve my-idea                 # Promote draft to master
-reach adapt my-article                # Adapt for all platforms
-reach schedule my-article 2026-03-20         # Schedule for a date
-reach schedule my-article 2026-03-20T14:30   # Schedule for a date + time
-reach schedule my-article                    # Schedule for today (immediate)
-reach publish                         # Publish due content
-reach watch                           # Daemon mode: auto-publish on schedule
-reach analytics                       # View publishing success metrics
+# Multiple articles in one project, each with independent platforms & schedules:
+reach status                                     # View pipeline dashboard
+reach status teaser                              # Detail for one article
+
+reach draft teaser.md                            # Generate draft from inbox
+reach approve teaser                             # Promote draft to master
+reach adapt teaser --platforms x,devto           # Adapt for specific platforms
+reach schedule teaser 2026-03-25T09:00           # Schedule with date+time
+reach schedule teaser                            # Schedule for now (immediate)
+
+reach draft deep-dive.md                         # Another article in same project
+reach adapt deep-dive --platforms zhihu,wechat   # Different platforms
+reach schedule deep-dive 2026-03-28              # Different schedule
+
+reach publish                                    # Publish all due articles
+reach watch                                      # Daemon mode: auto-publish
+reach analytics                                  # View publishing success metrics
 
 # Or do it all in one shot:
-reach go "write about apcore framework"              # Full auto → publish now
-reach go "write about apcore framework" -s 2026-04-01  # Full auto → schedule
+reach go "write about apcore framework"                    # Full auto → publish now
+reach go "write about apcore" --name teaser                # Explicit article name
+reach go "write about apcore framework" -s 2026-04-01      # Full auto → schedule
 ```
 
 ## Development

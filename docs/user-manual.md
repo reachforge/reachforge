@@ -2,7 +2,7 @@
 
 **ReachForge — The Social Influence Engine for AI-Native Content**
 
-Version 0.1.0
+Version 0.2.0
 
 ---
 
@@ -28,10 +28,11 @@ reachforge is a CLI tool that transforms raw ideas into polished, platform-speci
 
 **Key design principles:**
 
-- **File-as-state** — no database; the directory structure _is_ the pipeline state.
+- **File-as-state** — no database; flat `.md` files flow through pipeline stages, a single `meta.yaml` tracks all article states.
+- **Multi-article projects** — one project holds multiple articles, each independently targeting different platforms and schedules.
 - **Multi-project workspaces** — manage many content projects from a single workspace.
 - **Pluggable LLM adapters** — switch between Claude, Gemini, and Codex per stage.
-- **Progressive publishing** — resumable, lock-protected, with per-platform receipts.
+- **Progressive publishing** — resumable, lock-protected, with per-platform results in `meta.yaml`.
 
 ---
 
@@ -66,33 +67,43 @@ bun run build:win      # Windows x64
 reach init ~/my-workspace
 cd ~/my-workspace
 
-# 2. Create a project
-reach new my-blog
-cd my-blog
+# 2. Create a project (one project can hold multiple articles)
+reach new product-launch
+cd product-launch
 
-# 3. Drop an idea into the inbox
+# 3. Drop ideas into the inbox
 echo "Why AI pair programming changes everything..." > 01_inbox/ai-pairing.md
+echo "Deep dive into apcore framework..." > 01_inbox/apcore-deep-dive.md
 
-# 4. Generate a draft
+# 4. Generate drafts (each article independently)
 reach draft ai-pairing.md
+reach draft apcore-deep-dive.md
 
 # 5. Refine interactively
-reach refine ai-pairing
+reach refine ai-pairing -f "make the intro more concise"
 
 # 6. Promote to master
 reach approve ai-pairing
+reach approve apcore-deep-dive
 
-# 7. Add shared assets (optional)
-reach asset add ./hero-image.png
+# 7. Adapt for different platforms per article
+reach adapt ai-pairing --platforms x,devto
+reach adapt apcore-deep-dive --platforms zhihu,wechat
 
-# 8. Adapt for platforms
-reach adapt ai-pairing --platforms devto,hashnode,x
+# 8. Schedule independently
+reach schedule ai-pairing 2026-04-01T09:00
+reach schedule apcore-deep-dive 2026-04-03
 
-# 9. Schedule
-reach schedule ai-pairing 2026-04-01  # or omit date to schedule for today
-
-# 10. Publish
+# 9. Publish all due articles
 reach publish
+
+# 10. Check status
+reach status                    # Dashboard: all articles across stages
+reach status ai-pairing         # Detail view for one article
+
+# Or do it all in one shot:
+reach go "write about apcore framework"                # Full auto → publish now
+reach go "write about apcore" --name teaser            # Explicit article name
 ```
 
 ---
@@ -105,15 +116,19 @@ Each project contains six stage directories. Content flows left to right:
 01_inbox ──▸ 02_drafts ──▸ 03_master ──▸ 04_adapted ──▸ 05_scheduled ──▸ 06_sent
 ```
 
-| Stage | Purpose | Key Files |
-|-------|---------|-----------|
-| `01_inbox` | Raw material — notes, sketches, ideas | Any `.md` / `.txt` |
-| `02_drafts` | AI-generated long-form drafts | `draft.md`, `meta.yaml` |
-| `03_master` | Editor-approved source of truth | `master.md`, `meta.yaml` |
-| `04_adapted` | Platform-specific versions | `platform_versions/{platform}.md` |
-| `05_scheduled` | Content awaiting publish date | `meta.yaml` (with `publish_date`) |
-| `06_sent` | Published archive | `receipt.yaml` |
+| Stage | Purpose | File Pattern |
+|-------|---------|-------------|
+| `01_inbox` | Raw material — notes, sketches, ideas | `{article}.md` or `{article}/` |
+| `02_drafts` | AI-generated long-form drafts | `{article}.md` |
+| `03_master` | Editor-approved source of truth | `{article}.md` |
+| `04_adapted` | Platform-specific versions | `{article}.{platform}.md` (e.g., `teaser.x.md`) |
+| `05_scheduled` | Content awaiting publish date | `{article}.{platform}.md` (schedule in `meta.yaml`) |
+| `06_sent` | Published archive | `{article}.{platform}.md` (results in `meta.yaml`) |
 | `assets` | Shared media library | `images/`, `videos/`, `audio/`, `.asset-registry.yaml` |
+
+**Platform IDs:** `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`
+
+All article metadata is stored in a single `meta.yaml` at the project root, indexed by article name.
 
 Use the `@assets/` prefix to reference shared assets in articles:
 
@@ -141,6 +156,7 @@ Assets are stored once and never duplicated when articles move between stages. D
 │   │   ├── videos/
 │   │   ├── audio/
 │   │   └── .asset-registry.yaml
+│   ├── meta.yaml              # Multi-article state index
 │   ├── project.yaml           # Project config
 │   ├── .env                   # API keys (optional)
 │   └── skills/                # Custom LLM skills (optional)
@@ -188,16 +204,17 @@ Scaffolds all six stage directories, a `project.yaml`, and the `assets/` library
 
 ---
 
-### `reach status`
+### `reach status [article]`
 
-Show pipeline dashboard for the current project.
+Show pipeline dashboard or detail for a specific article.
 
 ```bash
-reach status           # Current project
-reach status --all     # All projects in workspace
+reach status                 # Dashboard: all articles across stages
+reach status teaser          # Detail view for one article (status, stage, platforms, schedule)
+reach status --all           # All projects in workspace
 ```
 
-Displays item counts per stage and items due today.
+Without an article name, shows per-stage item counts and articles due today. With an article name, shows that article's status, current stage, platform results, and schedule.
 
 ---
 
@@ -221,7 +238,7 @@ reach draft my-idea.md
 
 - **Input:** File or directory in `01_inbox/`.
   - If directory: reads `main.md` > `index.md` > first `.md` > first `.txt`.
-- **Output:** `02_drafts/{name}/draft.md` + `meta.yaml`.
+- **Output:** `02_drafts/{article}.md` (flat file). Metadata updated in project-root `meta.yaml`.
 - **LLM adapter:** Controlled by `REACHFORGE_DRAFT_ADAPTER` or `REACHFORGE_LLM_ADAPTER`.
 
 ---
@@ -234,9 +251,9 @@ Promote a draft to master stage.
 reach approve my-idea
 ```
 
-- Moves article from `02_drafts/` to `03_master/`.
-- Automatically renames `draft.md` to `master.md`.
-- Updates metadata status to `master`.
+- Moves `{article}.md` from `02_drafts/` to `03_master/`.
+- No file rename needed — same filename in both stages.
+- Updates status to `master` in project-root `meta.yaml`.
 
 ---
 
@@ -317,12 +334,12 @@ reach adapt my-idea --force                       # Overwrite existing
 | `-p, --platforms <list>` | Comma-separated platform names |
 | `-f, --force` | Overwrite existing platform versions |
 
-- **Input:** Article in `03_master/`.
-- **Output:** `04_adapted/{article}/platform_versions/{platform}.md` per platform.
+- **Input:** `03_master/{article}.md`.
+- **Output:** `04_adapted/{article}.{platform}.md` per platform (e.g., `teaser.x.md`, `teaser.devto.md`).
 - **Default platforms:** `x`, `wechat`, `zhihu`.
 - Adapts all platforms in parallel.
 
-**Supported platforms:** `x`, `wechat`, `zhihu`, `devto`, `hashnode`, `github`.
+**Supported platforms:** `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`.
 
 ---
 
@@ -342,8 +359,8 @@ reach schedule my-idea 2026-04-01 --dry-run
 | `-n, --dry-run` | Preview what would be moved |
 
 - **Date formats:** `YYYY-MM-DD`, `YYYY-MM-DDTHH:MM`, or `YYYY-MM-DDTHH:MM:SS`. Defaults to today if omitted.
-- Creates `05_scheduled/YYYY-MM-DDThh-mm-ss-my-idea/` with a `meta.yaml` containing the publish date.
-- Backward compatible: legacy `YYYY-MM-DD-name` directories are still recognized.
+- Moves platform files from `04_adapted/` to `05_scheduled/` (same filenames).
+- Schedule date/time stored in project-root `meta.yaml`, not in directory names.
 
 ---
 
@@ -364,27 +381,27 @@ reach publish --draft
 
 **Publishing pipeline:**
 
-1. Scans `05_scheduled/` for items with date <= today.
+1. Checks `meta.yaml` for articles in `05_scheduled/` whose schedule time <= now.
 2. Validates content per platform.
-3. Acquires a lock (`.publish.lock`) to prevent concurrent runs.
-4. Publishes to each platform (in parallel).
-5. Writes progressive `receipt.yaml` tracking per-platform status.
-6. On success, moves the item to `06_sent/`.
+3. Acquires a per-article lock (in `meta.yaml`) to prevent concurrent runs.
+4. Publishes to each platform.
+5. Records per-platform results (status, url, error) in `meta.yaml`.
+6. On success, moves article files to `06_sent/`.
 7. Releases the lock.
 
-**Resumable:** If the process crashes mid-publish, re-running `reach publish` picks up from where it left off using the receipt file.
+**Resumable:** If the process crashes mid-publish, re-running `reach publish` checks `meta.yaml` for already-succeeded platforms and skips them.
 
 ---
 
-### `reach rollback <project>`
+### `reach rollback <article>`
 
-Move a project back one pipeline stage.
+Move an article back one pipeline stage.
 
 ```bash
 reach rollback my-idea
 ```
 
-Moves the project to the previous stage (e.g., `05_scheduled` -> `04_adapted`). Cannot roll back from `01_inbox`.
+Moves the article's files to the previous stage (e.g., `05_scheduled` -> `04_adapted`). Cannot roll back from `01_inbox`.
 
 ---
 
@@ -403,7 +420,7 @@ reach analytics --from 2026-03-01 --to 2026-03-31  # March only
 | `--from <date>` | Filter from date (YYYY-MM-DD) |
 | `--to <date>` | Filter to date (YYYY-MM-DD) |
 
-Aggregates `receipt.yaml` from `06_sent/` and displays per-platform success rates (success/total) with color-coded output (green >= 80%, yellow >= 50%, red < 50%).
+Aggregates publish results from `meta.yaml` for articles in `06_sent/` and displays per-platform success rates with color-coded output (green >= 80%, yellow >= 50%, red < 50%).
 
 ---
 
@@ -412,17 +429,21 @@ Aggregates `receipt.yaml` from `06_sent/` and displays per-platform success rate
 Full auto pipeline: create content from a prompt, draft, approve, adapt, schedule, and publish — all in one command.
 
 ```bash
-reach go "write about apcore framework"                # Immediate: full pipeline → publish now
-reach go "write about apcore framework" -s 2026-04-01  # Deferred: full pipeline → schedule for later
-reach go "compare Bun vs Node.js" --dry-run            # Full pipeline but skip actual publishing
-reach go "AI pair programming tips" --draft             # Publish as draft on supported platforms
+reach go "write about apcore framework"                    # Immediate: full pipeline → publish now
+reach go "write about apcore" --name teaser                # Explicit article name
+reach go "write about apcore framework" -s 2026-04-01      # Deferred: schedule for later
+reach go "compare Bun vs Node.js" --dry-run                # Full pipeline but skip actual publishing
+reach go "AI pair programming tips" --draft                 # Publish as draft on supported platforms
 ```
 
 | Option | Description |
 |--------|-------------|
+| `--name <name>` | Explicit article name (default: auto-generated slug from prompt) |
 | `-s, --schedule <date>` | Schedule for a future date (YYYY-MM-DD) instead of publishing immediately |
 | `-n, --dry-run` | Run full pipeline but skip actual publishing |
 | `-d, --draft` | Publish as draft on supported platforms |
+
+If `--name` is omitted, a URL-safe slug is auto-generated from the prompt. If the slug already exists, `-2`, `-3` etc. is appended.
 
 **Pipeline steps:**
 
@@ -637,20 +658,23 @@ Each platform validates content before publishing:
 | **GitHub** | Must have H1 heading (becomes discussion title) |
 | **X** | Thread segments delimited by `---`; each segment <= 280 characters |
 
-### Receipt Tracking
+### Publish Result Tracking
 
-After publishing, `receipt.yaml` records the outcome:
+After publishing, results are stored in project-root `meta.yaml` per article per platform:
 
 ```yaml
-status: completed
-published_at: 2026-04-01T15:30:00Z
-items:
-  - platform: devto
-    status: success
-    url: https://dev.to/user/my-post
-  - platform: x
-    status: failed
-    error: "API rate limit exceeded"
+# meta.yaml
+articles:
+  my-post:
+    status: published
+    platforms:
+      devto:
+        status: success
+        url: https://dev.to/user/my-post
+        published_at: "2026-04-01T15:30:00Z"
+      x:
+        status: failed
+        error: "API rate limit exceeded"
 ```
 
 ---
@@ -751,17 +775,17 @@ reach mcp --transport sse --port 8001
 
 | Tool | Input | Description |
 |------|-------|-------------|
-| `reach_status` | — | Pipeline dashboard |
+| `reach_status` | `article?: string` | Pipeline dashboard or single-article detail |
 | `reach_draft` | `source: string` | Generate draft from inbox item |
+| `reach_approve` | `article: string` | Promote draft to master |
 | `reach_adapt` | `article: string`, `platforms?: string`, `force?: boolean` | Adapt for platforms |
 | `reach_schedule` | `article: string`, `date?: string` | Schedule for publishing (date defaults to today) |
-| `reach_publish` | `dryRun?: boolean` | Publish due content |
-| `reach_rollback` | `project: string` | Roll back one stage |
-| `reach_approve` | `article: string` | Promote draft to master |
+| `reach_publish` | `dryRun?: boolean` | Publish all due articles |
+| `reach_rollback` | `article: string` | Roll back one stage |
 | `reach_refine` | `article: string`, `feedback: string` | Refine a draft/master with AI feedback |
+| `reach_go` | `prompt: string`, `name?: string`, `schedule?: string`, `dryRun?: boolean`, `draft?: boolean` | Full auto pipeline from prompt to publish |
 | `reach_asset_add` | `file: string`, `subdir?: string` | Register media asset |
 | `reach_asset_list` | `subdir?: string` | List registered assets |
-| `reach_go` | `prompt: string`, `schedule?: string`, `dryRun?: boolean`, `draft?: boolean` | Full auto pipeline from prompt to publish |
 | `reach_analytics` | `from?: string`, `to?: string` | Publishing success metrics |
 
 ---
@@ -804,11 +828,13 @@ export REACHFORGE_LLM_TIMEOUT=300
 
 ### Publish lock stuck
 
-If a publish run was interrupted and the lock file remains:
+If a publish run was interrupted and the lock remains in `meta.yaml`:
 
 ```bash
-# Verify no other publish process is running, then:
-rm 05_scheduled/{item}/.publish.lock
+# Verify no other publish process is running.
+# The lock is in meta.yaml under _locks — it will auto-clear
+# on the next run if the PID is no longer alive.
+# To force-clear, edit meta.yaml and remove the _locks entry.
 ```
 
 ### Session issues with `refine`
