@@ -128,6 +128,10 @@ export const TOOL_METADATA: Record<string, { description: string; inputSchema: R
     description: 'Show publishing analytics: per-platform success rates aggregated from meta.yaml publish results. Optionally filter by date range.',
     inputSchema: jsonSchema(AnalyticsToolSchema),
   },
+  'reach.platforms': {
+    description: 'List all available publishing platforms and whether they are configured with API keys. No inputs required.',
+    inputSchema: jsonSchema(z.object({})),
+  },
 };
 
 // Legacy export for backward compatibility with tests
@@ -148,6 +152,7 @@ export const MCP_TOOL_DEFINITIONS = Object.entries(TOOL_METADATA).map(([moduleId
       'reach.asset.add': AssetAddToolSchema,
       'reach.asset.list': AssetListToolSchema,
       'reach.analytics': AnalyticsToolSchema,
+      'reach.platforms': z.object({}),
     };
     return schemaMap[moduleId];
   })(),

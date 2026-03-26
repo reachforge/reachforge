@@ -15,7 +15,7 @@ const COMMAND_GROUPS: Array<{ title: string; commands: string[] }> = [
   },
   {
     title: 'System',
-    commands: ['init', 'workspace', 'watch', 'analytics', 'asset', 'mcp'],
+    commands: ['init', 'workspace', 'platforms', 'watch', 'analytics', 'asset', 'mcp'],
   },
 ];
 

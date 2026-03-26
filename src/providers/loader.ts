@@ -5,6 +5,20 @@ import { DevtoProvider } from './devto.js';
 import { PostizProvider } from './postiz.js';
 import { HashnodeProvider } from './hashnode.js';
 import { GitHubProvider } from './github.js';
+import { PLATFORM_IDS } from '../core/filename-parser.js';
+
+/** Human-readable display names for all known platforms. */
+const PLATFORM_DISPLAY_NAMES: Record<string, string> = {
+  devto: 'Dev.to (Forem)',
+  hashnode: 'Hashnode',
+  x: 'X/Twitter (via Postiz)',
+  github: 'GitHub Discussions',
+  wechat: 'WeChat',
+  zhihu: 'Zhihu',
+  linkedin: 'LinkedIn',
+  medium: 'Medium',
+  reddit: 'Reddit',
+};
 
 export class ProviderLoader {
   private providers: Map<string, PlatformProvider> = new Map();
@@ -57,6 +71,17 @@ export class ProviderLoader {
 
   hasRealProvider(platform: string): boolean {
     return this.providers.has(platform);
+  }
+
+  listPlatforms(): Array<{ platform: string; provider: string; configured: boolean }> {
+    return PLATFORM_IDS.map(platform => {
+      const provider = this.providers.get(platform);
+      return {
+        platform,
+        provider: provider?.name ?? PLATFORM_DISPLAY_NAMES[platform] ?? platform,
+        configured: this.providers.has(platform),
+      };
+    });
   }
 
   get size(): number {

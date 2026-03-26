@@ -226,6 +226,16 @@ apcore.register('reach.analytics', {
   },
 });
 
+apcore.register('reach.platforms', {
+  ...meta('reach.platforms'),
+  execute: async () => {
+    const { ProviderLoader } = await import('./providers/loader.js');
+    const configManager = await getGlobalConfig();
+    const loader = new ProviderLoader(configManager.getConfig());
+    return { platforms: loader.listPlatforms() };
+  },
+});
+
 // CLI Setup
 program
   .name('reach')
@@ -427,6 +437,32 @@ assetCmd
     const ctx = await getContext();
     await assetListCommand(ctx.projectDir, { ...options, json: program.opts().json });
   }, 'asset.list'));
+
+program
+  .command('platforms')
+  .description('List available publishing platforms and their config status')
+  .action(withErrorHandler(async () => {
+    const configManager = await getGlobalConfig();
+    const { ProviderLoader } = await import('./providers/loader.js');
+    const loader = new ProviderLoader(configManager.getConfig());
+    const platforms = loader.listPlatforms();
+    const isJson = program.opts().json;
+
+    if (isJson) {
+      const { jsonSuccess } = await import('./core/json-output.js');
+      process.stdout.write(jsonSuccess('platforms', { platforms }));
+      return;
+    }
+
+    console.log(chalk.bold('\nPublishing Platforms\n'));
+    for (const p of platforms) {
+      const status = p.configured
+        ? chalk.green('✓ configured')
+        : chalk.gray('✗ not configured');
+      console.log(`  ${chalk.cyan(p.platform.padEnd(12))} ${p.provider.padEnd(24)} ${status}`);
+    }
+    console.log();
+  }, 'platforms'));
 
 program
   .command('mcp')

@@ -7,7 +7,7 @@ import { PipelineEngine } from '../../../src/core/pipeline.js';
 import { draftCommand } from '../../../src/commands/draft.js';
 import { adaptCommand } from '../../../src/commands/adapt.js';
 import { scheduleCommand } from '../../../src/commands/schedule.js';
-import { publishCommand, isExternalFile, parsePlatformFilter } from '../../../src/commands/publish.js';
+import { publishCommand, isExternalFile, parsePlatformFilter, ensurePlatformFrontmatter } from '../../../src/commands/publish.js';
 import { rollbackCommand } from '../../../src/commands/rollback.js';
 import { approveCommand } from '../../../src/commands/approve.js';
 
@@ -318,9 +318,75 @@ describe('isExternalFile', () => {
     expect(isExternalFile('subdir/post.md')).toBe(true);
   });
 
-  test('plain name is not external', () => {
+  test('filename with document extension is external', () => {
+    expect(isExternalFile('my-article.md')).toBe(true);
+    expect(isExternalFile('post.txt')).toBe(true);
+    expect(isExternalFile('page.html')).toBe(true);
+    expect(isExternalFile('page.HTM')).toBe(true);
+    expect(isExternalFile('draft.mdx')).toBe(true);
+  });
+
+  test('plain name or dotted article name is not external', () => {
     expect(isExternalFile('my-article')).toBe(false);
-    expect(isExternalFile('my-article.md')).toBe(false);
+    expect(isExternalFile('some-post')).toBe(false);
+    expect(isExternalFile('v2.0-release')).toBe(false);
+    expect(isExternalFile('part1.final')).toBe(false);
+  });
+});
+
+describe('ensurePlatformFrontmatter', () => {
+  const mdContent = '# My Article\n\nSome content here.';
+
+  test('injects devto frontmatter when missing', () => {
+    const result = ensurePlatformFrontmatter(mdContent, 'devto');
+    expect(result.injected).toBe(true);
+    expect(result.content).toMatch(/^---\ntitle: "My Article"\npublished: true\n---\n/);
+    expect(result.content).toContain('# My Article');
+    expect(result.fields).toEqual({ title: '"My Article"', published: 'true' });
+  });
+
+  test('injects devto frontmatter with draft flag', () => {
+    const result = ensurePlatformFrontmatter(mdContent, 'devto', { draft: true });
+    expect(result.content).toMatch(/published: false/);
+    expect(result.fields?.published).toBe('false');
+  });
+
+  test('injects hashnode frontmatter when missing', () => {
+    const result = ensurePlatformFrontmatter(mdContent, 'hashnode');
+    expect(result.injected).toBe(true);
+    expect(result.content).toMatch(/^---\ntitle: "My Article"\n---\n/);
+    expect(result.fields).toEqual({ title: '"My Article"' });
+  });
+
+  test('preserves existing frontmatter', () => {
+    const withFm = '---\ntitle: "Existing"\npublished: true\n---\n# My Article\n\nContent.';
+    const devto = ensurePlatformFrontmatter(withFm, 'devto');
+    expect(devto.injected).toBe(false);
+    expect(devto.content).toBe(withFm);
+    const hashnode = ensurePlatformFrontmatter(withFm, 'hashnode');
+    expect(hashnode.injected).toBe(false);
+    expect(hashnode.content).toBe(withFm);
+  });
+
+  test('escapes quotes in title', () => {
+    const content = '# Say "Hello" World\n\nBody.';
+    const result = ensurePlatformFrontmatter(content, 'devto');
+    expect(result.content).toMatch(/title: "Say \\"Hello\\" World"/);
+  });
+
+  test('passes through platforms without injector unchanged', () => {
+    const github = ensurePlatformFrontmatter(mdContent, 'github');
+    expect(github.injected).toBe(false);
+    expect(github.content).toBe(mdContent);
+    const x = ensurePlatformFrontmatter(mdContent, 'x');
+    expect(x.injected).toBe(false);
+    expect(x.content).toBe(mdContent);
+  });
+
+  test('uses "Untitled" when no heading found', () => {
+    const noHeading = 'Just some text without a heading.';
+    const result = ensurePlatformFrontmatter(noHeading, 'devto');
+    expect(result.content).toMatch(/title: "Untitled"/);
   });
 });
 

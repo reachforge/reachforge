@@ -45,11 +45,77 @@ export function parsePlatformFilter(platforms?: string): string[] | null {
 
 /**
  * Detect whether the article argument is an external file path or a pipeline article name.
- * External file: contains a directory separator (absolute or relative path).
- * Plain names like "my-article" are always treated as pipeline article names.
+ * External file: contains a directory separator, or ends with a known document extension.
+ * Plain names like "my-article" or dotted names like "v2.0-release" are pipeline article names.
  */
+const EXTERNAL_FILE_EXTENSIONS = new Set(['.md', '.mdx', '.txt', '.html', '.htm']);
+
 export function isExternalFile(article: string): boolean {
-  return path.isAbsolute(article) || article.includes('/') || article.includes('\\');
+  return path.isAbsolute(article) || article.includes('/') || article.includes('\\')
+    || EXTERNAL_FILE_EXTENSIONS.has(path.extname(article).toLowerCase());
+}
+
+/**
+ * Extract the title from markdown content (first H1 heading).
+ */
+function extractTitle(content: string): string {
+  const match = content.match(/^#\s+(.+)$/m);
+  return match ? match[1].trim() : 'Untitled';
+}
+
+/**
+ * Check whether content already has a YAML frontmatter block.
+ */
+function hasFrontmatter(content: string): boolean {
+  return /^---\n[\s\S]*?\n---/.test(content);
+}
+
+export interface FrontmatterResult {
+  content: string;
+  injected: boolean;
+  fields?: Record<string, string>;
+}
+
+/**
+ * Per-platform frontmatter injectors.
+ * Each returns the frontmatter fields to inject, or null if none needed.
+ */
+const FRONTMATTER_INJECTORS: Record<string, (content: string, options: PublishOptions) => Record<string, string> | null> = {
+  devto: (content, options) => ({
+    title: `"${extractTitle(content).replace(/"/g, '\\"')}"`,
+    published: options.draft ? 'false' : 'true',
+  }),
+  hashnode: (content) => ({
+    title: `"${extractTitle(content).replace(/"/g, '\\"')}"`,
+  }),
+};
+
+/**
+ * Ensure content has the required frontmatter for a given platform.
+ * For external files that lack frontmatter, auto-inject minimal required fields
+ * extracted from the content itself.
+ */
+export function ensurePlatformFrontmatter(content: string, platform: string, options: PublishOptions = {}): FrontmatterResult {
+  if (hasFrontmatter(content)) {
+    return { content, injected: false };
+  }
+
+  const injector = FRONTMATTER_INJECTORS[platform];
+  if (!injector) {
+    return { content, injected: false };
+  }
+
+  const fields = injector(content, options);
+  if (!fields) {
+    return { content, injected: false };
+  }
+
+  const fmLines = ['---', ...Object.entries(fields).map(([k, v]) => `${k}: ${v}`), '---', ''];
+  return {
+    content: fmLines.join('\n') + content,
+    injected: true,
+    fields,
+  };
 }
 
 /**
@@ -205,10 +271,11 @@ async function publishExternalFile(
     console.log(chalk.dim(`  Platforms: ${platformFilter.join(', ')}${options.track ? ' (tracked)' : ''}`));
   }
 
-  // Build content map: same content for all platforms
+  // Build content map: inject platform-specific frontmatter when missing
   const contentByPlatform: Record<string, string> = {};
   for (const platform of platformFilter) {
-    contentByPlatform[platform] = content;
+    const result = ensurePlatformFrontmatter(content, platform, options);
+    contentByPlatform[platform] = result.content;
   }
 
   // Validate
@@ -218,12 +285,13 @@ async function publishExternalFile(
       process.stdout.write(jsonSuccess('publish', { published: [], failed: [], skipped: [basename] }));
       return;
     }
-    console.log(chalk.red(`  \u274c Validation failed:`));
+    console.log(chalk.red(`  ❌ Validation failed:`));
     for (const [platform, result] of Object.entries(validation.results)) {
       if (!result.valid) {
         result.errors.forEach(err => console.log(chalk.red(`     ${platform}: ${err}`)));
       }
     }
+    console.log(chalk.yellow(`\n  💡 For full platform adaptation, use the pipeline: reach draft → reach adapt → reach publish`));
     return;
   }
 
