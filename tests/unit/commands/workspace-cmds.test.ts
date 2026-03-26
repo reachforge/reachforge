@@ -39,40 +39,29 @@ afterEach(async () => {
 });
 
 describe('initCommand', () => {
-  test('creates .reach/config.yaml in target directory', async () => {
+  test('creates workspace .reach/config.yaml when path given', async () => {
     await initCommand(tmpDir);
 
     expect(await fs.pathExists(path.join(tmpDir, '.reach', 'config.yaml'))).toBe(true);
     expect(await WorkspaceResolver.isWorkspace(tmpDir)).toBe(true);
   });
 
-  test('is idempotent — does not overwrite existing workspace', async () => {
+  test('workspace init is idempotent', async () => {
     await initCommand(tmpDir);
     await initCommand(tmpDir); // second call
 
     expect(await fs.pathExists(path.join(tmpDir, '.reach', 'config.yaml'))).toBe(true);
   });
 
-  test('copies .env.example as .env in new workspace', async () => {
-    await initCommand(tmpDir);
-
-    const envPath = path.join(tmpDir, '.env');
-    expect(await fs.pathExists(envPath)).toBe(true);
-
-    const content = await fs.readFile(envPath, 'utf-8');
-    const example = await fs.readFile(path.resolve(__dirname, '../../../.env.example'), 'utf-8');
-    expect(content).toBe(example);
-  });
-
-  test('does not overwrite existing .env', async () => {
-    const envPath = path.join(tmpDir, '.env');
-    await fs.ensureDir(tmpDir);
-    await fs.writeFile(envPath, 'DEVTO_API_KEY=my-real-key\n');
+  test('global config.yaml contains all config sections', async () => {
+    const globalConfigPath = path.join(fakeHome, '.reach', 'config.yaml');
 
     await initCommand(tmpDir);
 
-    const content = await fs.readFile(envPath, 'utf-8');
-    expect(content).toBe('DEVTO_API_KEY=my-real-key\n');
+    const content = await fs.readFile(globalConfigPath, 'utf-8');
+    expect(content).toContain('devto_api_key');
+    expect(content).toContain('llm_adapter');
+    expect(content).toContain('default_workspace');
   });
 
   test('creates target directory if it does not exist', async () => {
@@ -82,18 +71,28 @@ describe('initCommand', () => {
     expect(await fs.pathExists(path.join(newDir, '.reach', 'config.yaml'))).toBe(true);
   });
 
-  test('defaults to ~/reach-workspace when no path given', async () => {
-    const defaultDir = path.join(os.homedir(), DEFAULT_WORKSPACE_NAME);
-    const existed = await fs.pathExists(defaultDir);
+  test('no args creates default workspace and global config', async () => {
+    const globalConfigPath = path.join(fakeHome, '.reach', 'config.yaml');
+    const defaultWsPath = path.join(fakeHome, DEFAULT_WORKSPACE_NAME);
 
-    await initCommand(); // no args
+    await initCommand(); // no args → default workspace
 
-    expect(await fs.pathExists(path.join(defaultDir, '.reach', 'config.yaml'))).toBe(true);
+    // Global config created
+    expect(await fs.pathExists(globalConfigPath)).toBe(true);
+    // Default workspace created
+    expect(await fs.pathExists(path.join(defaultWsPath, '.reach', 'config.yaml'))).toBe(true);
+    expect(await WorkspaceResolver.isWorkspace(defaultWsPath)).toBe(true);
+  });
 
-    // Clean up only if we created it
-    if (!existed) {
-      await fs.remove(defaultDir);
-    }
+  test('workspace init auto-creates global config if missing', async () => {
+    const globalConfigPath = path.join(fakeHome, '.reach', 'config.yaml');
+
+    await initCommand(tmpDir);
+
+    // Global config should exist now
+    expect(await fs.pathExists(globalConfigPath)).toBe(true);
+    // Workspace config should also exist
+    expect(await fs.pathExists(path.join(tmpDir, '.reach', 'config.yaml'))).toBe(true);
   });
 });
 

@@ -48,5 +48,12 @@ export interface ReachforgeConfig {
   githubRepo?: string;
   githubDiscussionCategory?: string;
   llmModel?: string;
+  llmAdapter?: string;
+  draftAdapter?: string;
+  adaptAdapter?: string;
+  llmTimeout?: number;
+  claudeCommand?: string;
+  geminiCommand?: string;
+  codexCommand?: string;
   mcpAuthKey?: string;
 }

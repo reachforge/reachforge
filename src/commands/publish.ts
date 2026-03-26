@@ -11,12 +11,13 @@ import { AssetManager } from '../core/asset-manager.js';
 import { MediaManager } from '../utils/media.js';
 import { jsonSuccess } from '../core/json-output.js';
 import { parseArticleFilename, buildArticleFilename } from '../core/filename-parser.js';
+import { readProjectConfig } from '../core/project-config.js';
 import type { PlatformPublishStatus } from '../types/schemas.js';
 
 export interface PublishOptions {
   article?: string;
   platforms?: string;
-  skipTrack?: boolean;
+  track?: boolean;
   dryRun?: boolean;
   draft?: boolean;
   json?: boolean;
@@ -60,7 +61,7 @@ export function isExternalFile(article: string): boolean {
 async function publishContentToPlatforms(
   contentByPlatform: Record<string, string>,
   articleLabel: string,
-  engine: PipelineEngine,
+  projectDir: string | null,
   options: PublishOptions,
   jsonPublished: Array<{ article: string; platform: string; status: 'success'; url?: string }>,
   jsonFailed: Array<{ article: string; platform: string; status: 'failed'; error?: string }>,
@@ -68,12 +69,14 @@ async function publishContentToPlatforms(
 ): Promise<Record<string, { status: 'pending' | 'success' | 'failed'; url?: string; error?: string; published_at?: string }>> {
   const config = options.config || {};
   const loader = new ProviderLoader(config);
-  const assetManager = new AssetManager(engine.projectDir);
-  const mediaManager = new MediaManager(engine.projectDir);
 
-  // Resolve @assets/ references
-  for (const platform of Object.keys(contentByPlatform)) {
-    contentByPlatform[platform] = assetManager.resolveAssetReferences(contentByPlatform[platform]);
+  // Resolve @assets/ references (only when inside a project)
+  const mediaManager = projectDir ? new MediaManager(projectDir) : null;
+  if (projectDir) {
+    const assetManager = new AssetManager(projectDir);
+    for (const platform of Object.keys(contentByPlatform)) {
+      contentByPlatform[platform] = assetManager.resolveAssetReferences(contentByPlatform[platform]);
+    }
   }
 
   // Initialize platform statuses, preserving already-succeeded for resume
@@ -103,18 +106,20 @@ async function publishContentToPlatforms(
       }
     }
 
-    // Process media
+    // Process media (only when inside a project with asset support)
     let publishContent = content;
-    const credentials = getCredentialsForPlatform(platform, config);
-    try {
-      const mediaResult = await mediaManager.processMedia(
-        publishContent, engine.projectDir, platform, credentials, uploadCache,
-      );
-      publishContent = mediaResult.processedContent;
-      uploadCache = mediaResult.updatedCache;
-    } catch (mediaErr: unknown) {
-      const msg = mediaErr instanceof Error ? mediaErr.message : String(mediaErr);
-      if (!options.json) console.warn(chalk.yellow(`  \u26a0 Media processing warning for ${platform}: ${msg}`));
+    if (mediaManager && projectDir) {
+      const credentials = getCredentialsForPlatform(platform, config);
+      try {
+        const mediaResult = await mediaManager.processMedia(
+          publishContent, projectDir, platform, credentials, uploadCache,
+        );
+        publishContent = mediaResult.processedContent;
+        uploadCache = mediaResult.updatedCache;
+      } catch (mediaErr: unknown) {
+        const msg = mediaErr instanceof Error ? mediaErr.message : String(mediaErr);
+        if (!options.json) console.warn(chalk.yellow(`  \u26a0 Media processing warning for ${platform}: ${msg}`));
+      }
     }
 
     // Convert format
@@ -148,11 +153,11 @@ async function publishContentToPlatforms(
 
 /**
  * Publish an external file directly to specified platforms.
- * By default, copies to 06_sent and records in meta.yaml.
- * With --skip-track, sends without leaving any trace in the pipeline.
+ * By default, sends without pipeline tracking (no engine required).
+ * With --track, copies to 06_sent and records in meta.yaml (requires engine/project).
  */
 async function publishExternalFile(
-  engine: PipelineEngine,
+  engine: PipelineEngine | null,
   filePath: string,
   options: PublishOptions,
 ): Promise<void> {
@@ -164,11 +169,28 @@ async function publishExternalFile(
     );
   }
 
-  const platformFilter = parsePlatformFilter(options.platforms);
+  // Platform resolution: CLI --platforms > project.yaml platforms (if in project) > error
+  let platformFilter = parsePlatformFilter(options.platforms);
   if (!platformFilter || platformFilter.length === 0) {
+    const projectDir = engine?.projectDir;
+    const projConfig = projectDir ? await readProjectConfig(projectDir) : null;
+    if (projConfig?.platforms && projConfig.platforms.length > 0) {
+      platformFilter = projConfig.platforms;
+      if (!options.json) {
+        console.log(chalk.dim(`  Platforms auto-detected from project.yaml: ${platformFilter.join(', ')}`));
+      }
+    } else {
+      throw new ReachforgeError(
+        'No platforms specified',
+        'Use --platforms devto,hashnode' + (projectDir ? ' or set platforms in project.yaml' : ''),
+      );
+    }
+  }
+
+  if (options.track && !engine) {
     throw new ReachforgeError(
-      'External file publish requires --platforms',
-      'Specify target platforms: reach publish <file> --platforms devto,hashnode',
+      '--track requires a project context',
+      'Run from inside a project directory, or omit --track',
     );
   }
 
@@ -180,7 +202,7 @@ async function publishExternalFile(
 
   if (!options.json) {
     console.log(chalk.cyan(`\ud83d\udcc4 Publishing external file: ${resolvedPath}`));
-    console.log(chalk.dim(`  Platforms: ${platformFilter.join(', ')}${options.skipTrack ? ' (skip-track)' : ''}`));
+    console.log(chalk.dim(`  Platforms: ${platformFilter.join(', ')}${options.track ? ' (tracked)' : ''}`));
   }
 
   // Build content map: same content for all platforms
@@ -215,13 +237,13 @@ async function publishExternalFile(
   }
 
   const platformResults = await publishContentToPlatforms(
-    contentByPlatform, basename, engine, options, jsonPublished, jsonFailed,
+    contentByPlatform, basename, engine?.projectDir ?? null, options, jsonPublished, jsonFailed,
   );
 
   const anySuccess = Object.values(platformResults).some(p => p.status === 'success');
 
-  // Track in pipeline unless --skip-track
-  if (!options.skipTrack && anySuccess) {
+  // Track in pipeline only when --track is set (requires engine)
+  if (options.track && engine && anySuccess) {
     await engine.initPipeline();
 
     // Copy platform files to 06_sent
@@ -239,7 +261,7 @@ async function publishExternalFile(
 
     if (!options.json) console.log(chalk.green(`\u2705 Published and tracked: ${basename}`));
   } else if (anySuccess) {
-    if (!options.json) console.log(chalk.green(`\u2705 Published (skip-track): ${basename}`));
+    if (!options.json) console.log(chalk.green(`\u2705 Published: ${basename}`));
   } else {
     if (!options.json) console.log(chalk.red(`\u274c All platforms failed for "${basename}"`));
   }
@@ -262,10 +284,6 @@ async function publishPipelineArticle(
   options: PublishOptions,
 ): Promise<void> {
   await engine.initPipeline();
-
-  if (options.skipTrack && !options.json) {
-    console.log(chalk.yellow(`  \u26a0 --skip-track is ignored for pipeline articles (only applies to external files)`));
-  }
 
   const jsonPublished: Array<{ article: string; platform: string; status: 'success'; url?: string }> = [];
   const jsonFailed: Array<{ article: string; platform: string; status: 'failed'; error?: string }> = [];
@@ -369,7 +387,7 @@ async function publishPipelineArticle(
     // Read existing meta for resume support
     const articleMeta = await engine.metadata.readArticleMeta(articleName);
     const platformResults = await publishContentToPlatforms(
-      contentByPlatform, articleName, engine, options, jsonPublished, jsonFailed,
+      contentByPlatform, articleName, engine.projectDir, options, jsonPublished, jsonFailed,
       articleMeta?.platforms,
     );
 
@@ -537,7 +555,7 @@ async function publishAllDue(
 
       // 6. Publish via shared helper (handles assets, media, format, resume)
       const platformResults = await publishContentToPlatforms(
-        contentByPlatform, article, engine, options, jsonPublished, jsonFailed,
+        contentByPlatform, article, engine.projectDir, options, jsonPublished, jsonFailed,
         articleMeta?.platforms,
       );
 
@@ -581,15 +599,24 @@ async function publishAllDue(
  * Three modes:
  *   1. `reach publish` — publish all due articles in 05_scheduled
  *   2. `reach publish <article> [--platforms x,devto]` — publish a specific pipeline article
- *   3. `reach publish ./path/to/file.md --platforms devto [--skip-track]` — publish an external file
+ *   3. `reach publish ./path/to/file.md --platforms devto [--track]` — publish an external file
+ *
+ * External file mode: engine is optional (null when no project context).
+ * Default: send only. Use --track to record in pipeline (requires project).
  */
 export async function publishCommand(
-  engine: PipelineEngine,
+  engine: PipelineEngine | null,
   options: PublishOptions = {},
 ): Promise<void> {
   const { article } = options;
 
   if (!article) {
+    if (!engine) {
+      throw new ReachforgeError(
+        'No project context for batch publish',
+        'Specify an article or file: reach publish <article> or reach publish ./file.md --platforms devto',
+      );
+    }
     return publishAllDue(engine, options);
   }
 
@@ -597,5 +624,11 @@ export async function publishCommand(
     return publishExternalFile(engine, article, options);
   }
 
+  if (!engine) {
+    throw new ReachforgeError(
+      'No project context for pipeline publish',
+      'Run from inside a project directory, or use a file path: reach publish ./file.md --platforms devto',
+    );
+  }
   return publishPipelineArticle(engine, article, options);
 }

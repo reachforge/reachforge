@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as os from 'os';
 import fs from 'fs-extra';
-import { readProjectConfig, readWorkspaceConfig } from './project-config.js';
+import { readProjectConfig, readConfigFromDir } from './project-config.js';
 import type { ProjectConfig } from './project-config.js';
 import { WORKSPACE_CONFIG_DIR, WORKSPACE_CONFIG_FILE, PROJECT_CONFIG_FILE, DEFAULT_WORKSPACE_NAME } from './constants.js';
 
@@ -82,7 +82,7 @@ export class WorkspaceResolver {
     }
 
     // Step 4: global config default_workspace or ~/reach-workspace
-    const globalConfig = await readWorkspaceConfig(GLOBAL_CONFIG_DIR);
+    const globalConfig = await readConfigFromDir(GLOBAL_CONFIG_DIR);
     const defaultWsPath = globalConfig?.default_workspace
       ? path.resolve(globalConfig.default_workspace)
       : DEFAULT_WORKSPACE_DIR;

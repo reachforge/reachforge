@@ -1,0 +1,28 @@
+# ReachForge configuration
+# All settings are optional. Uncomment and fill in what you need.
+
+# default_workspace: ~/reach-workspace
+
+# === Platform API Keys ===
+# devto_api_key: your-key
+# postiz_api_key: your-key
+# hashnode_api_key: your-key
+# hashnode_publication_id: your-id
+# github_token: your-token
+# github_owner: your-user
+# github_repo: your-repo
+# github_discussion_category: General
+# gemini_api_key: your-key
+
+# === LLM Settings ===
+# llm_adapter: claude            # claude, gemini, codex
+# draft_adapter: gemini          # per-stage override
+# adapt_adapter: claude          # per-stage override
+# llm_model: gemini-pro
+# llm_timeout: 120
+# claude_command: claude
+# gemini_command: gemini
+# codex_command: codex
+
+# === MCP Server ===
+# mcp_auth_key: your-key

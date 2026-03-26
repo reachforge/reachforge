@@ -235,42 +235,50 @@ describe('publishCommand — single pipeline article', () => {
 });
 
 describe('publishCommand — external file', () => {
-  test('publishes external file and tracks in pipeline', async () => {
+  test('publishes external file without tracking by default', async () => {
     const extFile = path.join(tmpDir, 'external-post.md');
     await fs.writeFile(extFile, '# External Post\nContent here.');
 
-    // Use linkedin (no validator registered — passes by default)
+    // Default: no tracking — no 06_sent, no meta.yaml
     await publishCommand(engine, { article: extFile, platforms: 'linkedin' });
 
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'external-post.linkedin.md'))).toBe(false);
+    const meta = await engine.metadata.readArticleMeta('external-post');
+    expect(meta).toBeNull();
+  });
+
+  test('publishes external file with --track enables pipeline tracking', async () => {
+    const extFile = path.join(tmpDir, 'tracked-post.md');
+    await fs.writeFile(extFile, '# Tracked Post');
+
+    await publishCommand(engine, { article: extFile, platforms: 'linkedin', track: true });
+
     // Should be tracked in 06_sent
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'external-post.linkedin.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'tracked-post.linkedin.md'))).toBe(true);
 
     // Should have meta.yaml entry
-    const meta = await engine.metadata.readArticleMeta('external-post');
+    const meta = await engine.metadata.readArticleMeta('tracked-post');
     expect(meta?.status).toBe('published');
     expect(meta?.platforms?.linkedin?.status).toBe('success');
   });
 
-  test('publishes external file with --skip-track skips pipeline', async () => {
-    const extFile = path.join(tmpDir, 'notrack-post.md');
-    await fs.writeFile(extFile, '# No Track Post');
+  test('publishes external file without engine (no project context)', async () => {
+    const extFile = path.join(tmpDir, 'standalone-post.md');
+    await fs.writeFile(extFile, '# Standalone Post');
 
-    await publishCommand(engine, { article: extFile, platforms: 'linkedin', skipTrack: true });
+    // engine = null, no tracking
+    await publishCommand(null, { article: extFile, platforms: 'linkedin' });
 
-    // Should NOT be in 06_sent
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'notrack-post.linkedin.md'))).toBe(false);
-
-    // Should NOT have meta.yaml entry
-    const meta = await engine.metadata.readArticleMeta('notrack-post');
-    expect(meta).toBeNull();
+    // Should NOT crash, should NOT track
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'standalone-post.linkedin.md'))).toBe(false);
   });
 
-  test('throws when --platforms not provided for external file', async () => {
+  test('throws when --platforms not provided and no project.yaml', async () => {
     const extFile = path.join(tmpDir, 'no-platforms.md');
     await fs.writeFile(extFile, '# Post');
 
     await expect(publishCommand(engine, { article: extFile }))
-      .rejects.toThrow('requires --platforms');
+      .rejects.toThrow('No platforms specified');
   });
 
   test('throws when external file does not exist', async () => {

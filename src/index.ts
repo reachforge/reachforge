@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as os from 'os';
-import { Command } from 'commander';
+import fs from 'fs-extra';
+import { Command, Option } from 'commander';
 import * as readline from 'readline';
 import chalk from 'chalk';
 import { APCore } from 'apcore-js';
@@ -12,6 +13,7 @@ import { WorkspaceResolver } from './core/workspace.js';
 import type { WorkspaceContext } from './core/workspace.js';
 import { DEFAULT_WORKSPACE_NAME } from './core/constants.js';
 import { jsonError, errorToCode, errorToHint } from './core/json-output.js';
+import { configureGroupedHelp, buildFullReference } from './help.js';
 
 import { statusCommand } from './commands/status.js';
 import { draftCommand } from './commands/draft.js';
@@ -80,12 +82,33 @@ async function getEngine(): Promise<PipelineEngine> {
     );
   }
 
+  // Guard: if not in a workspace and not in a project (fallback cwd),
+  // prevent accidental pipeline creation in arbitrary directories
+  if (!ctx.isWorkspace && !ctx.projectName) {
+    const hasProjectConfig = await fs.pathExists(path.join(ctx.projectDir, 'project.yaml'));
+    const hasPipelineDirs = await fs.pathExists(path.join(ctx.projectDir, '01_inbox'));
+    if (!hasProjectConfig && !hasPipelineDirs) {
+      throw new Error(
+        'No workspace or project found in the current directory.\n'
+        + 'Get started:\n'
+        + '  reach init           Create a new workspace\n'
+        + '  reach new <name>     Create a project (inside a workspace)\n'
+        + '  reach go <prompt>    Then run from inside a project',
+      );
+    }
+  }
+
   return new PipelineEngine(ctx.projectDir);
 }
 
 async function getConfig() {
   const ctx = await getContext();
-  return ConfigManager.load(ctx.projectDir, ctx.workspaceRoot);
+  return ConfigManager.load(ctx.workspaceRoot);
+}
+
+/** Load config from env vars + global ~/.reach/ only (no project context needed). */
+async function getGlobalConfig() {
+  return ConfigManager.load();
 }
 
 // APCore registration for MCP/programmatic access
@@ -147,8 +170,14 @@ apcore.register('reach.schedule', {
 });
 apcore.register('reach.publish', {
   ...meta('reach.publish'),
-  execute: async (inputs?: { article?: string; platforms?: string; skipTrack?: boolean; dryRun?: boolean }) => {
-    const [engine, config] = await Promise.all([getEngine(), getConfig()]);
+  execute: async (inputs?: { article?: string; platforms?: string; track?: boolean; dryRun?: boolean }) => {
+    const { isExternalFile } = await import('./commands/publish.js');
+    const isExternal = inputs?.article && isExternalFile(inputs.article);
+    let engine: PipelineEngine | null = null;
+    if (!isExternal || inputs?.track) {
+      engine = await getEngine();
+    }
+    const config = await getConfig().catch(() => getGlobalConfig());
     await publishCommand(engine, { ...inputs, config: config.getConfig() });
   },
 });
@@ -204,11 +233,48 @@ program
   .version('ReachForge 0.2.0')
   .option('-w, --workspace <path>', 'Workspace root directory')
   .option('-P, --project <name>', 'Project name within workspace')
-  .option('--json', 'Output in JSON format');
+  .option('--json', 'Output in JSON format')
+  .addOption(new Option('--all', 'Show full command reference (use with --help)').hideHelp());
+
+configureGroupedHelp(program);
+
+// Intercept --help --all to show full reference
+program.on('option:all', () => {
+  // Deferred: will be checked after parse in the help hook
+});
+program.addHelpText('beforeAll', () => {
+  if (program.opts().all) {
+    console.log(buildFullReference(program));
+    process.exit(0);
+  }
+  return '';
+});
+
+// ── Quick Start ──────────────────────────────────────────
+
+program
+  .command('go <prompt>')
+  .description('One-shot: create, adapt, and publish content from a prompt (requires LLM config)')
+  .option('--name <name>', 'Explicit article name (default: auto-generated from prompt)')
+  .option('-s, --schedule <date>', 'Schedule for a future date (YYYY-MM-DD) instead of publishing immediately')
+  .option('-n, --dry-run', 'Run full pipeline but skip actual publishing')
+  .option('-d, --draft', 'Publish as draft on supported platforms')
+  .action(withErrorHandler(async (prompt: string, options: { name?: string; schedule?: string; dryRun?: boolean; draft?: boolean }) => {
+    const [engine, config] = await Promise.all([getEngine(), getConfig()]);
+    await goCommand(engine, prompt, { ...options, json: program.opts().json, config: config.getConfig() });
+  }, 'go'));
+
+program
+  .command('new <project-name>')
+  .description('Create a new project in the current workspace')
+  .action(withErrorHandler(async (projectName: string) => {
+    const ctx = await getContext();
+    await newProjectCommand(projectName, ctx, { json: program.opts().json });
+  }, 'new'));
 
 program
   .command('status [article]')
-  .description('Show pipeline dashboard, or detail for a specific article')
+  .description('Show pipeline dashboard or article detail')
   .option('-a, --all', 'Show status across all projects in workspace')
   .action(withErrorHandler(async (article: string | undefined, options: { all?: boolean }) => {
     const ctx = await getContext();
@@ -222,6 +288,28 @@ program
   }, 'status'));
 
 program
+  .command('publish [article]')
+  .description('Publish to platforms (all due, specific article, or external file)')
+  .option('-p, --platforms <list>', 'Comma-separated platform filter (e.g., devto,hashnode)')
+  .option('--track', 'Track external file in pipeline (copy to 06_sent, record in meta.yaml)')
+  .option('-n, --dry-run', 'Preview what would be published')
+  .option('-d, --draft', 'Publish as draft (overrides frontmatter published field)')
+  .action(withErrorHandler(async (article: string | undefined, options: { platforms?: string; track?: boolean; dryRun?: boolean; draft?: boolean }) => {
+    const { isExternalFile } = await import('./commands/publish.js');
+    const isExternal = article && isExternalFile(article);
+
+    // External file without --track: no engine needed, just config
+    let engine: PipelineEngine | null = null;
+    if (!isExternal || options.track) {
+      engine = await getEngine();
+    }
+    const config = await getConfig().catch(() => getGlobalConfig());
+    await publishCommand(engine, { article, ...options, json: program.opts().json, config: config.getConfig() });
+  }, 'publish'));
+
+// ── Pipeline Steps ───────────────────────────────────────
+
+program
   .command('draft <source>')
   .description('Generate an AI draft from an inbox source')
   .action(withErrorHandler(async (source: string) => {
@@ -231,15 +319,27 @@ program
 
 program
   .command('approve <article>')
-  .description('Promote a draft to master stage (02_drafts → 03_master)')
+  .description('Promote a draft to the master stage')
   .action(withErrorHandler(async (article: string) => {
     const engine = await getEngine();
     await approveCommand(engine, article, { json: program.opts().json });
   }, 'approve'));
 
 program
+  .command('refine <article>')
+  .description('Refine a draft or master article with AI feedback')
+  .option('-f, --feedback <text>', 'Non-interactive single refinement turn with the given feedback')
+  .action(withErrorHandler(async (article: string, options: { feedback?: string }) => {
+    const engine = await getEngine();
+    await refineCommand(engine, article, {
+      feedback: options.feedback,
+      json: program.opts().json,
+    });
+  }));
+
+program
   .command('adapt <article>')
-  .description('Generate multi-platform adapted versions from the master draft')
+  .description('Generate platform-specific versions from the master draft')
   .option('-p, --platforms <list>', 'Comma-separated platform list (e.g., x,devto,wechat)')
   .option('-f, --force', 'Overwrite existing platform versions')
   .action(withErrorHandler(async (article: string, options: { platforms?: string; force?: boolean }) => {
@@ -249,37 +349,13 @@ program
 
 program
   .command('schedule <article> [date]')
-  .description('Schedule an article for publishing (YYYY-MM-DD or YYYY-MM-DDTHH:MM, defaults to now)')
+  .description('Schedule an article for publishing (defaults to now)')
   .option('-n, --dry-run', 'Preview without moving files')
   .action(withErrorHandler(async (article: string, date: string | undefined, options: { dryRun?: boolean }) => {
     const engine = await getEngine();
     const resolvedDate = date || new Date().toISOString().split('T')[0];
     await scheduleCommand(engine, article, resolvedDate, { ...options, json: program.opts().json });
   }, 'schedule'));
-
-program
-  .command('publish [article]')
-  .description('Publish content to platforms. Without args: all due articles. With article name: specific pipeline article. With file path: external file (requires --platforms)')
-  .option('-p, --platforms <list>', 'Comma-separated platform filter (e.g., devto,hashnode)')
-  .option('--skip-track', 'Skip pipeline tracking for external files (no meta.yaml, no 06_sent copy)')
-  .option('-n, --dry-run', 'Preview what would be published')
-  .option('-d, --draft', 'Publish as draft (overrides frontmatter published field)')
-  .action(withErrorHandler(async (article: string | undefined, options: { platforms?: string; skipTrack?: boolean; dryRun?: boolean; draft?: boolean }) => {
-    const [engine, config] = await Promise.all([getEngine(), getConfig()]);
-    await publishCommand(engine, { article, ...options, json: program.opts().json, config: config.getConfig() });
-  }, 'publish'));
-
-program
-  .command('go <prompt>')
-  .description('Full auto: inbox → draft → approve → adapt → schedule → publish')
-  .option('--name <name>', 'Explicit article name (default: auto-generated from prompt)')
-  .option('-s, --schedule <date>', 'Schedule for a future date (YYYY-MM-DD) instead of publishing immediately')
-  .option('-n, --dry-run', 'Run full pipeline but skip actual publishing')
-  .option('-d, --draft', 'Publish as draft on supported platforms')
-  .action(withErrorHandler(async (prompt: string, options: { name?: string; schedule?: string; dryRun?: boolean; draft?: boolean }) => {
-    const [engine, config] = await Promise.all([getEngine(), getConfig()]);
-    await goCommand(engine, prompt, { ...options, json: program.opts().json, config: config.getConfig() });
-  }, 'go'));
 
 program
   .command('rollback <article>')
@@ -289,45 +365,14 @@ program
     await rollbackCommand(engine, article, { json: program.opts().json });
   }, 'rollback'));
 
-program
-  .command('watch')
-  .description('Start the reach daemon to watch for due content')
-  .option('-i, --interval <minutes>', 'Check interval in minutes (min: 1)', '60')
-  .option('-a, --all', 'Watch all projects in workspace')
-  .option('-l, --list', 'List running watch daemons')
-  .option('--stop [project]', 'Stop a running watch daemon')
-  .action(withErrorHandler(async (options: { interval?: string; all?: boolean; list?: boolean; stop?: string | true }) => {
-    const ctx = await getContext();
-    // Only create engine when needed (not for --list/--stop)
-    const engine = (options.list || options.stop !== undefined) ? null! : new PipelineEngine(ctx.projectDir);
-    await watchCommand(engine, options, ctx);
-  }));
+// ── System ───────────────────────────────────────────────
 
-program
-  .command('mcp')
-  .description('Launch reach as an MCP Server')
-  .option('-p, --port <number>', 'Port for SSE transport', '8000')
-  .option('-t, --transport <type>', 'Transport type (stdio, sse)', 'stdio')
-  .action(withErrorHandler(async (options: { port?: string; transport?: string }) => {
-    const engine = await getEngine();
-    await mcpCommand(engine, apcore, serve, options);
-  }));
-
-// Workspace management commands
 program
   .command('init [path]')
-  .description('Initialize a new reach workspace (default: ~/reach-workspace)')
+  .description('Initialize global config (~/.reach), or a workspace at <path>')
   .action(withErrorHandler(async (targetPath?: string) => {
     await initCommand(targetPath);
   }));
-
-program
-  .command('new <project-name>')
-  .description('Create a new project in the current workspace')
-  .action(withErrorHandler(async (projectName: string) => {
-    const ctx = await getContext();
-    await newProjectCommand(projectName, ctx, { json: program.opts().json });
-  }, 'new'));
 
 program
   .command('workspace')
@@ -338,15 +383,17 @@ program
   }));
 
 program
-  .command('refine <article>')
-  .description('Interactively refine a draft article with AI feedback')
-  .option('-f, --feedback <text>', 'Non-interactive single refinement turn with the given feedback')
-  .action(withErrorHandler(async (article: string, options: { feedback?: string }) => {
-    const engine = await getEngine();
-    await refineCommand(engine, article, {
-      feedback: options.feedback,
-      json: program.opts().json,
-    });
+  .command('watch')
+  .description('Start daemon to auto-publish due content')
+  .option('-i, --interval <minutes>', 'Check interval in minutes (min: 1)', '60')
+  .option('-a, --all', 'Watch all projects in workspace')
+  .option('-l, --list', 'List running watch daemons')
+  .option('--stop [project]', 'Stop a running watch daemon')
+  .action(withErrorHandler(async (options: { interval?: string; all?: boolean; list?: boolean; stop?: string | true }) => {
+    const ctx = await getContext();
+    // Only create engine when needed (not for --list/--stop)
+    const engine = (options.list || options.stop !== undefined) ? null! : new PipelineEngine(ctx.projectDir);
+    await watchCommand(engine, options, ctx);
   }));
 
 program
@@ -380,6 +427,16 @@ assetCmd
     const ctx = await getContext();
     await assetListCommand(ctx.projectDir, { ...options, json: program.opts().json });
   }, 'asset.list'));
+
+program
+  .command('mcp')
+  .description('Launch reach as an MCP Server (AI agent integration)')
+  .option('-p, --port <number>', 'Port for SSE transport', '8000')
+  .option('-t, --transport <type>', 'Transport type (stdio, sse)', 'stdio')
+  .action(withErrorHandler(async (options: { port?: string; transport?: string }) => {
+    const engine = await getEngine();
+    await mcpCommand(engine, apcore, serve, options);
+  }));
 
 // Default action: when no command is given, check for workspace or show help
 program.action(withErrorHandler(async () => {

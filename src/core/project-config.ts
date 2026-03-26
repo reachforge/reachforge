@@ -23,7 +23,31 @@ export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
 
 export const WorkspaceConfigSchema = z.object({
   default_workspace: z.string().optional(),
-  credentials: z.record(z.string(), z.string()).optional(),
+
+  // Platform API keys
+  devto_api_key: z.string().optional(),
+  postiz_api_key: z.string().optional(),
+  hashnode_api_key: z.string().optional(),
+  hashnode_publication_id: z.string().optional(),
+  github_token: z.string().optional(),
+  github_owner: z.string().optional(),
+  github_repo: z.string().optional(),
+  github_discussion_category: z.string().optional(),
+  gemini_api_key: z.string().optional(),
+
+  // LLM settings
+  llm_adapter: z.string().optional(),
+  draft_adapter: z.string().optional(),
+  adapt_adapter: z.string().optional(),
+  llm_model: z.string().optional(),
+  llm_timeout: z.coerce.number().optional(),
+  claude_command: z.string().optional(),
+  gemini_command: z.string().optional(),
+  codex_command: z.string().optional(),
+
+  // MCP
+  mcp_auth_key: z.string().optional(),
+
 });
 
 export type WorkspaceConfig = z.infer<typeof WorkspaceConfigSchema>;
@@ -49,8 +73,25 @@ export async function writeProjectConfig(projectDir: string, config: Partial<Pro
   await fs.writeFile(filePath, yaml.dump(full, { lineWidth: -1 }));
 }
 
+/**
+ * Read workspace config from {workspaceRoot}/.reach/config.yaml.
+ * Use for workspace-level config where workspaceRoot is the workspace directory.
+ */
 export async function readWorkspaceConfig(workspaceRoot: string): Promise<WorkspaceConfig | null> {
   const filePath = path.join(workspaceRoot, WORKSPACE_CONFIG_DIR, WORKSPACE_CONFIG_FILE);
+  return readConfigFile(filePath);
+}
+
+/**
+ * Read config from a directory that already IS the .reach dir (e.g. ~/.reach/).
+ * Use for global config where the dir already contains config.yaml directly.
+ */
+export async function readConfigFromDir(configDir: string): Promise<WorkspaceConfig | null> {
+  const filePath = path.join(configDir, WORKSPACE_CONFIG_FILE);
+  return readConfigFile(filePath);
+}
+
+async function readConfigFile(filePath: string): Promise<WorkspaceConfig | null> {
   if (!await fs.pathExists(filePath)) return null;
 
   try {
@@ -66,5 +107,13 @@ export async function readWorkspaceConfig(workspaceRoot: string): Promise<Worksp
 export async function writeWorkspaceConfig(workspaceRoot: string, config: WorkspaceConfig): Promise<void> {
   const configDir = path.join(workspaceRoot, WORKSPACE_CONFIG_DIR);
   await fs.ensureDir(configDir);
-  await fs.writeFile(path.join(configDir, 'config.yaml'), yaml.dump(config, { lineWidth: -1 }));
+  await fs.writeFile(path.join(configDir, WORKSPACE_CONFIG_FILE), yaml.dump(config, { lineWidth: -1 }));
+}
+
+/**
+ * Write config directly into a directory that IS the config dir (e.g. ~/.reach/).
+ */
+export async function writeConfigToDir(configDir: string, config: WorkspaceConfig): Promise<void> {
+  await fs.ensureDir(configDir);
+  await fs.writeFile(path.join(configDir, WORKSPACE_CONFIG_FILE), yaml.dump(config, { lineWidth: -1 }));
 }

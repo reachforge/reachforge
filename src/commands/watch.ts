@@ -106,7 +106,7 @@ async function startProjectWatch(
 
   // Load config for publish (#3)
   const config = context
-    ? (await ConfigManager.load(context.projectDir, context.workspaceRoot)).getConfig()
+    ? (await ConfigManager.load(context.workspaceRoot)).getConfig()
     : undefined;
 
   // Register PID file
@@ -187,7 +187,7 @@ async function startWorkspaceWatch(
         const projDir = path.join(workspaceRoot, proj.name);
         const projEngine = new PipelineEngine(projDir);
         // Load config per-project so each project gets its own credentials (#3)
-        const projConfig = (await ConfigManager.load(projDir, workspaceRoot)).getConfig();
+        const projConfig = (await ConfigManager.load(workspaceRoot)).getConfig();
         await publishCommand(projEngine, { config: projConfig });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);

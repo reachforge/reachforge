@@ -29,7 +29,7 @@ export const ScheduleToolSchema = z.object({
 export const PublishToolSchema = z.object({
   article: z.string().optional().describe('Article name (pipeline) or file path (external). Omit to publish all due articles'),
   platforms: z.string().optional().describe('Comma-separated platform filter (e.g., "devto,hashnode"). Required for external files'),
-  skipTrack: z.boolean().optional().describe('If true, skip pipeline tracking for external files (no meta.yaml, no 06_sent copy)'),
+  track: z.boolean().optional().describe('If true, track external file in pipeline (copy to 06_sent, record in meta.yaml). Requires project context'),
   dryRun: z.boolean().optional().describe('If true, preview what would be published without actually sending to platforms'),
 });
 
@@ -101,7 +101,7 @@ export const TOOL_METADATA: Record<string, { description: string; inputSchema: R
     inputSchema: jsonSchema(ScheduleToolSchema),
   },
   'reach.publish': {
-    description: 'Publish content to platforms. Three modes: (1) no article — publish all due articles from 05_scheduled; (2) article name — publish a specific pipeline article with optional platform filter; (3) file path — publish an external file directly (requires platforms param). Use noTrack to skip pipeline tracking for external files.',
+    description: 'Publish content to platforms. Three modes: (1) no article — publish all due articles from 05_scheduled; (2) article name — publish a specific pipeline article with optional platform filter; (3) file path — publish an external file directly (requires platforms param). External files are sent without pipeline tracking by default; use track=true to record in meta.yaml.',
     inputSchema: jsonSchema(PublishToolSchema),
   },
   'reach.go': {
