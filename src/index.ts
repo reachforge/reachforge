@@ -147,9 +147,9 @@ apcore.register('reach.schedule', {
 });
 apcore.register('reach.publish', {
   ...meta('reach.publish'),
-  execute: async () => {
+  execute: async (inputs?: { article?: string; platforms?: string; skipTrack?: boolean; dryRun?: boolean }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
-    await publishCommand(engine, { config: config.getConfig() });
+    await publishCommand(engine, { ...inputs, config: config.getConfig() });
   },
 });
 apcore.register('reach.go', {
@@ -258,13 +258,15 @@ program
   }, 'schedule'));
 
 program
-  .command('publish')
-  .description('Publish all scheduled content due for today')
+  .command('publish [article]')
+  .description('Publish content to platforms. Without args: all due articles. With article name: specific pipeline article. With file path: external file (requires --platforms)')
+  .option('-p, --platforms <list>', 'Comma-separated platform filter (e.g., devto,hashnode)')
+  .option('--skip-track', 'Skip pipeline tracking for external files (no meta.yaml, no 06_sent copy)')
   .option('-n, --dry-run', 'Preview what would be published')
   .option('-d, --draft', 'Publish as draft (overrides frontmatter published field)')
-  .action(withErrorHandler(async (options: { dryRun?: boolean; draft?: boolean }) => {
+  .action(withErrorHandler(async (article: string | undefined, options: { platforms?: string; skipTrack?: boolean; dryRun?: boolean; draft?: boolean }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
-    await publishCommand(engine, { ...options, json: program.opts().json, config: config.getConfig() });
+    await publishCommand(engine, { article, ...options, json: program.opts().json, config: config.getConfig() });
   }, 'publish'));
 
 program

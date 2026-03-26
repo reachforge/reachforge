@@ -7,7 +7,7 @@ import { PipelineEngine } from '../../../src/core/pipeline.js';
 import { draftCommand } from '../../../src/commands/draft.js';
 import { adaptCommand } from '../../../src/commands/adapt.js';
 import { scheduleCommand } from '../../../src/commands/schedule.js';
-import { publishCommand } from '../../../src/commands/publish.js';
+import { publishCommand, isExternalFile, parsePlatformFilter } from '../../../src/commands/publish.js';
 import { rollbackCommand } from '../../../src/commands/rollback.js';
 import { approveCommand } from '../../../src/commands/approve.js';
 
@@ -189,6 +189,148 @@ describe('publishCommand', () => {
     // Should remain in scheduled (validation blocked it)
     expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'invalid-content.x.md'))).toBe(true);
     expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'invalid-content.x.md'))).toBe(false);
+  });
+});
+
+describe('publishCommand — single pipeline article', () => {
+  test('publishes a specific article by name', async () => {
+    const today = new Date().toISOString().split('T')[0];
+    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'specific.x.md'), 'thread');
+    await engine.metadata.writeArticleMeta('specific', {
+      status: 'scheduled',
+      schedule: today,
+    });
+
+    await publishCommand(engine, { article: 'specific' });
+
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'specific.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'specific.x.md'))).toBe(false);
+  });
+
+  test('filters platforms when --platforms is set', async () => {
+    const today = new Date().toISOString().split('T')[0];
+    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'multi.x.md'), 'thread');
+    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'multi.devto.md'), '---\ntitle: DevTo Article\n---\n# DevTo Article');
+    await engine.metadata.writeArticleMeta('multi', {
+      status: 'scheduled',
+      schedule: today,
+    });
+
+    // Only publish devto
+    await publishCommand(engine, { article: 'multi', platforms: 'devto' });
+
+    // Partial publish: should NOT move to 06_sent (x not done)
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'multi.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'multi.devto.md'))).toBe(true);
+
+    // Meta should show devto published
+    const meta = await engine.metadata.readArticleMeta('multi');
+    expect(meta?.platforms?.devto?.status).toBe('success');
+  });
+
+  test('throws when article not in 05_scheduled', async () => {
+    await expect(publishCommand(engine, { article: 'nonexistent' }))
+      .rejects.toThrow('not found in 05_scheduled');
+  });
+});
+
+describe('publishCommand — external file', () => {
+  test('publishes external file and tracks in pipeline', async () => {
+    const extFile = path.join(tmpDir, 'external-post.md');
+    await fs.writeFile(extFile, '# External Post\nContent here.');
+
+    // Use linkedin (no validator registered — passes by default)
+    await publishCommand(engine, { article: extFile, platforms: 'linkedin' });
+
+    // Should be tracked in 06_sent
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'external-post.linkedin.md'))).toBe(true);
+
+    // Should have meta.yaml entry
+    const meta = await engine.metadata.readArticleMeta('external-post');
+    expect(meta?.status).toBe('published');
+    expect(meta?.platforms?.linkedin?.status).toBe('success');
+  });
+
+  test('publishes external file with --skip-track skips pipeline', async () => {
+    const extFile = path.join(tmpDir, 'notrack-post.md');
+    await fs.writeFile(extFile, '# No Track Post');
+
+    await publishCommand(engine, { article: extFile, platforms: 'linkedin', skipTrack: true });
+
+    // Should NOT be in 06_sent
+    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'notrack-post.linkedin.md'))).toBe(false);
+
+    // Should NOT have meta.yaml entry
+    const meta = await engine.metadata.readArticleMeta('notrack-post');
+    expect(meta).toBeNull();
+  });
+
+  test('throws when --platforms not provided for external file', async () => {
+    const extFile = path.join(tmpDir, 'no-platforms.md');
+    await fs.writeFile(extFile, '# Post');
+
+    await expect(publishCommand(engine, { article: extFile }))
+      .rejects.toThrow('requires --platforms');
+  });
+
+  test('throws when external file does not exist', async () => {
+    const fakePath = path.join(tmpDir, 'subdir', 'nope.md');
+    await expect(publishCommand(engine, { article: fakePath, platforms: 'linkedin' }))
+      .rejects.toThrow('File not found');
+  });
+});
+
+describe('publishCommand — batch with --platforms filter', () => {
+  test('batch mode filters platforms', async () => {
+    const today = new Date().toISOString().split('T')[0];
+    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'batch-filter.x.md'), 'thread');
+    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'batch-filter.devto.md'), '# DevTo');
+    await engine.metadata.writeArticleMeta('batch-filter', {
+      status: 'scheduled',
+      schedule: today,
+    });
+
+    await publishCommand(engine, { platforms: 'x' });
+
+    // Only x should be published, devto skipped
+    const meta = await engine.metadata.readArticleMeta('batch-filter');
+    expect(meta?.platforms?.x?.status).toBe('success');
+    expect(meta?.platforms?.devto).toBeUndefined();
+  });
+});
+
+describe('isExternalFile', () => {
+  test('absolute path is external', () => {
+    expect(isExternalFile('/home/user/post.md')).toBe(true);
+  });
+
+  test('relative path with slash is external', () => {
+    expect(isExternalFile('./my-post.md')).toBe(true);
+    expect(isExternalFile('../post.md')).toBe(true);
+    expect(isExternalFile('subdir/post.md')).toBe(true);
+  });
+
+  test('plain name is not external', () => {
+    expect(isExternalFile('my-article')).toBe(false);
+    expect(isExternalFile('my-article.md')).toBe(false);
+  });
+});
+
+describe('parsePlatformFilter', () => {
+  test('returns null for undefined', () => {
+    expect(parsePlatformFilter(undefined)).toBeNull();
+  });
+
+  test('splits comma-separated platforms', () => {
+    expect(parsePlatformFilter('devto,hashnode')).toEqual(['devto', 'hashnode']);
+  });
+
+  test('trims whitespace', () => {
+    expect(parsePlatformFilter('devto , hashnode')).toEqual(['devto', 'hashnode']);
+  });
+
+  test('filters empty strings', () => {
+    expect(parsePlatformFilter('devto,,hashnode')).toEqual(['devto', 'hashnode']);
   });
 });
 
