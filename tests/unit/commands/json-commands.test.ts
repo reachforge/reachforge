@@ -30,8 +30,8 @@ afterEach(async () => {
 
 describe('statusCommand --json', () => {
   test('outputs valid JSON envelope', async () => {
-    // Flat file in inbox
-    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-1.md'), 'raw');
+    // Flat file in drafts
+    await fs.writeFile(path.join(tmpDir, '01_drafts', 'idea-1.md'), 'raw');
     await statusCommand(engine, { json: true });
     const result = JSON.parse(jsonOutput);
     expect(result.jsonVersion).toBe(1);
@@ -40,38 +40,35 @@ describe('statusCommand --json', () => {
   });
 
   test('includes project stages with counts', async () => {
-    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-1.md'), 'raw');
-    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-2.md'), 'raw');
-    await fs.writeFile(path.join(tmpDir, '02_drafts', 'draft-1.md'), 'draft');
+    await fs.writeFile(path.join(tmpDir, '01_drafts', 'idea-1.md'), 'raw');
+    await fs.writeFile(path.join(tmpDir, '01_drafts', 'idea-2.md'), 'raw');
+    await fs.writeFile(path.join(tmpDir, '01_drafts', 'draft-1.md'), 'draft');
 
     await statusCommand(engine, { json: true });
     const result = JSON.parse(jsonOutput);
     const stages = result.data.stages;
 
-    expect(stages['01_inbox'].count).toBe(2);
-    expect(stages['01_inbox'].items).toEqual(expect.arrayContaining(['idea-1', 'idea-2']));
-    expect(stages['02_drafts'].count).toBe(1);
-    expect(stages['03_master'].count).toBe(0);
-    expect(stages['04_adapted'].count).toBe(0);
-    expect(stages['05_scheduled'].count).toBe(0);
-    expect(stages['06_sent'].count).toBe(0);
+    expect(stages['01_drafts'].count).toBe(3);
+    expect(stages['01_drafts'].items).toEqual(expect.arrayContaining(['idea-1', 'idea-2', 'draft-1']));
+    expect(stages['02_adapted'].count).toBe(0);
+    expect(stages['03_published'].count).toBe(0);
   });
 
-  test('parses scheduled items as article names', async () => {
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'my-article.x.md'), 'content');
+  test('parses adapted items as article names', async () => {
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'my-article.x.md'), 'content');
     await engine.metadata.writeArticleMeta('my-article', {
       status: 'scheduled',
       schedule: '2026-03-25T00:00',
     });
     await statusCommand(engine, { json: true });
     const result = JSON.parse(jsonOutput);
-    const scheduled = result.data.stages['05_scheduled'];
-    expect(scheduled.count).toBe(1);
-    expect(scheduled.items[0]).toBe('my-article');
+    const adapted = result.data.stages['02_adapted'];
+    expect(adapted.count).toBe(1);
+    expect(adapted.items[0]).toBe('my-article');
   });
 
   test('includes dueToday', async () => {
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'urgent-post.x.md'), 'content');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'urgent-post.x.md'), 'content');
     await engine.metadata.writeArticleMeta('urgent-post', {
       status: 'scheduled',
       schedule: '2020-01-01',
@@ -86,7 +83,7 @@ describe('statusCommand --json', () => {
 describe('scheduleCommand --json', () => {
   test('outputs JSON', async () => {
     // Create adapted platform file (flat file)
-    await fs.writeFile(path.join(tmpDir, '04_adapted', 'my-article.x.md'), 'content');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'my-article.x.md'), 'content');
     await engine.metadata.writeArticleMeta('my-article', { status: 'adapted' });
 
     await scheduleCommand(engine, 'my-article', '2026-04-01', { json: true });
@@ -95,12 +92,13 @@ describe('scheduleCommand --json', () => {
     expect(result.command).toBe('schedule');
     expect(result.success).toBe(true);
     expect(result.data.article).toBe('my-article');
-    expect(result.data.date).toBe('2026-04-01T00-00-00');
-    expect(result.data.stage).toBe('05_scheduled');
+    expect(result.data.date).toBe('2026-04-01T00:00:00');
+    expect(result.data.stage).toBe('02_adapted');
   });
 
   test('dry-run outputs JSON', async () => {
-    await fs.writeFile(path.join(tmpDir, '04_adapted', 'my-article.x.md'), 'content');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'my-article.x.md'), 'content');
+    await engine.metadata.writeArticleMeta('my-article', { status: 'adapted' });
 
     await scheduleCommand(engine, 'my-article', '2026-04-01', { dryRun: true, json: true });
     const result = JSON.parse(jsonOutput);
@@ -108,15 +106,15 @@ describe('scheduleCommand --json', () => {
     expect(result.command).toBe('schedule');
     expect(result.success).toBe(true);
     expect(result.data.article).toBe('my-article');
-    expect(result.data.date).toBe('2026-04-01T00-00-00');
+    expect(result.data.date).toBe('2026-04-01T00:00:00');
   });
 });
 
 describe('rollbackCommand --json', () => {
   test('outputs JSON', async () => {
-    // Flat file in 02_drafts
-    await fs.writeFile(path.join(tmpDir, '02_drafts', 'my-article.md'), 'draft content');
-    await engine.metadata.writeArticleMeta('my-article', { status: 'drafted' });
+    // Flat file in 02_adapted
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'my-article.x.md'), 'adapted content');
+    await engine.metadata.writeArticleMeta('my-article', { status: 'adapted' });
 
     await rollbackCommand(engine, 'my-article', { json: true });
     const result = JSON.parse(jsonOutput);
@@ -124,8 +122,8 @@ describe('rollbackCommand --json', () => {
     expect(result.command).toBe('rollback');
     expect(result.success).toBe(true);
     expect(result.data.article).toBe('my-article');
-    expect(result.data.from).toBe('02_drafts');
-    expect(result.data.to).toBe('01_inbox');
+    expect(result.data.from).toBe('02_adapted');
+    expect(result.data.to).toBe('01_drafts');
     expect(result.data.timestamp).toBeDefined();
   });
 });

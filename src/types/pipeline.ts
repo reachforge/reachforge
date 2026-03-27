@@ -1,9 +1,8 @@
 export type PipelineStage =
-  | '01_inbox' | '02_drafts' | '03_master'
-  | '04_adapted' | '05_scheduled' | '06_sent';
+  | '01_drafts' | '02_adapted' | '03_published';
 
 export type ProjectStatus =
-  | 'inbox' | 'drafted' | 'master' | 'adapted' | 'scheduled' | 'published' | 'failed';
+  | 'drafted' | 'adapted' | 'scheduled' | 'published' | 'failed';
 
 export interface StageTransition {
   from: PipelineStage;

@@ -11,6 +11,7 @@ export class PostizProvider implements PlatformProvider {
   readonly name = 'X/Twitter (via Postiz)';
   readonly platforms = ['x'];
   readonly contentFormat: ContentFormat = 'plaintext';
+  readonly language = 'auto';
 
   constructor(private readonly apiKey: string) {}
 

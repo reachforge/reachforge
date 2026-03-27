@@ -105,57 +105,54 @@ afterEach(async () => {
 });
 
 describe('goCommand', () => {
-  test('immediate mode: full pipeline reaches schedule or sent', async () => {
+  test('immediate mode: full pipeline reaches adapted or published', async () => {
     await goCommand(engine, 'write about apcore');
 
     const slug = 'write-about-apcore';
 
-    // Content should have passed through all stages up to at least 05_scheduled
-    // It may stay in 05_scheduled if platform validation blocks publish (e.g. X 280-char limit)
-    // or move to 06_sent if all validations pass (mock content is short)
-    const scheduled = await engine.listArticles('05_scheduled');
-    const sent = await engine.listArticles('06_sent');
-    expect(scheduled.length + sent.length).toBe(1);
+    // Content should have passed through all 3 stages up to at least 02_adapted
+    // It may stay in 02_adapted if platform validation blocks publish (e.g. X 280-char limit)
+    // or move to 03_published if all validations pass (mock content is short)
+    const adapted = await engine.listArticles('02_adapted');
+    const published = await engine.listArticles('03_published');
+    expect(adapted.length + published.length).toBe(1);
 
-    // inbox stays (source material), drafts cleared (approved -> master), master stays (source of truth)
-    expect(await engine.listArticles('01_inbox')).toContain(slug);
-    expect(await engine.listArticles('02_drafts')).toEqual([]);
-    expect(await engine.listArticles('03_master')).toContain(slug);
-    expect(await engine.listArticles('04_adapted')).toEqual([]);
+    // Draft stays in 01_drafts (source of truth), adapted cleared on successful publish
+    expect(await engine.listArticles('01_drafts')).toContain(slug);
   });
 
-  test('schedule mode: stops at 05_scheduled, does not publish', async () => {
+  test('schedule mode: stays in 02_adapted, does not publish', async () => {
     await goCommand(engine, 'write about apcore', { schedule: '2099-12-31' });
 
     const slug = 'write-about-apcore';
 
-    // Should be in scheduled, NOT sent
-    const scheduled = await engine.listArticles('05_scheduled');
-    expect(scheduled.length).toBe(1);
-    expect(scheduled[0]).toBe(slug);
+    // Should be in adapted with scheduled metadata, NOT published
+    const adapted = await engine.listArticles('02_adapted');
+    expect(adapted.length).toBe(1);
+    expect(adapted[0]).toBe(slug);
 
-    const sent = await engine.listArticles('06_sent');
-    expect(sent).toEqual([]);
+    const published = await engine.listArticles('03_published');
+    expect(published).toEqual([]);
   });
 
   test('schedule mode with time: stores normalized date in meta', async () => {
     await goCommand(engine, 'time test', { schedule: '2099-12-31T14:30' });
 
-    const scheduled = await engine.listArticles('05_scheduled');
-    expect(scheduled.length).toBe(1);
-    expect(scheduled[0]).toBe('time-test');
+    const adapted = await engine.listArticles('02_adapted');
+    expect(adapted.length).toBe(1);
+    expect(adapted[0]).toBe('time-test');
 
     // Date stored in meta.yaml, not directory name
     const meta = await engine.metadata.readArticleMeta('time-test');
-    expect(meta?.schedule).toBe('2099-12-31T14-30-00');
+    expect(meta?.schedule).toBe('2099-12-31T14:30:00');
   });
 
   test('--dry-run passes through to publish', async () => {
     await goCommand(engine, 'dry run test', { dryRun: true });
 
-    // With dry-run, content stays in scheduled (publish previewed but not executed)
-    const scheduled = await engine.listArticles('05_scheduled');
-    expect(scheduled.length).toBe(1);
+    // With dry-run, content stays in 02_adapted (publish previewed but not executed)
+    const adapted = await engine.listArticles('02_adapted');
+    expect(adapted.length).toBe(1);
   });
 
   test('invalid schedule date throws', async () => {
@@ -171,12 +168,8 @@ describe('goCommand', () => {
       goCommand(engine, 'fail test'),
     ).rejects.toThrow('API down');
 
-    // Inbox item should exist (step 1 succeeded)
-    const inbox = await engine.listArticles('01_inbox');
-    expect(inbox).toContain('fail-test');
-
-    // Draft should NOT exist (step 2 failed)
-    const drafts = await engine.listArticles('02_drafts');
+    // Draft should NOT exist (step 1 failed)
+    const drafts = await engine.listArticles('01_drafts');
     expect(drafts).toEqual([]);
   });
 

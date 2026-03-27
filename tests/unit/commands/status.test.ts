@@ -31,20 +31,17 @@ describe('statusCommand', () => {
     expect(output).toContain('Dashboard');
   });
 
-  test('shows all 6 stages', async () => {
+  test('shows all 3 stages', async () => {
     await statusCommand(engine);
     const output = logOutput.join('\n');
-    expect(output).toContain('01_inbox');
-    expect(output).toContain('02_drafts');
-    expect(output).toContain('03_master');
-    expect(output).toContain('04_adapted');
-    expect(output).toContain('05_scheduled');
-    expect(output).toContain('06_sent');
+    expect(output).toContain('01_drafts');
+    expect(output).toContain('02_adapted');
+    expect(output).toContain('03_published');
   });
 
   test('shows item counts', async () => {
-    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-1.md'), 'raw');
-    await fs.writeFile(path.join(tmpDir, '01_inbox', 'idea-2.md'), 'raw');
+    await fs.writeFile(path.join(tmpDir, '01_drafts', 'idea-1.md'), 'raw');
+    await fs.writeFile(path.join(tmpDir, '01_drafts', 'idea-2.md'), 'raw');
 
     await statusCommand(engine);
     const output = logOutput.join('\n');
@@ -54,7 +51,7 @@ describe('statusCommand', () => {
   });
 
   test('shows due today items', async () => {
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'urgent-post.x.md'), 'content');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'urgent-post.x.md'), 'content');
     await engine.metadata.writeArticleMeta('urgent-post', {
       status: 'scheduled',
       schedule: '2020-01-01',
@@ -72,6 +69,6 @@ describe('statusCommand', () => {
     // All stages should show 0
     const zeroMatches = output.match(/0/g);
     expect(zeroMatches).not.toBeNull();
-    expect(zeroMatches!.length).toBeGreaterThanOrEqual(6);
+    expect(zeroMatches!.length).toBeGreaterThanOrEqual(3);
   });
 });

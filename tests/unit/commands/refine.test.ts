@@ -52,13 +52,9 @@ afterEach(async () => {
   await fs.remove(tmpDir);
 });
 
-// Flat file helpers: 02_drafts/{name}.md and 03_master/{name}.md
+// Flat file helpers: 01_drafts/{name}.md
 async function createDraft(name: string, content: string = '# Draft\n\nContent here.') {
-  await engine.writeArticleFile('02_drafts', name, content);
-}
-
-async function createMaster(name: string, content: string = '# Master\n\nMaster content.') {
-  await engine.writeArticleFile('03_master', name, content);
+  await engine.writeArticleFile('01_drafts', name, content);
 }
 
 function successResult(content: string): any {
@@ -139,26 +135,19 @@ describe('printContentPreview', () => {
 // --- T02: Article lookup + session ---
 
 describe('refineCommand article lookup', () => {
-  test('throws when article doesn\'t exist in drafts or master', async () => {
+  test('throws when article doesn\'t exist in drafts', async () => {
     await expect(
       refineCommand(engine, 'nonexistent', { inputLines: ['/quit'] }),
-    ).rejects.toThrow('not found in 02_drafts or 03_master');
+    ).rejects.toThrow('not found in 01_drafts');
   });
 
-  test('locates article in 02_drafts when it exists there', async () => {
+  test('locates article in 01_drafts when it exists there', async () => {
     await createDraft('my-art');
     mockExecute.mockResolvedValue(successResult('Revised draft'));
     await refineCommand(engine, 'my-art', { inputLines: ['/save'] });
-    // Should save to 02_drafts/my-art.md (flat file)
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'my-art.md'), 'utf-8');
+    // Should save to 01_drafts/my-art.md (flat file)
+    const saved = await fs.readFile(path.join(tmpDir, '01_drafts', 'my-art.md'), 'utf-8');
     expect(saved).toContain('Draft');
-  });
-
-  test('locates article in 03_master when not in 02_drafts', async () => {
-    await createMaster('my-art');
-    await refineCommand(engine, 'my-art', { inputLines: ['/save'] });
-    const saved = await fs.readFile(path.join(tmpDir, '03_master', 'my-art.md'), 'utf-8');
-    expect(saved).toContain('Master');
   });
 
   test('starts new session when no session file exists', async () => {
@@ -178,14 +167,14 @@ describe('refineCommand slash commands', () => {
     mockExecute.mockResolvedValue(successResult('Better content'));
     // Send feedback then save
     await refineCommand(engine, 'art', { inputLines: ['improve it'] });
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '01_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Better content');
   });
 
   test('/quit command exits without writing', async () => {
     await createDraft('art', 'Original content');
     await refineCommand(engine, 'art', { inputLines: ['/quit'] });
-    const content = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
+    const content = await fs.readFile(path.join(tmpDir, '01_drafts', 'art.md'), 'utf-8');
     expect(content).toBe('Original content');
   });
 
@@ -194,7 +183,7 @@ describe('refineCommand slash commands', () => {
     mockExecute.mockResolvedValue(successResult('Updated content'));
     await refineCommand(engine, 'art', { inputLines: ['revise it'] });
     // Content should be updated (flat file)
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '01_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Updated content');
     // Session should be saved
     const sessionPath = path.join(tmpDir, '.reach', 'sessions', 'art', 'draft.json');
@@ -217,7 +206,7 @@ describe('refineCommand slash commands', () => {
     });
     // Non-TTY mode: even on failure, it tries to save original content
     await refineCommand(engine, 'art', { inputLines: ['do something'] });
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '01_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Original');
   });
 
@@ -237,7 +226,7 @@ describe('refineCommand slash commands', () => {
     });
     // Even on auth failure, non-TTY saves the original (no changes were made)
     await refineCommand(engine, 'art', { inputLines: ['do something'] });
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '01_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Original');
   });
 });
@@ -251,7 +240,7 @@ describe('refineCommand non-TTY', () => {
     await refineCommand(engine, 'art', { inputLines: ['make it concise'] });
 
     expect(mockExecute).toHaveBeenCalledTimes(1);
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '01_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Non-TTY result');
   });
 });
@@ -268,7 +257,7 @@ describe('refineCommand --feedback', () => {
     const prompt = mockExecute.mock.calls[0][0].prompt;
     expect(prompt).toContain('make it shorter');
 
-    const saved = await fs.readFile(path.join(tmpDir, '02_drafts', 'art.md'), 'utf-8');
+    const saved = await fs.readFile(path.join(tmpDir, '01_drafts', 'art.md'), 'utf-8');
     expect(saved).toBe('Feedback result');
   });
 

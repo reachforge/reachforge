@@ -1,21 +1,15 @@
 import type { PipelineStage, ProjectStatus } from '../types/index.js';
 
 export const STAGES: PipelineStage[] = [
-  '01_inbox',
-  '02_drafts',
-  '03_master',
-  '04_adapted',
-  '05_scheduled',
-  '06_sent',
+  '01_drafts',
+  '02_adapted',
+  '03_published',
 ];
 
 export const STAGE_STATUS_MAP: Record<PipelineStage, ProjectStatus> = {
-  '01_inbox': 'inbox',
-  '02_drafts': 'drafted',
-  '03_master': 'master',
-  '04_adapted': 'adapted',
-  '05_scheduled': 'scheduled',
-  '06_sent': 'published',
+  '01_drafts': 'drafted',
+  '02_adapted': 'adapted',
+  '03_published': 'published',
 };
 
 export const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -33,6 +27,20 @@ export const ASSET_REGISTRY_FILENAME = '.asset-registry.yaml';
 export const ASSET_PREFIX = '@assets/';
 
 export const TEMPLATES_DIR = 'templates';
+
+export const LANGUAGE_NAMES: Record<string, string> = {
+  'en': 'English',
+  'zh-CN': 'Chinese (Simplified)',
+  'zh-TW': 'Chinese (Traditional)',
+  'ja': 'Japanese',
+  'ko': 'Korean',
+  'fr': 'French',
+  'de': 'German',
+  'es': 'Spanish',
+  'pt': 'Portuguese',
+  'ru': 'Russian',
+  'ar': 'Arabic',
+};
 
 export const WATCH_DIR = 'watch';
 export const WATCH_PID_EXTENSION = '.pid.json';

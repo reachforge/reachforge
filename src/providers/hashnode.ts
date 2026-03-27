@@ -9,6 +9,7 @@ export class HashnodeProvider implements PlatformProvider {
   readonly name = 'Hashnode';
   readonly platforms = ['hashnode'];
   readonly contentFormat: ContentFormat = 'markdown';
+  readonly language = 'en';
 
   constructor(
     private readonly apiKey: string,

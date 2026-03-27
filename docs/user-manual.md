@@ -1,8 +1,8 @@
 # reachforge User Manual
 
-**ReachForge — The Social Influence Engine for AI-Native Content**
+**ReachForge -- The Social Influence Engine for AI-Native Content**
 
-Version 0.2.0
+Version 0.3.0
 
 ---
 
@@ -17,22 +17,23 @@ Version 0.2.0
 7. [LLM Integration](#llm-integration)
 8. [Platform Providers](#platform-providers)
 9. [Skill System](#skill-system)
-10. [MCP Server](#mcp-server)
-11. [Troubleshooting](#troubleshooting)
+10. [Template System](#template-system)
+11. [MCP Server](#mcp-server)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Overview
 
-reachforge is a CLI tool that transforms raw ideas into polished, platform-specific content through a six-stage file-based pipeline. It uses AI (Claude, Gemini, or Codex) to draft, refine, and adapt articles for multiple publishing platforms — Dev.to, Hashnode, GitHub Discussions, and X (via Postiz).
+reachforge is a CLI tool that transforms raw ideas into polished, platform-specific content through a three-stage file-based pipeline. It uses AI (Claude, Gemini, or Codex) to draft, refine, and adapt articles for multiple publishing platforms -- Dev.to, Hashnode, GitHub Discussions, and X (via Postiz).
 
 **Key design principles:**
 
-- **File-as-state** — no database; flat `.md` files flow through pipeline stages, a single `meta.yaml` tracks all article states.
-- **Multi-article projects** — one project holds multiple articles, each independently targeting different platforms and schedules.
-- **Multi-project workspaces** — manage many content projects from a single workspace.
-- **Pluggable LLM adapters** — switch between Claude, Gemini, and Codex per stage.
-- **Progressive publishing** — resumable, lock-protected, with per-platform results in `meta.yaml`.
+- **File-as-state** -- no database; flat `.md` files flow through pipeline stages, a single `meta.yaml` tracks all article states.
+- **Multi-article projects** -- one project holds multiple articles, each independently targeting different platforms and schedules.
+- **Multi-project workspaces** -- manage many content projects from a single workspace.
+- **Pluggable LLM adapters** -- switch between Claude, Gemini, and Codex per stage.
+- **Progressive publishing** -- resumable, lock-protected, with per-platform results in `meta.yaml`.
 
 ---
 
@@ -71,38 +72,29 @@ cd ~/my-workspace
 reach new product-launch
 cd product-launch
 
-# 3. Drop ideas into the inbox
-echo "Why AI pair programming changes everything..." > 01_inbox/ai-pairing.md
-echo "Deep dive into apcore framework..." > 01_inbox/apcore-deep-dive.md
+# 3. Generate drafts directly from prompts, files, or directories
+reach draft "Why AI pair programming changes everything"
+reach draft ./notes/ai-pairing.md --name ai-pairing
+reach draft ./research-folder/
 
-# 4. Generate drafts (each article independently)
-reach draft ai-pairing.md
-reach draft apcore-deep-dive.md
-
-# 5. Refine interactively
+# 4. Refine interactively
 reach refine ai-pairing -f "make the intro more concise"
 
-# 6. Promote to master
-reach approve ai-pairing
-reach approve apcore-deep-dive
-
-# 7. Adapt for different platforms per article
+# 5. Adapt for different platforms per article
 reach adapt ai-pairing --platforms x,devto
-reach adapt apcore-deep-dive --platforms zhihu,wechat
 
-# 8. Schedule independently
+# 6. Schedule independently
 reach schedule ai-pairing 2026-04-01T09:00
-reach schedule apcore-deep-dive 2026-04-03
 
-# 9. Publish all due articles
+# 7. Publish all due articles
 reach publish
 
-# 10. Check status
+# 8. Check status
 reach status                    # Dashboard: all articles across stages
 reach status ai-pairing         # Detail view for one article
 
 # Or do it all in one shot:
-reach go "write about apcore framework"                # Full auto → publish now
+reach go "write about apcore framework"                # Full auto: draft -> adapt -> publish
 reach go "write about apcore" --name teaser            # Explicit article name
 ```
 
@@ -110,20 +102,17 @@ reach go "write about apcore" --name teaser            # Explicit article name
 
 ## The Content Pipeline
 
-Each project contains six stage directories. Content flows left to right:
+Each project contains three stage directories. Content flows left to right:
 
 ```
-01_inbox ──▸ 02_drafts ──▸ 03_master ──▸ 04_adapted ──▸ 05_scheduled ──▸ 06_sent
+01_drafts ──▸ 02_adapted ──▸ 03_published
 ```
 
 | Stage | Purpose | File Pattern |
 |-------|---------|-------------|
-| `01_inbox` | Raw material — notes, sketches, ideas | `{article}.md` or `{article}/` |
-| `02_drafts` | AI-generated long-form drafts | `{article}.md` |
-| `03_master` | Editor-approved source of truth | `{article}.md` |
-| `04_adapted` | Platform-specific versions | `{article}.{platform}.md` (e.g., `teaser.x.md`) |
-| `05_scheduled` | Content awaiting publish date | `{article}.{platform}.md` (schedule in `meta.yaml`) |
-| `06_sent` | Published archive | `{article}.{platform}.md` (results in `meta.yaml`) |
+| `01_drafts` | AI-generated long-form drafts | `{article}.md` |
+| `02_adapted` | Platform-specific versions, ready to publish | `{article}.{platform}.md` (e.g., `teaser.x.md`) |
+| `03_published` | Published archive | `{article}.{platform}.md` (results in `meta.yaml`) |
 | `assets` | Shared media library | `images/`, `videos/`, `audio/`, `.asset-registry.yaml` |
 
 **Platform IDs:** `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`
@@ -145,12 +134,9 @@ Assets are stored once and never duplicated when articles move between stages. D
 ├── .reach/
 │   └── config.yaml            # Workspace config
 ├── project-a/
-│   ├── 01_inbox/
-│   ├── 02_drafts/
-│   ├── 03_master/
-│   ├── 04_adapted/
-│   ├── 05_scheduled/
-│   ├── 06_sent/
+│   ├── 01_drafts/
+│   ├── 02_adapted/
+│   ├── 03_published/
 │   ├── assets/                # Shared media library
 │   │   ├── images/
 │   │   ├── videos/
@@ -158,7 +144,6 @@ Assets are stored once and never duplicated when articles move between stages. D
 │   │   └── .asset-registry.yaml
 │   ├── meta.yaml              # Multi-article state index
 │   ├── project.yaml           # Project config
-│   ├── .env                   # API keys (optional)
 │   └── skills/                # Custom LLM skills (optional)
 └── project-b/
     └── ...
@@ -184,11 +169,11 @@ Assets are stored once and never duplicated when articles move between stages. D
 Initialize a new workspace.
 
 ```bash
-reach init                    # Interactive — defaults to ~/reach-workspace
+reach init                    # Interactive -- defaults to ~/reach-workspace
 reach init ~/my-workspace     # Explicit path
 ```
 
-Creates the `.reach/config.yaml` directory structure and a `.env` template with all configuration options commented out. Edit the `.env` file to add API keys for the platforms you want to publish to.
+Creates the `.reach/config.yaml` directory structure. Edit `config.yaml` to add API keys for the platforms you want to publish to.
 
 ---
 
@@ -200,7 +185,7 @@ Create a new project in the current workspace.
 reach new my-blog
 ```
 
-Scaffolds all six stage directories, a `project.yaml`, and the `assets/` library with `images/`, `videos/`, and `audio/` subdirectories.
+Scaffolds the three stage directories (`01_drafts`, `02_adapted`, `03_published`), a `project.yaml`, and the `assets/` library with `images/`, `videos/`, and `audio/` subdirectories.
 
 ---
 
@@ -228,32 +213,25 @@ reach workspace
 
 ---
 
-### `reach draft <source>`
+### `reach draft <input>`
 
-Generate an AI draft from an inbox source.
+Generate an AI draft from a prompt string, file path, or directory.
 
 ```bash
-reach draft my-idea.md
+reach draft "Why AI pair programming changes everything"    # From prompt string
+reach draft ./notes/my-idea.md                              # From file
+reach draft ./research-folder/                              # From directory
+reach draft "AI tips" --name ai-tips                        # Explicit article name
 ```
 
-- **Input:** File or directory in `01_inbox/`.
+| Option | Description |
+|--------|-------------|
+| `--name <slug>` | Explicit article name (default: auto-generated slug from input) |
+
+- **Input:** A prompt string, a file path, or a directory path.
   - If directory: reads `main.md` > `index.md` > first `.md` > first `.txt`.
-- **Output:** `02_drafts/{article}.md` (flat file). Metadata updated in project-root `meta.yaml`.
+- **Output:** `01_drafts/{article}.md` (flat file). Metadata updated in project-root `meta.yaml`.
 - **LLM adapter:** Controlled by `REACHFORGE_DRAFT_ADAPTER` or `REACHFORGE_LLM_ADAPTER`.
-
----
-
-### `reach approve <article>`
-
-Promote a draft to master stage.
-
-```bash
-reach approve my-idea
-```
-
-- Moves `{article}.md` from `02_drafts/` to `03_master/`.
-- No file rename needed — same filename in both stages.
-- Updates status to `master` in project-root `meta.yaml`.
 
 ---
 
@@ -290,7 +268,7 @@ reach asset list --subdir images    # Only images
 
 ### `reach refine <article>`
 
-Interactively refine a draft or master article with AI feedback.
+Interactively refine a draft article with AI feedback.
 
 ```bash
 reach refine my-idea                                    # Interactive multi-turn session
@@ -299,7 +277,7 @@ reach refine my-idea -f "make the intro more concise"   # Single-turn, non-inter
 
 | Option | Description |
 |--------|-------------|
-| `-f, --feedback <text>` | Non-interactive single refinement turn — applies the feedback, saves, and exits |
+| `-f, --feedback <text>` | Non-interactive single refinement turn -- applies the feedback, saves, and exits |
 
 **Interactive mode** opens a session with these commands:
 
@@ -314,14 +292,14 @@ reach refine my-idea -f "make the intro more concise"   # Single-turn, non-inter
 **Features:**
 
 - Sessions are persisted in `.reach/sessions/` and automatically resumed.
-- Works on articles in both `02_drafts` and `03_master`.
+- Works on articles in `01_drafts` only.
 - `--feedback` mode is useful for scripting and piping (e.g., `reach refine my-idea -f "fix typos" --json`).
 
 ---
 
 ### `reach adapt <article>`
 
-Generate platform-specific versions from a master article.
+Generate platform-specific versions from a draft article.
 
 ```bash
 reach adapt my-idea                              # Default platforms
@@ -334,10 +312,12 @@ reach adapt my-idea --force                       # Overwrite existing
 | `-p, --platforms <list>` | Comma-separated platform names |
 | `-f, --force` | Overwrite existing platform versions |
 
-- **Input:** `03_master/{article}.md`.
-- **Output:** `04_adapted/{article}.{platform}.md` per platform (e.g., `teaser.x.md`, `teaser.devto.md`).
+- **Input:** `01_drafts/{article}.md`.
+- **Output:** `02_adapted/{article}.{platform}.md` per platform (e.g., `teaser.x.md`, `teaser.devto.md`).
 - **Default platforms:** `x`, `wechat`, `zhihu`.
 - Adapts all platforms in parallel.
+- **Additive:** running `reach adapt article -p devto` after a previous `reach adapt article -p x` adds devto without removing x. Platform metadata is merged, not overwritten.
+- If adaptation fails for some platforms, successfully adapted ones are still saved. Retry failed platforms by running adapt again.
 
 **Supported platforms:** `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`.
 
@@ -345,51 +325,82 @@ reach adapt my-idea --force                       # Overwrite existing
 
 ### `reach schedule <article> [date]`
 
-Move an adapted article to the scheduled stage.
+Set an article's schedule date in metadata. Files remain in `02_adapted/`.
 
 ```bash
 reach schedule my-idea 2026-04-01           # Date only (publishes anytime on that day)
 reach schedule my-idea 2026-04-01T14:30      # Date + time (publishes after 14:30)
 reach schedule my-idea                       # Defaults to today (publish immediately on next `reach publish`)
+reach schedule my-idea --clear               # Unschedule (revert to adapted status)
 reach schedule my-idea 2026-04-01 --dry-run
 ```
 
 | Option | Description |
 |--------|-------------|
-| `-n, --dry-run` | Preview what would be moved |
+| `-n, --dry-run` | Preview what would be scheduled |
+| `--clear` | Unschedule: revert status to `adapted` and remove the schedule date |
 
 - **Date formats:** `YYYY-MM-DD`, `YYYY-MM-DDTHH:MM`, or `YYYY-MM-DDTHH:MM:SS`. Defaults to today if omitted.
-- Moves platform files from `04_adapted/` to `05_scheduled/` (same filenames).
-- Schedule date/time stored in project-root `meta.yaml`, not in directory names.
+- Sets `status: scheduled` and the `schedule` date in project-root `meta.yaml`. No file move occurs.
+- Use `--clear` to unschedule — reverts status to `adapted` and removes the schedule date.
 
 ---
 
 ### `reach publish`
 
-Publish all scheduled content that is due (date <= today).
+Publish all scheduled content that is due (schedule date <= now).
 
 ```bash
-reach publish
+reach publish                                # Publish all due scheduled articles
+reach publish my-article                     # Publish specific article (any adapted/scheduled)
+reach publish my-article --force             # Publish even if scheduled for a future date
 reach publish --dry-run
 reach publish --draft
 ```
 
 | Option | Description |
 |--------|-------------|
+| `--force` | Publish even if article is scheduled for a future date |
 | `-n, --dry-run` | Preview without publishing |
 | `-d, --draft` | Publish as draft (overrides `published` frontmatter field) |
 
+**Batch mode** (`reach publish` without article): Finds articles with `status: scheduled` whose schedule time <= now.
+
+**Single-article mode** (`reach publish <article>`): Publishes the specified article directly. If the article is scheduled for a future date, requires `--force` to proceed.
+
 **Publishing pipeline:**
 
-1. Checks `meta.yaml` for articles in `05_scheduled/` whose schedule time <= now.
-2. Validates content per platform.
-3. Acquires a per-article lock (in `meta.yaml`) to prevent concurrent runs.
-4. Publishes to each platform.
-5. Records per-platform results (status, url, error) in `meta.yaml`.
-6. On success, moves article files to `06_sent/`.
-7. Releases the lock.
+1. Checks `meta.yaml` for articles with `status: scheduled` whose schedule time <= now.
+2. Reads platform files from `02_adapted/`.
+3. Validates content per platform.
+4. Acquires a per-article lock (in `meta.yaml`) to prevent concurrent runs.
+5. Publishes to each platform.
+6. Records per-platform results (status, url, error) in `meta.yaml`.
+7. On success, moves article files to `03_published/`.
+8. Releases the lock.
 
 **Resumable:** If the process crashes mid-publish, re-running `reach publish` checks `meta.yaml` for already-succeeded platforms and skips them.
+
+---
+
+### `reach publish <article>` / `reach publish <file>`
+
+Publish a specific article or an external file directly.
+
+```bash
+reach publish my-idea                              # Publish a pipeline article
+reach publish ./external-post.md -p devto          # Publish external file to platform(s)
+reach publish ./external-post.md -p devto --track  # Import to pipeline first, then publish
+```
+
+| Option | Description |
+|--------|-------------|
+| `-p, --platforms <list>` | Comma-separated platform names |
+| `--track` | Import external file into `02_adapted/` and track through the pipeline |
+| `-n, --dry-run` | Preview without publishing |
+| `-d, --draft` | Publish as draft on supported platforms |
+
+When using `--track` with an external file, the file is first imported into `02_adapted/`, then published through the normal pipeline and archived to `03_published/`.
 
 ---
 
@@ -401,7 +412,12 @@ Move an article back one pipeline stage.
 reach rollback my-idea
 ```
 
-Moves the article's files to the previous stage (e.g., `05_scheduled` -> `04_adapted`). Cannot roll back from `01_inbox`.
+Moves the article's files to the previous stage:
+
+- `03_published` -> `02_adapted`
+- `02_adapted` -> `01_drafts`
+
+Cannot roll back from `01_drafts`.
 
 ---
 
@@ -420,16 +436,16 @@ reach analytics --from 2026-03-01 --to 2026-03-31  # March only
 | `--from <date>` | Filter from date (YYYY-MM-DD) |
 | `--to <date>` | Filter to date (YYYY-MM-DD) |
 
-Aggregates publish results from `meta.yaml` for articles in `06_sent/` and displays per-platform success rates with color-coded output (green >= 80%, yellow >= 50%, red < 50%).
+Aggregates publish results from `meta.yaml` for articles in `03_published/` and displays per-platform success rates with color-coded output (green >= 80%, yellow >= 50%, red < 50%).
 
 ---
 
 ### `reach go <prompt>`
 
-Full auto pipeline: create content from a prompt, draft, approve, adapt, schedule, and publish — all in one command.
+Full auto pipeline: create content from a prompt, draft, adapt, and publish -- all in one command.
 
 ```bash
-reach go "write about apcore framework"                    # Immediate: full pipeline → publish now
+reach go "write about apcore framework"                    # Immediate: full pipeline -> publish now
 reach go "write about apcore" --name teaser                # Explicit article name
 reach go "write about apcore framework" -s 2026-04-01      # Deferred: schedule for later
 reach go "compare Bun vs Node.js" --dry-run                # Full pipeline but skip actual publishing
@@ -447,14 +463,11 @@ If `--name` is omitted, a URL-safe slug is auto-generated from the prompt. If th
 
 **Pipeline steps:**
 
-1. Creates an inbox item from the prompt text
-2. Generates an AI draft (`reach draft`)
-3. Auto-approves to master (`reach approve`)
-4. Adapts for all configured platforms (`reach adapt`)
-5. Schedules for today or the specified date (`reach schedule`)
-6. Publishes immediately (or skips if `--schedule` is set)
+1. Generates an AI draft from the prompt (`reach draft`)
+2. Adapts for all configured platforms (`reach adapt`)
+3. Publishes immediately (or schedules if `--schedule` is set)
 
-Platforms are read from `project.yaml`. If the pipeline fails mid-way, the article is left at the last completed stage — you can resume manually from there.
+Platforms are read from `project.yaml`. If the pipeline fails mid-way, the article is left at the last completed stage -- you can resume manually from there.
 
 ---
 
@@ -504,7 +517,7 @@ reach mcp --transport sse --port 8001
 | `-t, --transport <type>` | `stdio` (default) or `sse` |
 | `-p, --port <number>` | Port for SSE transport (default: 8000) |
 
-Exposes these MCP tools: `reach_status`, `reach_draft`, `reach_approve`, `reach_adapt`, `reach_refine`, `reach_schedule`, `reach_publish`, `reach_go`, `reach_rollback`, `reach_asset_add`, `reach_asset_list`, `reach_analytics`.
+Exposes these MCP tools: `reach_status`, `reach_draft`, `reach_adapt`, `reach_refine`, `reach_schedule`, `reach_publish`, `reach_go`, `reach_rollback`, `reach_asset_add`, `reach_asset_list`, `reach_analytics`.
 
 ---
 
@@ -513,25 +526,24 @@ Exposes these MCP tools: `reach_status`, `reach_draft`, `reach_approve`, `reach_
 ### Configuration Layers (highest to lowest priority)
 
 1. **Environment variables**
-2. **Project `.env`** — `{project}/.env`
-3. **Project `credentials.yaml`** — `{project}/credentials.yaml`
-4. **Workspace `.env`** — `{workspace}/.env`
-5. **Workspace `config.yaml`** — `{workspace}/.reach/config.yaml`
-6. **Global config** — `~/.reach/config.yaml`
+2. **Workspace `config.yaml`** -- `{workspace}/.reach/config.yaml`
+3. **Global `config.yaml`** -- `~/.reach/config.yaml`
+
+All configuration -- API keys, LLM settings, MCP auth -- lives in `config.yaml`. There are no `.env` or `credentials.yaml` files.
 
 ### What Needs Configuration and When
 
 | Task | Required Configuration | Without it |
 |------|----------------------|------------|
 | `reach draft` / `reach adapt` | None (uses local CLI) | Just install & auth the CLI (`claude`, `gemini`, or `codex`) |
-| Publish to **Dev.to** | `DEVTO_API_KEY` | Falls back to mock mode — publish "succeeds" but nothing is actually posted |
+| Publish to **Dev.to** | `DEVTO_API_KEY` | Falls back to mock mode -- publish "succeeds" but nothing is actually posted |
 | Publish to **X/Twitter** (via Postiz) | `POSTIZ_API_KEY` | Falls back to mock mode |
 | Publish to **Hashnode** | `HASHNODE_API_KEY` + `HASHNODE_PUBLICATION_ID` | Falls back to mock mode (both required) |
 | Publish to **GitHub Discussions** | `GITHUB_TOKEN` + `GITHUB_OWNER` + `GITHUB_REPO` | Falls back to mock mode (all three required) |
 | Gemini API mode | `GEMINI_API_KEY` | Error: `LLMNotConfiguredError` |
 | MCP server auth | `MCP_AUTH_KEY` | MCP server runs without authentication |
 
-> **Important:** When a platform API key is missing, `reach publish` silently uses a mock provider — the receipt shows "success" but no content is actually published. Always use `reach publish --dry-run` first to preview, and check `reach analytics` to verify real publishing results.
+> **Important:** When a platform API key is missing, `reach publish` silently uses a mock provider -- the receipt shows "success" but no content is actually published. Always use `reach publish --dry-run` first to preview, and check `reach analytics` to verify real publishing results.
 
 ### Workspace Configuration (`config.yaml`)
 
@@ -543,6 +555,12 @@ default_workspace: ~/my-workspace
 credentials:
   DEVTO_API_KEY: your-key
   HASHNODE_API_KEY: your-key
+  HASHNODE_PUBLICATION_ID: your-publication-id
+  GITHUB_TOKEN: your-token
+  GITHUB_OWNER: your-username
+  GITHUB_REPO: your-repo
+  POSTIZ_API_KEY: your-key
+  MCP_AUTH_KEY: your-key
 ```
 
 | Field | Type | Description |
@@ -555,8 +573,8 @@ credentials:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `REACHFORGE_LLM_ADAPTER` | Default adapter (`claude`, `gemini`, `codex`) | `claude` |
-| `REACHFORGE_DRAFT_ADAPTER` | Override adapter for `draft` stage | — |
-| `REACHFORGE_ADAPT_ADAPTER` | Override adapter for `adapt` stage | — |
+| `REACHFORGE_DRAFT_ADAPTER` | Override adapter for `draft` stage | -- |
+| `REACHFORGE_ADAPT_ADAPTER` | Override adapter for `adapt` stage | -- |
 | `REACHFORGE_LLM_MODEL` | Model name | `gemini-pro` |
 | `REACHFORGE_LLM_TIMEOUT` | Timeout in seconds | `120` |
 | `REACHFORGE_CLAUDE_COMMAND` | Path to Claude CLI | `claude` |
@@ -565,25 +583,34 @@ credentials:
 
 ### Platform API Keys
 
+These can be set as environment variables or placed in `config.yaml` under the `credentials` section:
+
+```yaml
+# In config.yaml
+credentials:
+  DEVTO_API_KEY: your-key
+  HASHNODE_API_KEY: your-key
+  HASHNODE_PUBLICATION_ID: your-publication-id
+  GITHUB_TOKEN: your-token
+  GITHUB_OWNER: your-username
+  GITHUB_REPO: your-repo
+  GITHUB_DISCUSSION_CATEGORY: General
+  POSTIZ_API_KEY: your-key
+  MCP_AUTH_KEY: your-key
+```
+
+Or as environment variables:
+
 ```bash
-# Dev.to
-DEVTO_API_KEY=your-key
-
-# Hashnode
-HASHNODE_API_KEY=your-key
-HASHNODE_PUBLICATION_ID=your-publication-id
-
-# GitHub Discussions
-GITHUB_TOKEN=your-token
-GITHUB_OWNER=your-username
-GITHUB_REPO=your-repo
-GITHUB_DISCUSSION_CATEGORY=General
-
-# X (via Postiz)
-POSTIZ_API_KEY=your-key
-
-# MCP Server Auth
-MCP_AUTH_KEY=your-key
+export DEVTO_API_KEY=your-key
+export HASHNODE_API_KEY=your-key
+export HASHNODE_PUBLICATION_ID=your-publication-id
+export GITHUB_TOKEN=your-token
+export GITHUB_OWNER=your-username
+export GITHUB_REPO=your-repo
+export GITHUB_DISCUSSION_CATEGORY=General
+export POSTIZ_API_KEY=your-key
+export MCP_AUTH_KEY=your-key
 ```
 
 ### Project Configuration (`project.yaml`)
@@ -619,7 +646,7 @@ When you run any command, reachforge resolves the workspace in this order:
 | Gemini | `gemini` | `gemini login` |
 | Codex | `codex` | `codex login` |
 
-Each adapter wraps the respective CLI tool. You can mix adapters per stage — for example, use Gemini for drafting and Claude for adaptation:
+Each adapter wraps the respective CLI tool. You can mix adapters per stage -- for example, use Gemini for drafting and Claude for adaptation:
 
 ```bash
 export REACHFORGE_DRAFT_ADAPTER=gemini
@@ -685,9 +712,9 @@ Skills are Markdown files that provide instructions and context to the LLM durin
 
 ### Skill Precedence (highest to lowest)
 
-1. **Project-level** — `{project}/skills/`
-2. **Workspace-level** — `{workspace}/skills/`
-3. **Built-in** — bundled with reachforge
+1. **Project-level** -- `{project}/skills/`
+2. **Workspace-level** -- `{workspace}/skills/`
+3. **Built-in** -- bundled with reachforge
 
 ### Skill Directory Structure
 
@@ -715,9 +742,9 @@ Templates let you customize the AI prompts used for drafting and adaptation. The
 
 ### Template Precedence (highest to lowest)
 
-1. **Project-level** — `{project}/templates/`
-2. **Workspace-level** — `{workspace}/templates/`
-3. **Built-in defaults** — hardcoded `DEFAULT_DRAFT_PROMPT` and `PLATFORM_PROMPTS`
+1. **Project-level** -- `{project}/templates/`
+2. **Workspace-level** -- `{workspace}/templates/`
+3. **Built-in defaults** -- hardcoded `DEFAULT_DRAFT_PROMPT` and `PLATFORM_PROMPTS`
 
 ### Template File Format
 
@@ -745,12 +772,13 @@ vars:
 
 ### Using Templates
 
-**Per-article override:** Add a `template` field to your article's `meta.yaml`:
+**Per-article override:** Add a `template` field to your article's metadata in `meta.yaml`:
 
 ```yaml
-# 01_inbox/my-idea/meta.yaml
-article: my-idea
-template: tech-blog           # loads templates/tech-blog.yaml
+# meta.yaml
+articles:
+  my-idea:
+    template: tech-blog           # loads templates/tech-blog.yaml
 ```
 
 **Convention-based:** Create a template named after a platform (e.g., `templates/devto.yaml`) and it will be used automatically for that platform during `reach adapt`.
@@ -776,13 +804,12 @@ reach mcp --transport sse --port 8001
 | Tool | Input | Description |
 |------|-------|-------------|
 | `reach_status` | `article?: string` | Pipeline dashboard or single-article detail |
-| `reach_draft` | `source: string` | Generate draft from inbox item |
-| `reach_approve` | `article: string` | Promote draft to master |
+| `reach_draft` | `input: string`, `name?: string` | Generate draft from prompt, file, or directory |
 | `reach_adapt` | `article: string`, `platforms?: string`, `force?: boolean` | Adapt for platforms |
 | `reach_schedule` | `article: string`, `date?: string` | Schedule for publishing (date defaults to today) |
 | `reach_publish` | `dryRun?: boolean` | Publish all due articles |
 | `reach_rollback` | `article: string` | Roll back one stage |
-| `reach_refine` | `article: string`, `feedback: string` | Refine a draft/master with AI feedback |
+| `reach_refine` | `article: string`, `feedback: string` | Refine a draft with AI feedback |
 | `reach_go` | `prompt: string`, `name?: string`, `schedule?: string`, `dryRun?: boolean`, `draft?: boolean` | Full auto pipeline from prompt to publish |
 | `reach_asset_add` | `file: string`, `subdir?: string` | Register media asset |
 | `reach_asset_list` | `subdir?: string` | List registered assets |
@@ -832,7 +859,7 @@ If a publish run was interrupted and the lock remains in `meta.yaml`:
 
 ```bash
 # Verify no other publish process is running.
-# The lock is in meta.yaml under _locks — it will auto-clear
+# The lock is in meta.yaml under _locks -- it will auto-clear
 # on the next run if the PID is no longer alive.
 # To force-clear, edit meta.yaml and remove the _locks entry.
 ```

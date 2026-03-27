@@ -20,6 +20,20 @@ const PLATFORM_DISPLAY_NAMES: Record<string, string> = {
   reddit: 'Reddit',
 };
 
+/**
+ * Default target language per platform.
+ * Providers with real implementations declare their own language.
+ * This map covers platforms that only use MockProvider.
+ * 'auto' = use source language from project.yaml.
+ */
+const PLATFORM_DEFAULT_LANGUAGES: Record<string, string> = {
+  wechat: 'zh-CN',
+  zhihu: 'zh-CN',
+  linkedin: 'en',
+  medium: 'en',
+  reddit: 'en',
+};
+
 export class ProviderLoader {
   private providers: Map<string, PlatformProvider> = new Map();
 
@@ -82,6 +96,16 @@ export class ProviderLoader {
         configured: this.providers.has(platform),
       };
     });
+  }
+
+  /**
+   * Get the default target language for a platform.
+   * Priority: registered provider's language > PLATFORM_DEFAULT_LANGUAGES > 'auto'
+   */
+  getLanguage(platform: string): string {
+    const provider = this.providers.get(platform);
+    if (provider) return provider.language;
+    return PLATFORM_DEFAULT_LANGUAGES[platform] ?? 'auto';
   }
 
   get size(): number {

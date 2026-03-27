@@ -9,6 +9,7 @@ export class DevtoProvider implements PlatformProvider {
   readonly name = 'Dev.to (Forem)';
   readonly platforms = ['devto'];
   readonly contentFormat: ContentFormat = 'markdown';
+  readonly language = 'en';
 
   constructor(private readonly apiKey: string) {}
 

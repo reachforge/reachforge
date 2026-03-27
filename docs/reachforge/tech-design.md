@@ -1,3 +1,5 @@
+> **DEPRECATED**: This document describes the original 6-stage pipeline architecture. The pipeline has been simplified to 3 stages (`01_drafts → 02_adapted → 03_published`). See [Pipeline Simplification Tech Design](../pipeline-simplification/tech-design.md) for the current architecture.
+
 # Technical Design Document: reachforge
 
 | Field            | Value                                              |

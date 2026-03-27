@@ -54,18 +54,18 @@ describe('readArticleMeta', () => {
 // T03: writeArticleMeta
 describe('writeArticleMeta', () => {
   it('creates new article entry', async () => {
-    await mm.writeArticleMeta('teaser', { status: 'inbox' });
+    await mm.writeArticleMeta('teaser', { status: 'drafted' });
     const meta = await mm.readProjectMeta();
-    expect(meta.articles.teaser.status).toBe('inbox');
+    expect(meta.articles.teaser.status).toBe('drafted');
     expect(meta.articles.teaser.created_at).toBeDefined();
     expect(meta.articles.teaser.updated_at).toBeDefined();
   });
 
   it('preserves other articles when writing', async () => {
-    await mm.writeArticleMeta('teaser', { status: 'inbox' });
+    await mm.writeArticleMeta('teaser', { status: 'drafted' });
     await mm.writeArticleMeta('deep-dive', { status: 'drafted' });
     const meta = await mm.readProjectMeta();
-    expect(meta.articles.teaser.status).toBe('inbox');
+    expect(meta.articles.teaser.status).toBe('drafted');
     expect(meta.articles['deep-dive'].status).toBe('drafted');
   });
 
@@ -78,7 +78,7 @@ describe('writeArticleMeta', () => {
   });
 
   it('auto-sets updated_at on every write', async () => {
-    await mm.writeArticleMeta('teaser', { status: 'inbox' });
+    await mm.writeArticleMeta('teaser', { status: 'drafted' });
     const first = await mm.readArticleMeta('teaser');
     await new Promise(r => setTimeout(r, 10));
     await mm.writeArticleMeta('teaser', { status: 'drafted' });
@@ -87,7 +87,7 @@ describe('writeArticleMeta', () => {
   });
 
   it('sets created_at only on first write', async () => {
-    await mm.writeArticleMeta('teaser', { status: 'inbox' });
+    await mm.writeArticleMeta('teaser', { status: 'drafted' });
     const first = await mm.readArticleMeta('teaser');
     await mm.writeArticleMeta('teaser', { status: 'drafted' });
     const second = await mm.readArticleMeta('teaser');
@@ -103,7 +103,7 @@ describe('listArticles', () => {
   });
 
   it('returns all articles with meta', async () => {
-    await mm.writeArticleMeta('teaser', { status: 'inbox' });
+    await mm.writeArticleMeta('teaser', { status: 'drafted' });
     await mm.writeArticleMeta('deep-dive', { status: 'drafted' });
     const list = await mm.listArticles();
     expect(list).toHaveLength(2);
@@ -113,7 +113,7 @@ describe('listArticles', () => {
 
 describe('deleteArticleMeta', () => {
   it('removes only the target article', async () => {
-    await mm.writeArticleMeta('teaser', { status: 'inbox' });
+    await mm.writeArticleMeta('teaser', { status: 'drafted' });
     await mm.writeArticleMeta('deep-dive', { status: 'drafted' });
     await mm.deleteArticleMeta('teaser');
     const list = await mm.listArticles();

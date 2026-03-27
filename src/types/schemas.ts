@@ -25,8 +25,17 @@ export const PlatformPublishStatusSchema = z.object({
   published_at: z.string().optional(),
 });
 
+// Legacy status migration: map old 'inbox'/'master' to 'drafted'
+const StatusEnum = z.preprocess(
+  (val) => {
+    if (val === 'inbox' || val === 'master') return 'drafted';
+    return val;
+  },
+  z.enum(['drafted', 'adapted', 'scheduled', 'published', 'failed']),
+);
+
 export const ArticleMetaSchema = z.object({
-  status: z.enum(['inbox', 'drafted', 'master', 'adapted', 'scheduled', 'published', 'failed']),
+  status: StatusEnum,
   platforms: z.record(z.string(), PlatformPublishStatusSchema).optional(),
   schedule: z.string().optional(),
   adapted_platforms: z.array(z.string()).optional(),

@@ -5,6 +5,8 @@ export interface PlatformProvider {
   readonly name: string;
   readonly platforms: string[];
   readonly contentFormat: ContentFormat;
+  /** Default target language for this platform. 'auto' = use source language. */
+  readonly language: string;
 
   validate(content: string): ValidationResult;
   publish(content: string, meta: PublishMeta): Promise<PublishResult>;

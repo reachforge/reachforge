@@ -11,7 +11,7 @@ const COMMAND_GROUPS: Array<{ title: string; commands: string[] }> = [
   },
   {
     title: 'Pipeline Steps',
-    commands: ['draft', 'approve', 'refine', 'adapt', 'schedule', 'rollback'],
+    commands: ['draft', 'refine', 'adapt', 'schedule', 'rollback', 'refresh'],
   },
   {
     title: 'System',
@@ -32,7 +32,7 @@ export function buildFullReference(program: Command): string {
 
   lines.push(`reach — ReachForge CLI Reference`);
   lines.push('');
-  lines.push('Workflow: inbox → draft → approve → refine → adapt → schedule → publish');
+  lines.push('Workflow: draft → [refine] → adapt → [schedule] → publish');
   lines.push('');
 
   const allCommands = help.visibleCommands(program);
@@ -105,7 +105,7 @@ export function configureGroupedHelp(program: Command): void {
       lines.push('');
       lines.push(`Usage: ${helper.commandUsage(cmd)}`);
       lines.push('');
-      lines.push('Workflow: inbox → draft → approve → refine → adapt → schedule → publish');
+      lines.push('Workflow: draft → [refine] → adapt → [schedule] → publish');
       lines.push('');
 
       const allCommands = helper.visibleCommands(cmd);

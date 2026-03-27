@@ -2,27 +2,24 @@
 
 > **ReachForge: The Social Influence Engine for AI-Native Content.**
 
-**ReachForge** is an **AI-native Social Influence Engine** for end-users. It adopts a "File-as-State" design philosophy, transforming inspiration fragments into multi-platform viral assets through a lightweight six-stage pipeline.
+**ReachForge** is an **AI-native Social Influence Engine** for end-users. It adopts a "File-as-State" design philosophy, transforming inspiration fragments into multi-platform viral assets through a lightweight three-stage pipeline.
 
 ## Core Design Philosophy
-- **File-as-State**: No database required. Flat `.md` files flow through 6 pipeline stages. A single `meta.yaml` at project root tracks all article states.
+- **File-as-State**: No database required. Flat `.md` files flow through 3 pipeline stages. A single `meta.yaml` at project root tracks all article states.
 - **Multi-Article Projects**: One project holds multiple articles, each independently targeting different platforms and schedules.
 - **Bun Driven**: Extreme execution efficiency and single-file binary distribution, perfectly suited for CLI and desktop environments.
 - **Hybrid Publishing Strategy**: Supports direct local API publishing and SaaS-bridged (e.g., Postiz) publishing.
-- **AI Adapter Pattern**: Automatically rewrites the master draft into optimal versions for different platforms (X, WeChat, Zhihu) via LLM.
+- **AI Adapter Pattern**: Automatically rewrites the draft into optimal versions for different platforms (X, WeChat, Zhihu) via LLM.
 
-## Pipeline (01-06) + Assets
+## Pipeline (01-03) + Assets
 
-Each project contains 6 stage directories. Articles are flat `.md` files that move between stages:
+Each project contains 3 stage directories. Articles are flat `.md` files that move between stages:
 
 | Stage | Files | Description |
 |-------|-------|-------------|
-| `01_inbox` | `{article}.md` | Raw material entry |
-| `02_drafts` | `{article}.md` | AI-generated drafts |
-| `03_master` | `{article}.md` | Editor-approved master version |
-| `04_adapted` | `{article}.{platform}.md` | Platform-specific versions (e.g., `teaser.x.md`, `teaser.devto.md`) |
-| `05_scheduled` | `{article}.{platform}.md` | Scheduled for publishing (date in `meta.yaml`) |
-| `06_sent` | `{article}.{platform}.md` | Published archive (results in `meta.yaml`) |
+| `01_drafts` | `{article}.md` | AI-generated drafts from prompt, file, or directory input |
+| `02_adapted` | `{article}.{platform}.md` | Platform-specific versions (e.g., `teaser.x.md`, `teaser.devto.md`) |
+| `03_published` | `{article}.{platform}.md` | Published archive (results in `meta.yaml`) |
 | `assets/` | images, videos, audio | Shared asset library — referenced via `@assets/` prefix |
 
 Platform IDs: `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`
@@ -46,22 +43,27 @@ reach init ~/reach-workspace
 cd ~/reach-workspace
 ```
 
-`reach init` auto-generates a `.env` template in your workspace (all values commented out). Edit it to add keys for the platforms you use:
+`reach init` creates a workspace with a `.reach/config.yaml` file. Edit it to add keys for the platforms you use:
 
-```bash
-# ~/reach-workspace/.env
+```yaml
+# ~/reach-workspace/.reach/config.yaml
 
 # LLM adapter (claude, gemini, or codex)
-# REACHFORGE_LLM_ADAPTER=claude
+# llm:
+#   adapter: claude
 
 # Platform API keys — only for the platforms you publish to
-# DEVTO_API_KEY=your-key
-# POSTIZ_API_KEY=your-key
-# HASHNODE_API_KEY=your-key
-# HASHNODE_PUBLICATION_ID=your-id
-# GITHUB_TOKEN=your-token
-# GITHUB_OWNER=your-username
-# GITHUB_REPO=your-repo
+# devto:
+#   apiKey: your-key
+# postiz:
+#   apiKey: your-key
+# hashnode:
+#   apiKey: your-key
+#   publicationId: your-id
+# github:
+#   token: your-token
+#   owner: your-username
+#   repo: your-repo
 ```
 
 ### What needs configuration and when
@@ -80,9 +82,11 @@ cd ~/reach-workspace
 
 You can also use different adapters for different stages:
 
-```bash
-REACHFORGE_DRAFT_ADAPTER=gemini   # Use Gemini for drafting
-REACHFORGE_ADAPT_ADAPTER=claude   # Use Claude for platform adaptation
+```yaml
+# In config.yaml
+llm:
+  draftAdapter: gemini    # Use Gemini for drafting
+  adaptAdapter: claude    # Use Claude for platform adaptation
 ```
 
 **Configuration precedence** (highest to lowest):
@@ -90,9 +94,8 @@ REACHFORGE_ADAPT_ADAPTER=claude   # Use Claude for platform adaptation
 | Layer | Location | Scope |
 |-------|----------|-------|
 | 1 | Environment variables | Session |
-| 2 | `{project}/.env` | Single project |
-| 3 | `{workspace}/.env` | All projects in workspace |
-| 4 | `~/.reach/config.yaml` | Global (all workspaces) |
+| 2 | `{workspace}/.reach/config.yaml` | Workspace |
+| 3 | `~/.reach/config.yaml` | Global (all workspaces) |
 
 ### 3. Create a Project & Run
 
@@ -104,24 +107,33 @@ cd product-launch
 reach status                                     # View pipeline dashboard
 reach status teaser                              # Detail for one article
 
-reach draft teaser.md                            # Generate draft from inbox
-reach approve teaser                             # Promote draft to master
+reach draft "write a teaser about our launch"    # Generate draft from prompt
+reach draft ./notes.md                           # Generate draft from file
+reach draft ./research/ --name teaser            # Generate draft from directory
 reach adapt teaser --platforms x,devto           # Adapt for specific platforms
-reach schedule teaser 2026-03-25T09:00           # Schedule with date+time
+reach schedule teaser 2026-03-25T09:00           # Schedule with date+time (metadata only)
 reach schedule teaser                            # Schedule for now (immediate)
 
-reach draft deep-dive.md                         # Another article in same project
+reach draft "deep dive into architecture"        # Another article in same project
 reach adapt deep-dive --platforms zhihu,wechat   # Different platforms
 reach schedule deep-dive 2026-03-28              # Different schedule
 
-reach publish                                    # Publish all due articles
+reach publish                                    # Publish all due scheduled articles
+reach publish teaser                             # Publish specific article (bypasses schedule)
+reach publish teaser --force                     # Publish even if scheduled for a future date
+reach schedule teaser --clear                    # Unschedule (revert to adapted status)
+reach adapt teaser -p hashnode                   # Add hashnode (additive — keeps existing x, devto)
 reach watch                                      # Daemon mode: auto-publish
 reach analytics                                  # View publishing success metrics
 
-# Or do it all in one shot:
-reach go "write about apcore framework"                    # Full auto → publish now
+# Publish an external file directly:
+reach publish ./file.md -p devto                 # Publish external file to platform(s)
+reach publish ./file.md -p devto --track         # Import to pipeline, then publish
+
+# Or do it all in one shot (draft -> adapt -> publish):
+reach go "write about apcore framework"                    # Full auto -> publish now
 reach go "write about apcore" --name teaser                # Explicit article name
-reach go "write about apcore framework" -s 2026-04-01      # Full auto → schedule
+reach go "write about apcore framework" -s 2026-04-01      # Full auto -> schedule
 ```
 
 ## Development
@@ -172,7 +184,7 @@ bun run build:win                 # bin/reach.exe    (Windows x64)
 
 ## VSCode Extension & Mobile
 - **VSCode**: Core logic is fully compatible with the `VSCode Extension` TS environment, allowing direct invocation of compiled binaries via `Sidecar`.
-- **Claude/Gemini**: Native support for the `MCP (Model Context Protocol)`, allowing LLMs to directly manipulate your content pipeline.
+- **Claude/Gemini**: Native support for the `MCP (Model Context Protocol)`, allowing LLMs to directly manipulate your content pipeline. MCP tools include `draft`, `adapt`, `schedule`, `publish`, `status`, and `go`.
 - **Mobile Future**: File processing logic layers can be reused later via `React Native`.
 
 

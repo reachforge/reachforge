@@ -32,7 +32,7 @@ export class MetadataManager {
     return result.data;
   }
 
-  private async writeProjectMeta(meta: MultiArticleProjectMeta): Promise<void> {
+  async writeProjectMeta(meta: MultiArticleProjectMeta): Promise<void> {
     await fs.writeFile(this.metaPath, yaml.dump(meta, { lineWidth: -1 }));
   }
 

@@ -5,6 +5,7 @@ export class MockProvider implements PlatformProvider {
   readonly name = 'Mock Provider';
   readonly platforms = ['x', 'wechat', 'zhihu', 'devto', 'hashnode', 'github'];
   readonly contentFormat: ContentFormat = 'markdown';
+  readonly language = 'auto';
 
   validate(content: string): ValidationResult {
     if (!content || content.trim().length === 0) {

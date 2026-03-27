@@ -26,9 +26,9 @@ async function createSentArticle(
   platforms: Record<string, { status: 'success' | 'failed'; url?: string; error?: string }>,
   publishedAt: string,
 ): Promise<void> {
-  // Create flat platform files in 06_sent
+  // Create flat platform files in 03_published
   for (const platform of Object.keys(platforms)) {
-    await engine.writeArticleFile('06_sent', name, `Content for ${platform}`, platform);
+    await engine.writeArticleFile('03_published', name, `Content for ${platform}`, platform);
   }
   // Add published_at to each successful platform for date filtering
   const platformsWithDates: Record<string, any> = {};
@@ -42,7 +42,7 @@ async function createSentArticle(
 }
 
 describe('collectAnalytics', () => {
-  test('returns empty result when no articles in 06_sent', async () => {
+  test('returns empty result when no articles in 03_published', async () => {
     const result = await collectAnalytics(engine);
     expect(result.totalProjects).toBe(0);
     expect(Object.keys(result.platforms)).toHaveLength(0);
@@ -124,8 +124,8 @@ describe('collectAnalytics', () => {
   });
 
   test('skips articles without platform data in meta', async () => {
-    // Article file exists in 06_sent but no platforms in meta
-    await engine.writeArticleFile('06_sent', 'no-platforms', 'content', 'x');
+    // Article file exists in 03_published but no platforms in meta
+    await engine.writeArticleFile('03_published', 'no-platforms', 'content', 'x');
     await engine.metadata.writeArticleMeta('no-platforms', { status: 'published' });
 
     const result = await collectAnalytics(engine);

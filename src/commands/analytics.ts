@@ -29,8 +29,8 @@ export async function collectAnalytics(
     throw new Error(`Invalid --to date "${options.to}". Must be YYYY-MM-DD.`);
   }
 
-  // Read all articles from meta.yaml and filter to published ones in 06_sent
-  const articles = await engine.listArticles('06_sent');
+  // Read all articles from meta.yaml and filter to published ones in 03_published
+  const articles = await engine.listArticles('03_published');
   const platforms: Record<string, PlatformStats> = {};
   let totalProjects = 0;
 
@@ -94,7 +94,7 @@ export async function analyticsCommand(
   }
 
   if (result.totalProjects === 0) {
-    console.log(chalk.gray('No published items found in 06_sent.'));
+    console.log(chalk.gray('No published items found in 03_published.'));
     return;
   }
 

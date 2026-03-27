@@ -1,3 +1,4 @@
+import * as path from 'path';
 import chalk from 'chalk';
 import type { PipelineEngine } from '../core/pipeline.js';
 import type { ReachforgeConfig } from '../types/index.js';
@@ -6,7 +7,6 @@ import { InvalidDateError } from '../types/index.js';
 import { jsonSuccess } from '../core/json-output.js';
 import { validateArticleName } from '../core/filename-parser.js';
 import { draftCommand } from './draft.js';
-import { approveCommand } from './approve.js';
 import { adaptCommand } from './adapt.js';
 import { scheduleCommand } from './schedule.js';
 import { publishCommand } from './publish.js';
@@ -17,6 +17,13 @@ import { publishCommand } from './publish.js';
  * falls back to a timestamp-based slug with a "go-" prefix.
  */
 export function slugify(prompt: string): string {
+  // If input looks like a file path, derive slug from filename
+  if (/^[.~\/\\]|^[a-zA-Z]:[\/\\]/.test(prompt) || /\.(md|mdx|txt|html?)$/i.test(prompt)) {
+    const basename = path.basename(prompt, path.extname(prompt));
+    const cleaned = basename.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (cleaned.length > 0) return cleaned;
+  }
+
   const ascii = prompt
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
@@ -45,11 +52,8 @@ export interface GoOptions {
 }
 
 const STEPS = [
-  'Creating inbox item',
   'Generating AI draft',
-  'Approving draft',
   'Adapting for platforms',
-  'Scheduling',
   'Publishing',
 ] as const;
 
@@ -70,15 +74,13 @@ export async function goCommand(
   await engine.initPipeline();
 
   // Resolve slug collision: append -2, -3, etc. if article already exists
-  if (!options.name) {
-    const existing = await engine.metadata.readArticleMeta(slug);
-    if (existing) {
-      let suffix = 2;
-      while (await engine.metadata.readArticleMeta(`${slug}-${suffix}`)) {
-        suffix++;
-      }
-      slug = `${slug}-${suffix}`;
+  const existing = await engine.metadata.readArticleMeta(slug);
+  if (existing) {
+    let suffix = 2;
+    while (await engine.metadata.readArticleMeta(`${slug}-${suffix}`)) {
+      suffix++;
     }
+    slug = `${slug}-${suffix}`;
   }
 
   const log = (msg: string) => { if (!options.json) console.log(msg); };
@@ -86,46 +88,36 @@ export async function goCommand(
 
   const step = (i: number) => {
     currentStep = i;
-    log(chalk.dim(`  [${i + 1}/6] ${STEPS[i]}...`));
+    log(chalk.dim(`  [${i + 1}/3] ${STEPS[i]}...`));
   };
 
   log(chalk.bold(`\n  reach go: "${prompt}"\n`));
 
   try {
-    // Step 1: Create inbox item as flat .md file
+    // Step 1: Draft (accepts prompt directly)
     step(0);
-    await engine.writeArticleFile('01_inbox', slug, prompt);
+    await draftCommand(engine, prompt, { name: slug });
 
-    // Step 2: Draft
+    // Step 2: Adapt
     step(1);
-    await draftCommand(engine, slug);
-
-    // Step 3: Approve
-    step(2);
-    await approveCommand(engine, slug);
-
-    // Step 4: Adapt
-    step(3);
     await adaptCommand(engine, slug);
 
-    // Step 5: Schedule
-    step(4);
-    await scheduleCommand(engine, slug, scheduleDate);
-
-    // Step 6: Publish (only if no --schedule flag, i.e. immediate mode)
-    step(5);
-    if (!options.schedule) {
+    // Step 3: Schedule or Publish
+    step(2);
+    if (options.schedule) {
+      await scheduleCommand(engine, slug, scheduleDate);
+      log(chalk.dim(`    Scheduled for ${scheduleDate}, will publish when due.`));
+    } else {
       await publishCommand(engine, {
+        article: slug,
         dryRun: options.dryRun,
         draft: options.draft,
         config: options.config,
       });
-    } else {
-      log(chalk.dim(`    Skipped — scheduled for ${scheduleDate}, will publish when due.`));
     }
   } catch (err) {
     const stepName = STEPS[currentStep];
-    log(chalk.red(`\n  Failed at step ${currentStep + 1}/6: ${stepName}`));
+    log(chalk.red(`\n  Failed at step ${currentStep + 1}/3: ${stepName}`));
     log(chalk.yellow(`  Article "${slug}" is partially created. Resume manually from this stage.`));
     throw err;
   }

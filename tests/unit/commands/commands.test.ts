@@ -9,7 +9,6 @@ import { adaptCommand } from '../../../src/commands/adapt.js';
 import { scheduleCommand } from '../../../src/commands/schedule.js';
 import { publishCommand, isExternalFile, parsePlatformFilter, ensurePlatformFrontmatter } from '../../../src/commands/publish.js';
 import { rollbackCommand } from '../../../src/commands/rollback.js';
-import { approveCommand } from '../../../src/commands/approve.js';
 
 const mockExecute = vi.fn();
 
@@ -46,105 +45,151 @@ afterEach(async () => {
 });
 
 describe('draftCommand', () => {
-  test('generates draft from inbox file', async () => {
-    await fs.writeFile(path.join(tmpDir, '01_inbox', 'my-idea.md'), 'Build a CLI tool with Bun');
+  test('generates draft from prompt string', async () => {
+    await draftCommand(engine, 'Build a CLI tool with Bun');
 
-    await draftCommand(engine, 'my-idea.md');
+    // Flat file: 01_drafts/{slug}.md
+    const drafts = await engine.listArticles('01_drafts');
+    expect(drafts.length).toBeGreaterThan(0);
+    const meta = await engine.metadata.readArticleMeta(drafts[0]);
+    expect(meta?.status).toBe('drafted');
+  });
 
-    // Flat file: 02_drafts/my-idea.md
-    const draftExists = await fs.pathExists(path.join(tmpDir, '02_drafts', 'my-idea.md'));
+  test('generates draft from file path', async () => {
+    const inputFile = path.join(tmpDir, 'my-idea.md');
+    await fs.writeFile(inputFile, 'Build a CLI tool with Bun');
+
+    await draftCommand(engine, inputFile);
+
+    const draftExists = await fs.pathExists(path.join(tmpDir, '01_drafts', 'my-idea.md'));
     expect(draftExists).toBe(true);
     const meta = await engine.metadata.readArticleMeta('my-idea');
     expect(meta?.status).toBe('drafted');
   });
 
-  test('generates draft from inbox directory with deterministic file selection', async () => {
-    const dir = path.join(tmpDir, '01_inbox', 'multi-file');
+  test('generates draft from directory with deterministic file selection', async () => {
+    const dir = path.join(tmpDir, 'multi-file');
     await fs.ensureDir(dir);
     await fs.writeFile(path.join(dir, 'notes.txt'), 'some notes');
     await fs.writeFile(path.join(dir, 'main.md'), 'main content');
     await fs.writeFile(path.join(dir, 'other.md'), 'other content');
 
-    await draftCommand(engine, 'multi-file');
+    await draftCommand(engine, dir);
 
     // mock echoes prompt which contains the selected file content
-    const draft = await fs.readFile(path.join(tmpDir, '02_drafts', 'multi-file.md'), 'utf-8');
+    const draft = await fs.readFile(path.join(tmpDir, '01_drafts', 'multi-file.md'), 'utf-8');
     expect(draft).toContain('main content'); // main.md selected first, included in prompt
   });
 
-  test('rejects path traversal in source name', async () => {
-    await expect(draftCommand(engine, '../etc/passwd')).rejects.toThrow('Unsafe path');
+  test('rejects non-existent file path with error', async () => {
+    await expect(draftCommand(engine, '../etc/passwd')).rejects.toThrow('File not found');
+  });
+
+  test('rejects empty input', async () => {
+    await expect(draftCommand(engine, '')).rejects.toThrow('Input is required');
   });
 });
 
 describe('adaptCommand', () => {
-  test('adapts master article for multiple platforms in parallel', async () => {
-    // Flat file: 03_master/my-article.md
-    await fs.writeFile(path.join(tmpDir, '03_master', 'my-article.md'), '# Great Article\n\nContent here.');
+  test('adapts draft article for multiple platforms in parallel', async () => {
+    // Flat file: 01_drafts/my-article.md
+    await fs.writeFile(path.join(tmpDir, '01_drafts', 'my-article.md'), '# Great Article\n\nContent here.');
 
     await adaptCommand(engine, 'my-article');
 
-    // Flat files: 04_adapted/my-article.{platform}.md
-    const xExists = await fs.pathExists(path.join(tmpDir, '04_adapted', 'my-article.x.md'));
-    const wechatExists = await fs.pathExists(path.join(tmpDir, '04_adapted', 'my-article.wechat.md'));
-    const zhihuExists = await fs.pathExists(path.join(tmpDir, '04_adapted', 'my-article.zhihu.md'));
+    // Flat files: 02_adapted/my-article.{platform}.md
+    const xExists = await fs.pathExists(path.join(tmpDir, '02_adapted', 'my-article.x.md'));
+    const wechatExists = await fs.pathExists(path.join(tmpDir, '02_adapted', 'my-article.wechat.md'));
+    const zhihuExists = await fs.pathExists(path.join(tmpDir, '02_adapted', 'my-article.zhihu.md'));
     expect(xExists).toBe(true);
     expect(wechatExists).toBe(true);
     expect(zhihuExists).toBe(true);
   });
 
-  test('throws when master article does not exist', async () => {
+  test('throws when draft article does not exist', async () => {
     await expect(adaptCommand(engine, 'nonexistent'))
       .rejects.toThrow('not found');
   });
 
   test('respects --platforms flag', async () => {
-    await fs.writeFile(path.join(tmpDir, '03_master', 'custom-platforms.md'), 'Content');
+    await fs.writeFile(path.join(tmpDir, '01_drafts', 'custom-platforms.md'), 'Content');
 
     await adaptCommand(engine, 'custom-platforms', { platforms: 'x,devto' });
 
-    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'custom-platforms.x.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'custom-platforms.devto.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'custom-platforms.wechat.md'))).toBe(false);
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'custom-platforms.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'custom-platforms.devto.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'custom-platforms.wechat.md'))).toBe(false);
   });
 });
 
 describe('scheduleCommand', () => {
-  test('moves article from adapted to scheduled and stores date in meta', async () => {
+  test('sets schedule metadata without moving files', async () => {
     // Create adapted platform files (flat files)
-    await fs.writeFile(path.join(tmpDir, '04_adapted', 'my-article.x.md'), 'x content');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'my-article.x.md'), 'x content');
     await engine.metadata.writeArticleMeta('my-article', { status: 'adapted' });
 
     await scheduleCommand(engine, 'my-article', '2026-03-20');
 
-    // Files moved to 05_scheduled as flat files
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'my-article.x.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'my-article.x.md'))).toBe(false);
+    // Files stay in 02_adapted (metadata-only schedule)
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'my-article.x.md'))).toBe(true);
     // Schedule stored in meta.yaml
     const meta = await engine.metadata.readArticleMeta('my-article');
     expect(meta?.status).toBe('scheduled');
-    expect(meta?.schedule).toBe('2026-03-20T00-00-00');
+    expect(meta?.schedule).toBe('2026-03-20T00:00:00');
   });
 
-  test('dry-run does not move files', async () => {
-    await fs.writeFile(path.join(tmpDir, '04_adapted', 'dry-test.x.md'), 'content');
+  test('dry-run does not write metadata', async () => {
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'dry-test.x.md'), 'content');
+    await engine.metadata.writeArticleMeta('dry-test', { status: 'adapted' });
 
     await scheduleCommand(engine, 'dry-test', '2026-03-20', { dryRun: true });
 
-    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'dry-test.x.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'dry-test.x.md'))).toBe(false);
+    // Files still in 02_adapted
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'dry-test.x.md'))).toBe(true);
+    // Metadata should NOT be updated to scheduled
+    const meta = await engine.metadata.readArticleMeta('dry-test');
+    expect(meta?.status).toBe('adapted');
   });
 
   test('rejects invalid date', async () => {
+    // Article must exist for date validation to be reached
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'test.x.md'), 'x');
+    await engine.metadata.writeArticleMeta('test', { status: 'adapted' });
     await expect(scheduleCommand(engine, 'test', '03/20/2026')).rejects.toThrow('Invalid date');
+  });
+
+  test('--clear unschedules article back to adapted', async () => {
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'clear-test.x.md'), 'x content');
+    await engine.metadata.writeArticleMeta('clear-test', {
+      status: 'scheduled',
+      schedule: '2026-06-01T00:00:00',
+    });
+
+    await scheduleCommand(engine, 'clear-test', '', { clear: true });
+
+    const meta = await engine.metadata.readArticleMeta('clear-test');
+    expect(meta?.status).toBe('adapted');
+    expect(meta?.schedule).toBeUndefined();
+    // Files still in 02_adapted
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'clear-test.x.md'))).toBe(true);
+  });
+
+  test('--clear on non-scheduled article is idempotent', async () => {
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'idem-test.x.md'), 'x');
+    await engine.metadata.writeArticleMeta('idem-test', { status: 'adapted' });
+
+    await scheduleCommand(engine, 'idem-test', '', { clear: true });
+
+    const meta = await engine.metadata.readArticleMeta('idem-test');
+    expect(meta?.status).toBe('adapted');
   });
 });
 
 describe('publishCommand', () => {
-  test('publishes due items and moves to sent', async () => {
+  test('publishes due items and moves to published', async () => {
     const today = new Date().toISOString().split('T')[0];
-    // Create scheduled platform file (flat file)
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'publish-test.x.md'), 'thread content');
+    // Create adapted platform file with scheduled status
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'publish-test.x.md'), 'thread content');
     await engine.metadata.writeArticleMeta('publish-test', {
       status: 'scheduled',
       schedule: today,
@@ -152,14 +197,14 @@ describe('publishCommand', () => {
 
     await publishCommand(engine);
 
-    // Moved to 06_sent as flat file
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'publish-test.x.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'publish-test.x.md'))).toBe(false);
+    // Moved to 03_published as flat file
+    expect(await fs.pathExists(path.join(tmpDir, '03_published', 'publish-test.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'publish-test.x.md'))).toBe(false);
   });
 
   test('dry-run does not publish', async () => {
     const today = new Date().toISOString().split('T')[0];
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'dry-pub.x.md'), 'content');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'dry-pub.x.md'), 'content');
     await engine.metadata.writeArticleMeta('dry-pub', {
       status: 'scheduled',
       schedule: today,
@@ -167,7 +212,7 @@ describe('publishCommand', () => {
 
     await publishCommand(engine, { dryRun: true });
 
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'dry-pub.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'dry-pub.x.md'))).toBe(true);
   });
 
   test('does nothing when no items are due', async () => {
@@ -178,7 +223,7 @@ describe('publishCommand', () => {
   test('blocks publish when validation fails', async () => {
     const today = new Date().toISOString().split('T')[0];
     // X content exceeding 280 chars
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'invalid-content.x.md'), 'a'.repeat(300));
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'invalid-content.x.md'), 'a'.repeat(300));
     await engine.metadata.writeArticleMeta('invalid-content', {
       status: 'scheduled',
       schedule: today,
@@ -186,16 +231,16 @@ describe('publishCommand', () => {
 
     await publishCommand(engine);
 
-    // Should remain in scheduled (validation blocked it)
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'invalid-content.x.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'invalid-content.x.md'))).toBe(false);
+    // Should remain in 02_adapted (validation blocked it)
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'invalid-content.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '03_published', 'invalid-content.x.md'))).toBe(false);
   });
 });
 
 describe('publishCommand — single pipeline article', () => {
   test('publishes a specific article by name', async () => {
     const today = new Date().toISOString().split('T')[0];
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'specific.x.md'), 'thread');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'specific.x.md'), 'thread');
     await engine.metadata.writeArticleMeta('specific', {
       status: 'scheduled',
       schedule: today,
@@ -203,14 +248,14 @@ describe('publishCommand — single pipeline article', () => {
 
     await publishCommand(engine, { article: 'specific' });
 
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'specific.x.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'specific.x.md'))).toBe(false);
+    expect(await fs.pathExists(path.join(tmpDir, '03_published', 'specific.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'specific.x.md'))).toBe(false);
   });
 
   test('filters platforms when --platforms is set', async () => {
     const today = new Date().toISOString().split('T')[0];
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'multi.x.md'), 'thread');
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'multi.devto.md'), '---\ntitle: DevTo Article\n---\n# DevTo Article');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'multi.x.md'), 'thread');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'multi.devto.md'), '---\ntitle: DevTo Article\n---\n# DevTo Article');
     await engine.metadata.writeArticleMeta('multi', {
       status: 'scheduled',
       schedule: today,
@@ -219,18 +264,18 @@ describe('publishCommand — single pipeline article', () => {
     // Only publish devto
     await publishCommand(engine, { article: 'multi', platforms: 'devto' });
 
-    // Partial publish: should NOT move to 06_sent (x not done)
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'multi.x.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'multi.devto.md'))).toBe(true);
+    // Partial publish: should NOT move to 03_published (x not done)
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'multi.x.md'))).toBe(true);
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'multi.devto.md'))).toBe(true);
 
     // Meta should show devto published
     const meta = await engine.metadata.readArticleMeta('multi');
     expect(meta?.platforms?.devto?.status).toBe('success');
   });
 
-  test('throws when article not in 05_scheduled', async () => {
+  test('throws when article not in 02_adapted', async () => {
     await expect(publishCommand(engine, { article: 'nonexistent' }))
-      .rejects.toThrow('not found in 05_scheduled');
+      .rejects.toThrow('not found in 02_adapted');
   });
 });
 
@@ -239,22 +284,24 @@ describe('publishCommand — external file', () => {
     const extFile = path.join(tmpDir, 'external-post.md');
     await fs.writeFile(extFile, '# External Post\nContent here.');
 
-    // Default: no tracking — no 06_sent, no meta.yaml
+    // Default: no tracking — no 03_published, no meta.yaml
     await publishCommand(engine, { article: extFile, platforms: 'linkedin' });
 
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'external-post.linkedin.md'))).toBe(false);
+    expect(await fs.pathExists(path.join(tmpDir, '03_published', 'external-post.linkedin.md'))).toBe(false);
     const meta = await engine.metadata.readArticleMeta('external-post');
     expect(meta).toBeNull();
   });
 
-  test('publishes external file with --track enables pipeline tracking', async () => {
+  test('publishes external file with --track imports to pipeline then publishes', async () => {
     const extFile = path.join(tmpDir, 'tracked-post.md');
     await fs.writeFile(extFile, '# Tracked Post');
 
     await publishCommand(engine, { article: extFile, platforms: 'linkedin', track: true });
 
-    // Should be tracked in 06_sent
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'tracked-post.linkedin.md'))).toBe(true);
+    // Should be archived in 03_published (moved from 02_adapted after publish)
+    expect(await fs.pathExists(path.join(tmpDir, '03_published', 'tracked-post.linkedin.md'))).toBe(true);
+    // 02_adapted should be empty (files moved to 03_published)
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'tracked-post.linkedin.md'))).toBe(false);
 
     // Should have meta.yaml entry
     const meta = await engine.metadata.readArticleMeta('tracked-post');
@@ -270,7 +317,7 @@ describe('publishCommand — external file', () => {
     await publishCommand(null, { article: extFile, platforms: 'linkedin' });
 
     // Should NOT crash, should NOT track
-    expect(await fs.pathExists(path.join(tmpDir, '06_sent', 'standalone-post.linkedin.md'))).toBe(false);
+    expect(await fs.pathExists(path.join(tmpDir, '03_published', 'standalone-post.linkedin.md'))).toBe(false);
   });
 
   test('throws when --platforms not provided and no project.yaml', async () => {
@@ -291,8 +338,8 @@ describe('publishCommand — external file', () => {
 describe('publishCommand — batch with --platforms filter', () => {
   test('batch mode filters platforms', async () => {
     const today = new Date().toISOString().split('T')[0];
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'batch-filter.x.md'), 'thread');
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'batch-filter.devto.md'), '# DevTo');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'batch-filter.x.md'), 'thread');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'batch-filter.devto.md'), '# DevTo');
     await engine.metadata.writeArticleMeta('batch-filter', {
       status: 'scheduled',
       schedule: today,
@@ -408,45 +455,25 @@ describe('parsePlatformFilter', () => {
   });
 });
 
-describe('approveCommand', () => {
-  test('promotes draft to master as flat file', async () => {
-    // Flat file: 02_drafts/my-article.md
-    await fs.writeFile(path.join(tmpDir, '02_drafts', 'my-article.md'), '# My Draft');
-    await engine.metadata.writeArticleMeta('my-article', { status: 'drafted' });
-
-    await approveCommand(engine, 'my-article');
-
-    // Moved to 03_master as flat file (no rename needed)
-    expect(await fs.pathExists(path.join(tmpDir, '03_master', 'my-article.md'))).toBe(true);
-    // Source removed
-    expect(await fs.pathExists(path.join(tmpDir, '02_drafts', 'my-article.md'))).toBe(false);
-    // Metadata updated
-    const meta = await engine.metadata.readArticleMeta('my-article');
-    expect(meta?.status).toBe('master');
-  });
-
-  test('throws when draft does not exist', async () => {
-    await expect(approveCommand(engine, 'nonexistent')).rejects.toThrow('not found');
-  });
-
-  test('throws when target already exists in master', async () => {
-    await fs.writeFile(path.join(tmpDir, '02_drafts', 'dup-article.md'), 'draft');
-    await fs.writeFile(path.join(tmpDir, '03_master', 'dup-article.md'), 'master');
-
-    await expect(approveCommand(engine, 'dup-article')).rejects.toThrow('already exists');
-  });
-});
-
 describe('rollbackCommand', () => {
-  test('rolls back a scheduled article', async () => {
-    // Flat file in 05_scheduled
-    await fs.writeFile(path.join(tmpDir, '05_scheduled', 'rollback-test.x.md'), 'content');
-    await engine.metadata.writeArticleMeta('rollback-test', { status: 'scheduled' });
+  test('rolls back adapted article: moves base file, deletes platform files', async () => {
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'rollback-test.x.md'), 'x content');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'rollback-test.md'), 'base draft');
+    await engine.metadata.writeArticleMeta('rollback-test', { status: 'adapted', adapted_platforms: ['x'] });
 
     await rollbackCommand(engine, 'rollback-test');
 
-    // Moved back to 04_adapted as flat file
-    expect(await fs.pathExists(path.join(tmpDir, '04_adapted', 'rollback-test.x.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpDir, '05_scheduled', 'rollback-test.x.md'))).toBe(false);
+    // Base file moved to 01_drafts
+    expect(await fs.pathExists(path.join(tmpDir, '01_drafts', 'rollback-test.md'))).toBe(true);
+    // Platform files deleted, not moved
+    expect(await fs.pathExists(path.join(tmpDir, '02_adapted', 'rollback-test.x.md'))).toBe(false);
+    expect(await fs.pathExists(path.join(tmpDir, '01_drafts', 'rollback-test.x.md'))).toBe(false);
+  });
+
+  test('rollback from first stage throws', async () => {
+    await fs.writeFile(path.join(tmpDir, '01_drafts', 'first-stage.md'), 'content');
+    await engine.metadata.writeArticleMeta('first-stage', { status: 'drafted' });
+
+    await expect(rollbackCommand(engine, 'first-stage')).rejects.toThrow(/first stage/i);
   });
 });

@@ -10,4 +10,3 @@ Rewrite the content as a Zhihu answer or column article.
 - Structured with clear headings
 - Start with a direct answer or thesis statement
 - Professional but conversational tone
-- Output in Chinese if the original is in Chinese; otherwise in the original language

@@ -1,6 +1,6 @@
 # ReachForge
 
-Content publishing CLI. Manages articles through a pipeline: inbox, draft, approve, refine, adapt, schedule, publish.
+Content publishing CLI. Manages articles through a 3-step pipeline: draft, adapt, publish.
 
 ## Quick Reference
 
@@ -15,21 +15,25 @@ reach publish ./file.md -p devto   # Publish external file to platform(s)
 ## Pipeline Steps (manual control)
 
 ```
-reach draft <source>               # inbox → draft (AI generates)
-reach approve <article>            # draft → master
-reach refine <article> -f "..."    # AI refine draft/master
-reach adapt <article>              # master → platform versions
-reach schedule <article> [date]    # adapted → scheduled
-reach publish                      # scheduled → sent
-reach rollback <article>           # move back one stage
+reach draft <input>                # Generate AI draft (input: prompt, file, or directory)
+reach refine <article> -f "..."    # AI refine draft
+reach adapt <article>              # draft → platform versions
+reach schedule <article> [date]    # Set publish date (metadata only, no file move)
+reach publish                      # Publish due articles
+reach rollback <article>           # Move back one stage
 ```
 
 ## Key Options
 
 - `-p, --platforms <list>` — comma-separated platforms (devto, hashnode, x, wechat, zhihu, github)
-- `--track` — opt-in pipeline tracking for external file publish (default: no tracking)
+- `--name <slug>` — explicit article name for `draft` and `go` commands (default: auto-generated)
+- `--force` — publish even if article is scheduled for a future date
+- `--clear` — unschedule an article (revert status to adapted, remove schedule date)
+- `--track` — opt-in pipeline tracking for external file publish (imports to 02_adapted, then publishes)
 - `-n, --dry-run` — preview without executing
 - `--json` — JSON output envelope: `{ jsonVersion, command, success, data, error? }`
+
+Adapt is additive: running `reach adapt article -p devto` after a previous `reach adapt article -p x` adds devto without removing x.
 
 ## Project Structure
 
@@ -45,10 +49,14 @@ reach rollback <article>           # move back one stage
 ## Pipeline Stages (filesystem directories)
 
 ```
-01_inbox/ → 02_drafts/ → 03_master/ → 04_adapted/ → 05_scheduled/ → 06_sent/
+01_drafts/ → 02_adapted/ → 03_published/
 ```
 
-Adapted files use `{article}.{platform}.md` naming (e.g., `my-post.devto.md`).
+- `01_drafts/` — AI-generated drafts (`{article}.md`)
+- `02_adapted/` — platform-specific versions (`{article}.{platform}.md`)
+- `03_published/` — published archive
+
+Scheduled articles stay in `02_adapted/` with `status: scheduled` in metadata.
 
 Metadata: `meta.yaml` at project root tracks article status, platforms, schedules.
 

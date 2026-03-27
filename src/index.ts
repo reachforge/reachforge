@@ -21,13 +21,14 @@ import { adaptCommand } from './commands/adapt.js';
 import { scheduleCommand } from './commands/schedule.js';
 import { publishCommand } from './commands/publish.js';
 import { rollbackCommand } from './commands/rollback.js';
+import { refreshCommand } from './commands/refresh.js';
 import { watchCommand } from './commands/watch.js';
 import { mcpCommand } from './commands/mcp.js';
 import { initCommand } from './commands/init.js';
 import { newProjectCommand } from './commands/new-project.js';
 import { workspaceInfoCommand } from './commands/workspace-info.js';
 import { refineCommand } from './commands/refine.js';
-import { approveCommand } from './commands/approve.js';
+
 import { assetAddCommand, assetListCommand } from './commands/asset.js';
 import { analyticsCommand, collectAnalytics } from './commands/analytics.js';
 import { goCommand } from './commands/go.js';
@@ -86,7 +87,8 @@ async function getEngine(): Promise<PipelineEngine> {
   // prevent accidental pipeline creation in arbitrary directories
   if (!ctx.isWorkspace && !ctx.projectName) {
     const hasProjectConfig = await fs.pathExists(path.join(ctx.projectDir, 'project.yaml'));
-    const hasPipelineDirs = await fs.pathExists(path.join(ctx.projectDir, '01_inbox'));
+    const hasPipelineDirs = await fs.pathExists(path.join(ctx.projectDir, '01_drafts'))
+      || await fs.pathExists(path.join(ctx.projectDir, '01_inbox')); // legacy
     if (!hasProjectConfig && !hasPipelineDirs) {
       throw new Error(
         'No workspace or project found in the current directory.\n'
@@ -146,26 +148,20 @@ apcore.register('reach.draft', {
     await draftCommand(engine, inputs.source);
   },
 });
-apcore.register('reach.approve', {
-  ...meta('reach.approve'),
-  execute: async (inputs: { article: string }) => {
-    const engine = await getEngine();
-    await approveCommand(engine, inputs.article);
-  },
-});
+
 apcore.register('reach.adapt', {
   ...meta('reach.adapt'),
-  execute: async (inputs: { article: string; platforms?: string; force?: boolean }) => {
+  execute: async (inputs: { article: string; platforms?: string; lang?: string; force?: boolean }) => {
     const engine = await getEngine();
-    await adaptCommand(engine, inputs.article, { platforms: inputs.platforms, force: inputs.force });
+    await adaptCommand(engine, inputs.article, { platforms: inputs.platforms, lang: inputs.lang, force: inputs.force });
   },
 });
 apcore.register('reach.schedule', {
   ...meta('reach.schedule'),
-  execute: async (inputs: { article: string; date?: string }) => {
+  execute: async (inputs: { article: string; date?: string; clear?: boolean }) => {
     const engine = await getEngine();
     const resolvedDate = inputs.date || new Date().toISOString().split('T')[0];
-    await scheduleCommand(engine, inputs.article, resolvedDate);
+    await scheduleCommand(engine, inputs.article, resolvedDate, { clear: inputs.clear });
   },
 });
 apcore.register('reach.publish', {
@@ -200,6 +196,13 @@ apcore.register('reach.rollback', {
   execute: async (inputs: { article: string }) => {
     const engine = await getEngine();
     await rollbackCommand(engine, inputs.article);
+  },
+});
+apcore.register('reach.refresh', {
+  ...meta('reach.refresh'),
+  execute: async (inputs: { article: string }) => {
+    const engine = await getEngine();
+    await refreshCommand(engine, inputs.article);
   },
 });
 apcore.register('reach.asset.add', {
@@ -301,10 +304,11 @@ program
   .command('publish [article]')
   .description('Publish to platforms (all due, specific article, or external file)')
   .option('-p, --platforms <list>', 'Comma-separated platform filter (e.g., devto,hashnode)')
-  .option('--track', 'Track external file in pipeline (copy to 06_sent, record in meta.yaml)')
+  .option('--track', 'Track external file in pipeline (import to 02_adapted, then publish)')
+  .option('--force', 'Publish even if article is scheduled for a future date')
   .option('-n, --dry-run', 'Preview what would be published')
   .option('-d, --draft', 'Publish as draft (overrides frontmatter published field)')
-  .action(withErrorHandler(async (article: string | undefined, options: { platforms?: string; track?: boolean; dryRun?: boolean; draft?: boolean }) => {
+  .action(withErrorHandler(async (article: string | undefined, options: { platforms?: string; track?: boolean; force?: boolean; dryRun?: boolean; draft?: boolean }) => {
     const { isExternalFile } = await import('./commands/publish.js');
     const isExternal = article && isExternalFile(article);
 
@@ -320,24 +324,17 @@ program
 // ── Pipeline Steps ───────────────────────────────────────
 
 program
-  .command('draft <source>')
-  .description('Generate an AI draft from an inbox source')
-  .action(withErrorHandler(async (source: string) => {
+  .command('draft <input>')
+  .description('Generate an AI draft from a prompt, file, or directory')
+  .option('--name <slug>', 'Explicit article name (default: auto-generated from input)')
+  .action(withErrorHandler(async (input: string, options: { name?: string }) => {
     const engine = await getEngine();
-    await draftCommand(engine, source, { json: program.opts().json });
+    await draftCommand(engine, input, { ...options, json: program.opts().json });
   }, 'draft'));
 
 program
-  .command('approve <article>')
-  .description('Promote a draft to the master stage')
-  .action(withErrorHandler(async (article: string) => {
-    const engine = await getEngine();
-    await approveCommand(engine, article, { json: program.opts().json });
-  }, 'approve'));
-
-program
   .command('refine <article>')
-  .description('Refine a draft or master article with AI feedback')
+  .description('Refine a draft or adapted article with AI feedback')
   .option('-f, --feedback <text>', 'Non-interactive single refinement turn with the given feedback')
   .action(withErrorHandler(async (article: string, options: { feedback?: string }) => {
     const engine = await getEngine();
@@ -349,10 +346,11 @@ program
 
 program
   .command('adapt <article>')
-  .description('Generate platform-specific versions from the master draft')
+  .description('Generate platform-specific versions from a draft')
   .option('-p, --platforms <list>', 'Comma-separated platform list (e.g., x,devto,wechat)')
+  .option('-l, --lang <code>', 'Override target language for all platforms (e.g., en, zh-CN, ja)')
   .option('-f, --force', 'Overwrite existing platform versions')
-  .action(withErrorHandler(async (article: string, options: { platforms?: string; force?: boolean }) => {
+  .action(withErrorHandler(async (article: string, options: { platforms?: string; lang?: string; force?: boolean }) => {
     const engine = await getEngine();
     await adaptCommand(engine, article, { ...options, json: program.opts().json });
   }, 'adapt'));
@@ -360,8 +358,9 @@ program
 program
   .command('schedule <article> [date]')
   .description('Schedule an article for publishing (defaults to now)')
-  .option('-n, --dry-run', 'Preview without moving files')
-  .action(withErrorHandler(async (article: string, date: string | undefined, options: { dryRun?: boolean }) => {
+  .option('-n, --dry-run', 'Preview without scheduling')
+  .option('--clear', 'Unschedule: revert status to adapted and remove schedule date')
+  .action(withErrorHandler(async (article: string, date: string | undefined, options: { dryRun?: boolean; clear?: boolean }) => {
     const engine = await getEngine();
     const resolvedDate = date || new Date().toISOString().split('T')[0];
     await scheduleCommand(engine, article, resolvedDate, { ...options, json: program.opts().json });
@@ -374,6 +373,14 @@ program
     const engine = await getEngine();
     await rollbackCommand(engine, article, { json: program.opts().json });
   }, 'rollback'));
+
+program
+  .command('refresh <article>')
+  .description('Copy a published/adapted article back to drafts for re-editing')
+  .action(withErrorHandler(async (article: string) => {
+    const engine = await getEngine();
+    await refreshCommand(engine, article, { json: program.opts().json });
+  }, 'refresh'));
 
 // ── System ───────────────────────────────────────────────
 

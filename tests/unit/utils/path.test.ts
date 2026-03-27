@@ -4,7 +4,6 @@ import {
   validateDate,
   validateScheduleDate,
   normalizeScheduleDate,
-  parseScheduleTimestamp,
 } from '../../../src/utils/path.js';
 import { PathTraversalError } from '../../../src/types/index.js';
 
@@ -105,27 +104,20 @@ describe('validateScheduleDate', () => {
 });
 
 describe('normalizeScheduleDate', () => {
-  test('date-only adds T00-00-00', () => {
-    expect(normalizeScheduleDate('2026-03-22')).toBe('2026-03-22T00-00-00');
+  test('date-only adds T00:00:00', () => {
+    expect(normalizeScheduleDate('2026-03-22')).toBe('2026-03-22T00:00:00');
   });
 
-  test('HH:MM adds -00 seconds and replaces colons', () => {
-    expect(normalizeScheduleDate('2026-03-22T14:30')).toBe('2026-03-22T14-30-00');
+  test('HH:MM adds :00 seconds', () => {
+    expect(normalizeScheduleDate('2026-03-22T14:30')).toBe('2026-03-22T14:30:00');
   });
 
-  test('full datetime replaces colons with hyphens', () => {
-    expect(normalizeScheduleDate('2026-03-22T14:30:45')).toBe('2026-03-22T14-30-45');
-  });
-});
-
-describe('parseScheduleTimestamp', () => {
-  test('new format converts hyphens to colons', () => {
-    expect(parseScheduleTimestamp('2026-03-22T14-30-00')).toBe('2026-03-22T14:30:00');
-    expect(parseScheduleTimestamp('2026-03-22T00-00-00')).toBe('2026-03-22T00:00:00');
-    expect(parseScheduleTimestamp('2026-12-31T23-59-59')).toBe('2026-12-31T23:59:59');
+  test('full datetime passes through', () => {
+    expect(normalizeScheduleDate('2026-03-22T14:30:45')).toBe('2026-03-22T14:30:45');
   });
 
-  test('legacy date-only defaults to midnight', () => {
-    expect(parseScheduleTimestamp('2026-03-22')).toBe('2026-03-22T00:00:00');
+  test('legacy hyphenated format converted to colons', () => {
+    expect(normalizeScheduleDate('2026-03-22T14-30-00')).toBe('2026-03-22T14:30:00');
+    expect(normalizeScheduleDate('2026-03-22T00-00-00')).toBe('2026-03-22T00:00:00');
   });
 });

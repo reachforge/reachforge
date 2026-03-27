@@ -12,7 +12,7 @@ export type PlatformId = typeof PLATFORM_IDS[number];
 
 export const PLATFORM_ID_REGEX = /^[a-z0-9]+$/;
 
-export const ADAPTED_STAGES: PipelineStage[] = ['04_adapted', '05_scheduled', '06_sent'];
+export const ADAPTED_STAGES: PipelineStage[] = ['02_adapted', '03_published'];
 
 // --- Types ---
 

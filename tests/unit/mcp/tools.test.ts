@@ -6,7 +6,6 @@ import {
   ScheduleToolSchema,
   PublishToolSchema,
   RollbackToolSchema,
-  ApproveToolSchema,
   RefineToolSchema,
   AssetAddToolSchema,
   AssetListToolSchema,
@@ -47,11 +46,6 @@ describe('MCP Tool Schemas', () => {
   test('RollbackToolSchema requires article', () => {
     expect(RollbackToolSchema.safeParse({ article: 'my-post' }).success).toBe(true);
     expect(RollbackToolSchema.safeParse({}).success).toBe(false);
-  });
-
-  test('ApproveToolSchema requires article', () => {
-    expect(ApproveToolSchema.safeParse({ article: 'my-draft' }).success).toBe(true);
-    expect(ApproveToolSchema.safeParse({}).success).toBe(false);
   });
 
   test('RefineToolSchema requires article and feedback', () => {
@@ -110,7 +104,7 @@ describe('TOOL_METADATA', () => {
 });
 
 describe('MCP_TOOL_DEFINITIONS', () => {
-  test('has 13 tool definitions', () => {
+  test('has 12 tool definitions', () => {
     expect(MCP_TOOL_DEFINITIONS).toHaveLength(13);
   });
 
@@ -131,11 +125,12 @@ describe('MCP_TOOL_DEFINITIONS', () => {
     expect(names).toContain('reach_schedule');
     expect(names).toContain('reach_publish');
     expect(names).toContain('reach_rollback');
-    expect(names).toContain('reach_approve');
     expect(names).toContain('reach_refine');
     expect(names).toContain('reach_asset_add');
     expect(names).toContain('reach_asset_list');
     expect(names).toContain('reach_go');
     expect(names).toContain('reach_analytics');
+    // reach_approve has been removed (pipeline simplified)
+    expect(names).not.toContain('reach_approve');
   });
 });

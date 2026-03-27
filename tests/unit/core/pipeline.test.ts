@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 describe('PipelineEngine.initPipeline', () => {
-  test('creates all 6 stage directories', async () => {
+  test('creates all 3 stage directories', async () => {
     await engine.initPipeline();
     for (const stage of STAGES) {
       const exists = await fs.pathExists(path.join(tmpDir, stage));
@@ -30,19 +30,19 @@ describe('PipelineEngine.initPipeline', () => {
     await engine.initPipeline();
     await engine.initPipeline();
     const items = await fs.readdir(tmpDir);
-    expect(items.filter(i => !i.startsWith('.')).length).toBe(6);
+    expect(items.filter(i => !i.startsWith('.')).length).toBe(3);
   });
 });
 
 describe('PipelineEngine.getStatus', () => {
   test('returns status with all stages and counts', async () => {
     await engine.initPipeline();
-    await fs.writeFile(path.join(tmpDir, '01_inbox', 'post-a.md'), 'raw');
-    await fs.writeFile(path.join(tmpDir, '02_drafts', 'post-b.md'), 'draft');
+    await fs.writeFile(path.join(tmpDir, '01_drafts', 'post-a.md'), 'raw');
+    await fs.writeFile(path.join(tmpDir, '02_adapted', 'post-b.x.md'), 'adapted');
     const status = await engine.getStatus();
-    expect(status.stages['01_inbox'].count).toBe(1);
-    expect(status.stages['02_drafts'].count).toBe(1);
-    expect(status.stages['03_master'].count).toBe(0);
+    expect(status.stages['01_drafts'].count).toBe(1);
+    expect(status.stages['02_adapted'].count).toBe(1);
+    expect(status.stages['03_published'].count).toBe(0);
     expect(status.totalProjects).toBe(2);
   });
 });

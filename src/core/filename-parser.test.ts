@@ -32,72 +32,69 @@ describe('filename-parser constants', () => {
   });
 
   it('ADAPTED_STAGES contains exactly the post-adaptation stages', () => {
-    expect(ADAPTED_STAGES).toEqual(['04_adapted', '05_scheduled', '06_sent']);
+    expect(ADAPTED_STAGES).toEqual(['02_adapted', '03_published']);
   });
 });
 
 // T02: isAdaptedStage
 describe('isAdaptedStage', () => {
   it('returns true for adapted stages', () => {
-    expect(isAdaptedStage('04_adapted')).toBe(true);
-    expect(isAdaptedStage('05_scheduled')).toBe(true);
-    expect(isAdaptedStage('06_sent')).toBe(true);
+    expect(isAdaptedStage('02_adapted')).toBe(true);
+    expect(isAdaptedStage('03_published')).toBe(true);
   });
 
   it('returns false for pre-adaptation stages', () => {
-    expect(isAdaptedStage('01_inbox')).toBe(false);
-    expect(isAdaptedStage('02_drafts')).toBe(false);
-    expect(isAdaptedStage('03_master')).toBe(false);
+    expect(isAdaptedStage('01_drafts')).toBe(false);
   });
 });
 
 // T03: parseArticleFilename
 describe('parseArticleFilename', () => {
   it('parses simple filename in adapted stage', () => {
-    const result = parseArticleFilename('teaser.x.md', '04_adapted');
+    const result = parseArticleFilename('teaser.x.md', '02_adapted');
     expect(result).toEqual({ article: 'teaser', platform: 'x' });
   });
 
   it('parses filename with dots in article name', () => {
-    const result = parseArticleFilename('my.first.post.devto.md', '04_adapted');
+    const result = parseArticleFilename('my.first.post.devto.md', '02_adapted');
     expect(result).toEqual({ article: 'my.first.post', platform: 'devto' });
   });
 
   it('ignores platform suffix in non-adapted stage', () => {
-    const result = parseArticleFilename('teaser.x.md', '01_inbox');
+    const result = parseArticleFilename('teaser.x.md', '01_drafts');
     expect(result).toEqual({ article: 'teaser.x', platform: null });
   });
 
   it('returns null platform for unknown platform ID', () => {
-    const result = parseArticleFilename('teaser.UNKNOWN.md', '04_adapted');
+    const result = parseArticleFilename('teaser.UNKNOWN.md', '02_adapted');
     expect(result).toEqual({ article: 'teaser.UNKNOWN', platform: null });
   });
 
   it('returns null platform for no-dot filename in adapted stage', () => {
-    const result = parseArticleFilename('teaser.md', '04_adapted');
+    const result = parseArticleFilename('teaser.md', '02_adapted');
     expect(result).toEqual({ article: 'teaser', platform: null });
   });
 
   it('parses simple filename in non-adapted stage', () => {
-    const result = parseArticleFilename('teaser.md', '02_drafts');
+    const result = parseArticleFilename('teaser.md', '01_drafts');
     expect(result).toEqual({ article: 'teaser', platform: null });
   });
 
   it('throws for non-.md filename', () => {
-    expect(() => parseArticleFilename('teaser.txt', '01_inbox')).toThrow();
+    expect(() => parseArticleFilename('teaser.txt', '01_drafts')).toThrow();
   });
 
   it('parses all platform IDs correctly in adapted stage', () => {
     for (const id of PLATFORM_IDS) {
-      const result = parseArticleFilename(`article.${id}.md`, '04_adapted');
+      const result = parseArticleFilename(`article.${id}.md`, '02_adapted');
       expect(result).toEqual({ article: 'article', platform: id });
     }
   });
 
-  it('works in 05_scheduled and 06_sent', () => {
-    expect(parseArticleFilename('teaser.devto.md', '05_scheduled'))
+  it('works in 03_published', () => {
+    expect(parseArticleFilename('teaser.devto.md', '03_published'))
       .toEqual({ article: 'teaser', platform: 'devto' });
-    expect(parseArticleFilename('teaser.hashnode.md', '06_sent'))
+    expect(parseArticleFilename('teaser.hashnode.md', '03_published'))
       .toEqual({ article: 'teaser', platform: 'hashnode' });
   });
 });
@@ -164,7 +161,7 @@ describe('validateArticleName', () => {
   });
 
   it('allows names that look like platform IDs but with different case', () => {
-    // 'X' lowercase = 'x' which is a platform ID → should throw
+    // 'X' lowercase = 'x' which is a platform ID -> should throw
     expect(() => validateArticleName('X')).toThrow(/conflict/i);
   });
 });

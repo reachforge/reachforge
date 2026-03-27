@@ -18,6 +18,7 @@ export interface PublishOptions {
   article?: string;
   platforms?: string;
   track?: boolean;
+  force?: boolean;
   dryRun?: boolean;
   draft?: boolean;
   json?: boolean;
@@ -220,7 +221,7 @@ async function publishContentToPlatforms(
 /**
  * Publish an external file directly to specified platforms.
  * By default, sends without pipeline tracking (no engine required).
- * With --track, copies to 06_sent and records in meta.yaml (requires engine/project).
+ * With --track, copies to 03_published and records in meta.yaml (requires engine/project).
  */
 async function publishExternalFile(
   engine: PipelineEngine | null,
@@ -295,6 +296,28 @@ async function publishExternalFile(
     return;
   }
 
+  // --track: import into pipeline first, then publish through normal pipeline flow
+  if (options.track && engine) {
+    await engine.initPipeline();
+
+    // Write platform files to 02_adapted/{slug}.{platform}.md
+    for (const [platform, platformContent] of Object.entries(contentByPlatform)) {
+      await engine.writeArticleFile('02_adapted', basename, platformContent, platform);
+    }
+
+    // Record in meta.yaml as adapted
+    await engine.metadata.writeArticleMeta(basename, {
+      status: 'adapted',
+      adapted_platforms: platformFilter,
+    });
+
+    if (!options.json) console.log(chalk.dim(`  Imported to pipeline: 02_adapted/${basename}.*.md`));
+
+    // Delegate to normal pipeline publish (handles lock, validate, publish, move to 03_published)
+    return publishPipelineArticle(engine, basename, options);
+  }
+
+  // Direct send (no pipeline tracking)
   if (options.dryRun) {
     if (options.json) {
       process.stdout.write(jsonSuccess('publish', { published: [], failed: [], skipped: [basename] }));
@@ -310,25 +333,7 @@ async function publishExternalFile(
 
   const anySuccess = Object.values(platformResults).some(p => p.status === 'success');
 
-  // Track in pipeline only when --track is set (requires engine)
-  if (options.track && engine && anySuccess) {
-    await engine.initPipeline();
-
-    // Copy platform files to 06_sent
-    for (const platform of platformFilter) {
-      const sentFilename = buildArticleFilename(basename, platform);
-      const sentPath = path.join(engine.projectDir, '06_sent', sentFilename);
-      await fs.writeFile(sentPath, content);
-    }
-
-    // Record in meta.yaml
-    await engine.metadata.writeArticleMeta(basename, {
-      status: 'published',
-      platforms: platformResults as Record<string, PlatformPublishStatus>,
-    });
-
-    if (!options.json) console.log(chalk.green(`\u2705 Published and tracked: ${basename}`));
-  } else if (anySuccess) {
+  if (anySuccess) {
     if (!options.json) console.log(chalk.green(`\u2705 Published: ${basename}`));
   } else {
     if (!options.json) console.log(chalk.red(`\u274c All platforms failed for "${basename}"`));
@@ -344,7 +349,7 @@ async function publishExternalFile(
 }
 
 /**
- * Publish a specific pipeline article from 05_scheduled, with optional platform filter.
+ * Publish a specific pipeline article from 02_adapted, with optional platform filter.
  */
 async function publishPipelineArticle(
   engine: PipelineEngine,
@@ -358,13 +363,28 @@ async function publishPipelineArticle(
 
   const platformFilter = parsePlatformFilter(options.platforms);
 
-  // Check article exists in 05_scheduled
-  const articles = await engine.listArticles('05_scheduled');
+  // Check article exists in 02_adapted
+  const articles = await engine.listArticles('02_adapted');
   if (!articles.includes(articleName)) {
     throw new ReachforgeError(
-      `Article "${articleName}" not found in 05_scheduled`,
-      'Article must be in the scheduled stage. Use: reach status to check.',
+      `Article "${articleName}" not found in 02_adapted`,
+      'Article must be in the adapted stage. Use: reach status to check.',
     );
+  }
+
+  // Guard: if article is scheduled for the future, warn and abort unless --force
+  const articleMeta = await engine.metadata.readArticleMeta(articleName);
+  if (articleMeta?.status === 'scheduled' && articleMeta.schedule && !options.force) {
+    const now = new Date().toISOString();
+    if (articleMeta.schedule > now) {
+      const msg = `Article "${articleName}" is scheduled for ${articleMeta.schedule} (future). Use --force to publish now.`;
+      if (options.json) {
+        process.stdout.write(jsonSuccess('publish', { published: [], failed: [], skipped: [articleName], warning: msg }));
+        return;
+      }
+      console.log(chalk.yellow(`  ⚠ ${msg}`));
+      return;
+    }
   }
 
   if (!options.json) console.log(chalk.cyan(`\ud83d\udce6 Publishing: ${articleName}`));
@@ -379,28 +399,8 @@ async function publishPipelineArticle(
     return;
   }
 
-  // Get platform files
-  const files = await engine.getArticleFiles(articleName, '05_scheduled');
-  if (files.length === 0) {
-    if (options.json) {
-      process.stdout.write(jsonSuccess('publish', { published: [], failed: [], skipped: [articleName] }));
-      return;
-    }
-    console.log(chalk.yellow(`  \u23ed No platform files for "${articleName}", skipping`));
-    return;
-  }
-
   // Read content per platform, applying filter
-  const contentByPlatform: Record<string, string> = {};
-  for (const file of files) {
-    const parsed = parseArticleFilename(file, '05_scheduled');
-    if (parsed.platform) {
-      if (platformFilter && !platformFilter.includes(parsed.platform)) continue;
-      contentByPlatform[parsed.platform] = await fs.readFile(
-        engine.getArticlePath('05_scheduled', articleName, parsed.platform), 'utf-8'
-      );
-    }
-  }
+  const contentByPlatform = await readAdaptedContent(engine, articleName, platformFilter);
 
   if (Object.keys(contentByPlatform).length === 0) {
     if (options.json) {
@@ -478,11 +478,11 @@ async function publishPipelineArticle(
 
     await engine.metadata.unlockArticle(articleName);
 
-    // Only move to 06_sent if ALL adapted platforms are done (not partial publish)
+    // Only move to 03_published if ALL adapted platforms are done (not partial publish)
     // When a platform filter is used, check if all platforms are now complete
-    const allFiles = await engine.getArticleFiles(articleName, '05_scheduled');
+    const allFiles = await engine.getArticleFiles(articleName, '02_adapted');
     const allPlatforms = allFiles
-      .map(f => parseArticleFilename(f, '05_scheduled').platform)
+      .map(f => parseArticleFilename(f, '02_adapted').platform)
       .filter(Boolean) as string[];
     const allPlatformsDone = allPlatforms.every(p => {
       const r = platformResults[p];
@@ -490,7 +490,7 @@ async function publishPipelineArticle(
     });
 
     if (allPlatformsDone) {
-      await engine.moveArticle(articleName, '05_scheduled', '06_sent');
+      await engine.moveArticle(articleName, '02_adapted', '03_published');
       if (!options.json) console.log(chalk.green(`\u2705 Published and archived: ${articleName}`));
     } else if (anySuccess) {
       if (!options.json) {
@@ -500,7 +500,7 @@ async function publishPipelineArticle(
         console.log(chalk.dim(`  Remaining: ${remaining.join(', ')}`));
       }
     } else {
-      if (!options.json) console.log(chalk.red(`\u274c All platforms failed for "${articleName}" \u2014 remains in 05_scheduled`));
+      if (!options.json) console.log(chalk.red(`\u274c All platforms failed for "${articleName}" \u2014 remains in 02_adapted`));
     }
   } catch (err) {
     await engine.metadata.unlockArticle(articleName);
@@ -517,22 +517,22 @@ async function publishPipelineArticle(
 }
 
 /**
- * Read content per platform from scheduled files, applying optional platform filter.
+ * Read content per platform from adapted files, applying optional platform filter.
  */
-async function readScheduledContent(
+async function readAdaptedContent(
   engine: PipelineEngine,
   article: string,
   platformFilter: string[] | null,
 ): Promise<Record<string, string>> {
-  const files = await engine.getArticleFiles(article, '05_scheduled');
+  const files = await engine.getArticleFiles(article, '02_adapted');
   const contentByPlatform: Record<string, string> = {};
 
   for (const file of files) {
-    const parsed = parseArticleFilename(file, '05_scheduled');
+    const parsed = parseArticleFilename(file, '02_adapted');
     if (parsed.platform) {
       if (platformFilter && !platformFilter.includes(parsed.platform)) continue;
       contentByPlatform[parsed.platform] = await fs.readFile(
-        engine.getArticlePath('05_scheduled', article, parsed.platform), 'utf-8'
+        engine.getArticlePath('02_adapted', article, parsed.platform), 'utf-8'
       );
     }
   }
@@ -541,7 +541,7 @@ async function readScheduledContent(
 }
 
 /**
- * Publish all due articles from 05_scheduled (original batch behavior),
+ * Publish all due articles from 02_adapted (original batch behavior),
  * with optional --platforms filter.
  */
 async function publishAllDue(
@@ -585,7 +585,7 @@ async function publishAllDue(
     }
 
     // 2. Read content per platform, applying filter
-    const contentByPlatform = await readScheduledContent(engine, article, platformFilter);
+    const contentByPlatform = await readAdaptedContent(engine, article, platformFilter);
 
     if (Object.keys(contentByPlatform).length === 0) {
       jsonSkipped.push(article);
@@ -639,12 +639,28 @@ async function publishAllDue(
       // 8. Release lock
       await engine.metadata.unlockArticle(article);
 
-      // 9. Move to sent if at least one platform succeeded
-      if (anySuccess) {
-        await engine.moveArticle(article, '05_scheduled', '06_sent');
+      // 9. Move to 03_published only if ALL platforms succeeded
+      const allFiles = await engine.getArticleFiles(article, '02_adapted');
+      const allPlatforms = allFiles
+        .map(f => parseArticleFilename(f, '02_adapted').platform)
+        .filter(Boolean) as string[];
+      const allPlatformsDone = allPlatforms.every(p => {
+        const r = platformResults[p];
+        return r && r.status === 'success';
+      });
+
+      if (allPlatformsDone) {
+        await engine.moveArticle(article, '02_adapted', '03_published');
         if (!options.json) console.log(chalk.green(`\u2705 Published and archived: ${article}`));
+      } else if (anySuccess) {
+        if (!options.json) {
+          const done = Object.entries(platformResults).filter(([, r]) => r.status === 'success').map(([p]) => p);
+          const remaining = allPlatforms.filter(p => !done.includes(p));
+          console.log(chalk.green(`\u2705 Partial publish: ${article}`));
+          console.log(chalk.dim(`  Remaining: ${remaining.join(', ')}`));
+        }
       } else {
-        if (!options.json) console.log(chalk.red(`\u274c All platforms failed for "${article}" \u2014 remains in 05_scheduled`));
+        if (!options.json) console.log(chalk.red(`\u274c All platforms failed for "${article}" \u2014 remains in 02_adapted`));
       }
     } catch (err) {
       await engine.metadata.unlockArticle(article);
@@ -665,7 +681,7 @@ async function publishAllDue(
  * Main publish entry point.
  *
  * Three modes:
- *   1. `reach publish` — publish all due articles in 05_scheduled
+ *   1. `reach publish` — publish all due articles in 02_adapted
  *   2. `reach publish <article> [--platforms x,devto]` — publish a specific pipeline article
  *   3. `reach publish ./path/to/file.md --platforms devto [--track]` — publish an external file
  *

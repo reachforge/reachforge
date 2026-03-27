@@ -2,7 +2,7 @@ import * as readline from 'readline';
 import chalk from 'chalk';
 import fs from 'fs-extra';
 import type { PipelineEngine } from '../core/pipeline.js';
-import type { CLIAdapter, AdapterResult, ResolvedSkill } from '../llm/types.js';
+
 import { AdapterFactory } from '../llm/factory.js';
 import { SessionManager } from '../llm/session.js';
 import { sanitizePath } from '../utils/path.js';
@@ -31,7 +31,7 @@ export async function refineCommand(
 
   await engine.initPipeline();
 
-  // Locate article: prefer 02_drafts, fallback to 03_master
+  // Locate article in 01_drafts
   const { stage, filename, filePath } = await locateArticle(engine, safeName);
 
   // Read current content
@@ -130,7 +130,7 @@ export async function refineCommand(
 
       if (trimmed === '/save') {
         await saveContent(engine, stage, safeName, filename, latestContent);
-        console.log(chalk.green(`Draft saved to ${stage}/${safeName}/${filename}`));
+        console.log(chalk.green(`Draft saved to ${stage}/${filename}`));
         break;
       }
 
@@ -238,18 +238,23 @@ export function printContentPreview(content: string): void {
 // --- Internal helpers ---
 
 async function locateArticle(engine: PipelineEngine, safeName: string) {
-  // Check flat file: 02_drafts/{article}.md or 03_master/{article}.md
-  const draftPath = engine.getArticlePath('02_drafts', safeName);
+  // Check 01_drafts first (base article)
+  const draftPath = engine.getArticlePath('01_drafts', safeName);
   if (await fs.pathExists(draftPath)) {
-    return { stage: '02_drafts' as PipelineStage, filename: `${safeName}.md`, filePath: draftPath };
+    return { stage: '01_drafts' as PipelineStage, filename: `${safeName}.md`, filePath: draftPath };
   }
 
-  const masterPath = engine.getArticlePath('03_master', safeName);
-  if (await fs.pathExists(masterPath)) {
-    return { stage: '03_master' as PipelineStage, filename: `${safeName}.md`, filePath: masterPath };
+  // Check 02_adapted for platform-specific files (e.g., "article.devto")
+  // Try as exact filename: 02_adapted/{safeName}.md
+  const adaptedPath = engine.getArticlePath('02_adapted', safeName);
+  if (await fs.pathExists(adaptedPath)) {
+    return { stage: '02_adapted' as PipelineStage, filename: `${safeName}.md`, filePath: adaptedPath };
   }
 
-  throw new Error(`Article '${safeName}' not found in 02_drafts or 03_master`);
+  throw new Error(
+    `Article '${safeName}' not found in 01_drafts or 02_adapted. `
+    + 'For platform versions, use: reach refine <article>.<platform> (e.g., reach refine my-post.devto)',
+  );
 }
 
 function promptUser(rl: readline.Interface, prompt: string): Promise<string> {
@@ -266,9 +271,10 @@ async function saveContent(
   content: string,
 ): Promise<void> {
   await engine.writeArticleFile(stage, article, content);
-  await engine.metadata.writeArticleMeta(article, {
-    status: stage === '02_drafts' ? 'drafted' : 'master',
-  });
+  // Don't change status when refining in adapted stage (keep adapted/scheduled status)
+  if (stage === '01_drafts') {
+    await engine.metadata.writeArticleMeta(article, { status: 'drafted' });
+  }
 }
 
 async function saveSession(

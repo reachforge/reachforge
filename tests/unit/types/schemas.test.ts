@@ -20,9 +20,29 @@ describe('ArticleMetaSchema', () => {
 
   test('validates minimal meta (only status)', () => {
     const result = ArticleMetaSchema.safeParse({
+      status: 'drafted',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test('legacy inbox status maps to drafted', () => {
+    const result = ArticleMetaSchema.safeParse({
       status: 'inbox',
     });
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.status).toBe('drafted');
+    }
+  });
+
+  test('legacy master status maps to drafted', () => {
+    const result = ArticleMetaSchema.safeParse({
+      status: 'master',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.status).toBe('drafted');
+    }
   });
 
   test('rejects invalid status', () => {

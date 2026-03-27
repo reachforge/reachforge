@@ -9,6 +9,7 @@ export class GitHubProvider implements PlatformProvider {
   readonly name = 'GitHub Discussions';
   readonly platforms = ['github'];
   readonly contentFormat: ContentFormat = 'markdown';
+  readonly language = 'en';
 
   constructor(
     private readonly token: string,

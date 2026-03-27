@@ -18,23 +18,121 @@ export class PipelineEngine {
   }
 
   async initPipeline(): Promise<void> {
+    await this.migrateLegacyPipeline();
     await Promise.all(
       STAGES.map(stage => fs.ensureDir(path.join(this.workingDir, stage)))
     );
   }
 
+  /**
+   * Migrate legacy 6-stage pipeline directories to 3-stage layout.
+   * Idempotent: safe to call multiple times.
+   */
+  async migrateLegacyPipeline(): Promise<void> {
+    const legacyDirs = ['01_inbox', '02_drafts', '03_master', '04_adapted', '05_scheduled', '06_sent'];
+    const hasLegacy = await Promise.all(
+      legacyDirs.map(d => fs.pathExists(path.join(this.workingDir, d)))
+    );
+    if (!hasLegacy.some(Boolean)) return;
+
+    // Merge: 01_inbox + 02_drafts + 03_master → 01_drafts
+    await fs.ensureDir(path.join(this.workingDir, '01_drafts'));
+    for (const dir of ['01_inbox', '02_drafts', '03_master']) {
+      const dirPath = path.join(this.workingDir, dir);
+      if (!await fs.pathExists(dirPath)) continue;
+      const files = await fs.readdir(dirPath);
+      for (const file of files) {
+        if (file.startsWith('.')) continue;
+        const src = path.join(dirPath, file);
+        const dst = path.join(this.workingDir, '01_drafts', file);
+        if (!await fs.pathExists(dst)) {
+          await fs.move(src, dst);
+        } else {
+          console.warn(`  Migration: skipped ${dir}/${file} (already exists in 01_drafts)`);
+        }
+      }
+      const remaining = await fs.readdir(dirPath);
+      if (remaining.filter(f => !f.startsWith('.')).length === 0) {
+        await fs.remove(dirPath);
+      }
+    }
+
+    // Merge: 04_adapted + 05_scheduled → 02_adapted
+    await fs.ensureDir(path.join(this.workingDir, '02_adapted'));
+    for (const dir of ['04_adapted', '05_scheduled']) {
+      const dirPath = path.join(this.workingDir, dir);
+      if (!await fs.pathExists(dirPath)) continue;
+      const files = await fs.readdir(dirPath);
+      for (const file of files) {
+        if (file.startsWith('.')) continue;
+        const src = path.join(dirPath, file);
+        const dst = path.join(this.workingDir, '02_adapted', file);
+        if (!await fs.pathExists(dst)) {
+          await fs.move(src, dst);
+        } else {
+          console.warn(`  Migration: skipped ${dir}/${file} (already exists in 02_adapted)`);
+        }
+      }
+      const remaining = await fs.readdir(dirPath);
+      if (remaining.filter(f => !f.startsWith('.')).length === 0) {
+        await fs.remove(dirPath);
+      }
+    }
+
+    // Rename: 06_sent → 03_published
+    const sentPath = path.join(this.workingDir, '06_sent');
+    const publishedPath = path.join(this.workingDir, '03_published');
+    if (await fs.pathExists(sentPath) && !await fs.pathExists(publishedPath)) {
+      await fs.move(sentPath, publishedPath);
+    } else if (await fs.pathExists(sentPath)) {
+      const files = await fs.readdir(sentPath);
+      for (const file of files) {
+        if (file.startsWith('.')) continue;
+        const src = path.join(sentPath, file);
+        const dst = path.join(publishedPath, file);
+        if (!await fs.pathExists(dst)) {
+          await fs.move(src, dst);
+        } else {
+          console.warn(`  Migration: skipped 06_sent/${file} (already exists in 03_published)`);
+        }
+      }
+      const remaining = await fs.readdir(sentPath);
+      if (remaining.filter(f => !f.startsWith('.')).length === 0) {
+        await fs.remove(sentPath);
+      }
+    }
+
+    // Migrate metadata status values
+    try {
+      const meta = await this.metadata.readProjectMeta();
+      let changed = false;
+      for (const [name, article] of Object.entries(meta.articles)) {
+        const status = article.status as string;
+        if (status === 'inbox' || status === 'master') {
+          meta.articles[name] = { ...article, status: 'drafted' };
+          changed = true;
+        }
+      }
+      if (changed) {
+        await this.metadata.writeProjectMeta(meta);
+      }
+    } catch {
+      // No meta.yaml yet — nothing to migrate
+    }
+  }
+
   async getStatus(): Promise<PipelineStatus> {
     const stages = {} as Record<PipelineStage, StageInfo>;
-    let totalProjects = 0;
+    const allArticles = new Set<string>();
 
     for (const stage of STAGES) {
       const items = await this.listArticles(stage);
       stages[stage] = { count: items.length, items };
-      totalProjects += items.length;
+      items.forEach(item => allArticles.add(item));
     }
 
     const dueToday = await this.findDueArticles();
-    return { stages, totalProjects, dueToday };
+    return { stages, totalProjects: allArticles.size, dueToday };
   }
 
   async listArticles(stage: PipelineStage): Promise<string[]> {
@@ -108,8 +206,18 @@ export class PipelineEngine {
     }
 
     // Update metadata
-    const newStatus = STAGE_STATUS_MAP[toStage] || 'inbox';
-    await this.metadata.writeArticleMeta(article, { status: newStatus });
+    const newStatus = STAGE_STATUS_MAP[toStage] || 'drafted';
+    const metaUpdate: Record<string, unknown> = { status: newStatus };
+    // Clear stale publish results when rolling back from published
+    if (fromStage === '03_published') {
+      metaUpdate.platforms = undefined;
+    }
+    // Clear adapted state when rolling back to drafts
+    if (toStage === '01_drafts') {
+      metaUpdate.schedule = undefined;
+      metaUpdate.adapted_platforms = undefined;
+    }
+    await this.metadata.writeArticleMeta(article, metaUpdate);
 
     return {
       from: fromStage,
@@ -121,7 +229,7 @@ export class PipelineEngine {
   }
 
   async findDueArticles(): Promise<string[]> {
-    const articles = await this.listArticles('05_scheduled');
+    const articles = await this.listArticles('02_adapted');
     if (articles.length === 0) return [];
 
     // Read meta once for all articles (avoid N+1)
@@ -132,9 +240,9 @@ export class PipelineEngine {
 
     for (const article of articles) {
       const articleMeta = meta.articles[article];
-      if (!articleMeta?.schedule) {
-        due.push(article);
-      } else if (articleMeta.schedule <= nowIso) {
+      // Only consider articles explicitly scheduled (not all adapted articles)
+      if (articleMeta?.status !== 'scheduled') continue;
+      if (!articleMeta.schedule || articleMeta.schedule <= nowIso) {
         due.push(article);
       }
     }
@@ -156,6 +264,48 @@ export class PipelineEngine {
         }
 
         const prevStage = STAGES[i - 1];
+
+        // Special handling: rolling back from adapted to drafts
+        // Only move the base article.md, delete platform-specific files
+        if (stage === '02_adapted' && prevStage === '01_drafts') {
+          const baseFile = `${article}.md`;
+          const baseSrc = path.join(this.workingDir, stage, baseFile);
+          const baseDst = path.join(this.workingDir, prevStage, baseFile);
+
+          // Move base file if it exists
+          if (await fs.pathExists(baseSrc)) {
+            if (await fs.pathExists(baseDst)) {
+              throw new ReachforgeError(
+                `Article "${article}" already exists in ${prevStage}.`,
+                `File "${baseFile}" already exists in target stage`,
+              );
+            }
+            await fs.copy(baseSrc, baseDst);
+            await fs.remove(baseSrc);
+          }
+
+          // Remove platform-specific files from 02_adapted
+          const allFiles = await this.getArticleFiles(article, stage);
+          for (const file of allFiles) {
+            await fs.remove(path.join(this.workingDir, stage, file));
+          }
+
+          // Update metadata
+          await this.metadata.writeArticleMeta(article, {
+            status: 'drafted',
+            schedule: undefined,
+            adapted_platforms: undefined,
+          } as Record<string, unknown>);
+
+          return {
+            from: stage,
+            to: prevStage,
+            project: article,
+            article,
+            timestamp: new Date().toISOString(),
+          };
+        }
+
         return this.moveArticle(article, stage, prevStage);
       }
     }
