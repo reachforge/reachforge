@@ -200,8 +200,8 @@ describe('HashnodeProvider', () => {
       status: 200,
       text: async () => JSON.stringify({
         data: {
-          createPublicationStory: {
-            post: { slug: 'my-article', publication: { domain: 'blog.example.com' } },
+          publishPost: {
+            post: { slug: 'my-article', url: 'https://blog.example.com/my-article', publication: { url: 'https://blog.example.com' } },
           },
         },
       }),

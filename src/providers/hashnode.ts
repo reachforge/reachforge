@@ -42,14 +42,13 @@ export class HashnodeProvider implements PlatformProvider {
     let body = content;
     if (content.startsWith('---')) {
       body = content.replace(/^---\n[\s\S]*?\n---\n?/, '');
-    } else if (h1Match) {
-      body = content.replace(/^#\s+.+\n?/, '');
     }
+    body = body.replace(/^\s*#\s+.+\n?/, '');
 
     const mutation = `
-      mutation CreateStory($input: CreateStoryInput!) {
-        createPublicationStory(publicationId: "${this.publicationId}", input: $input) {
-          post { slug, publication { domain } }
+      mutation PublishPost($input: PublishPostInput!) {
+        publishPost(input: $input) {
+          post { slug, url, publication { url } }
         }
       }
     `;
@@ -67,7 +66,8 @@ export class HashnodeProvider implements PlatformProvider {
             input: {
               title,
               contentMarkdown: body.trim(),
-              isPartOfPublication: { publicationId: this.publicationId },
+              publicationId: this.publicationId,
+              tags: [],
             },
           },
         }),
@@ -79,8 +79,8 @@ export class HashnodeProvider implements PlatformProvider {
 
       const data = response.json<{
         data?: {
-          createPublicationStory?: {
-            post?: { slug?: string; publication?: { domain?: string } };
+          publishPost?: {
+            post?: { slug?: string; url?: string; publication?: { url?: string } };
           };
         };
         errors?: Array<{ message: string }>;
@@ -90,11 +90,12 @@ export class HashnodeProvider implements PlatformProvider {
         throw new ProviderError('hashnode', `Hashnode API error: ${data.errors[0].message}`);
       }
 
-      const post = data.data?.createPublicationStory?.post;
-      const domain = post?.publication?.domain ?? 'hashnode.dev';
+      const post = data.data?.publishPost?.post;
+      const url = post?.url;
+      const publicationUrl = post?.publication?.url?.replace(/\/$/, '') ?? '';
       const slug = post?.slug ?? 'post';
 
-      return { platform: 'hashnode', status: 'success', url: `https://${domain}/${slug}` };
+      return { platform: 'hashnode', status: 'success', url: url ?? `${publicationUrl}/${slug}` };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       return { platform: 'hashnode', status: 'failed', error: message };
