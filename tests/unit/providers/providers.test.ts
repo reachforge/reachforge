@@ -82,7 +82,8 @@ describe('DevtoProvider', () => {
     const parsed = JSON.parse(capturedBody);
     expect(parsed.article.published).toBe(false); // frontmatter says false, no CLI override
     expect(parsed.article.body_markdown).not.toContain('published:');
-    expect(parsed.article.body_markdown).toContain('title: Test');
+    expect(parsed.article.body_markdown).not.toContain('title: Test');
+    expect(parsed.article.title).toBe('Test');
 
     vi.unstubAllGlobals();
   });
@@ -128,6 +129,41 @@ describe('DevtoProvider', () => {
 
     await devto.publish(content, {});
     expect(JSON.parse(capturedBody).article.published).toBe(true); // default
+
+    vi.unstubAllGlobals();
+  });
+
+  test('publish strips H1 from body when content has no frontmatter', async () => {
+    const content = '# External Article\n\nBody content here';
+    let capturedBody = '';
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+      capturedBody = opts.body;
+      return { ok: true, status: 201, text: async () => JSON.stringify({ url: 'https://dev.to/user/test' }) };
+    }));
+
+    await devto.publish(content, {});
+    const parsed = JSON.parse(capturedBody);
+    expect(parsed.article.title).toBe('External Article');
+    expect(parsed.article.body_markdown).not.toContain('# External Article');
+    expect(parsed.article.body_markdown).toContain('Body content here');
+
+    vi.unstubAllGlobals();
+  });
+
+  test('publish prefers frontmatter title over H1', async () => {
+    const content = '---\ntitle: Frontmatter Title\n---\n# H1 Title\n\nBody';
+    let capturedBody = '';
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+      capturedBody = opts.body;
+      return { ok: true, status: 201, text: async () => JSON.stringify({ url: 'https://dev.to/user/test' }) };
+    }));
+
+    await devto.publish(content, {});
+    const parsed = JSON.parse(capturedBody);
+    expect(parsed.article.title).toBe('Frontmatter Title');
+    expect(parsed.article.body_markdown).not.toContain('# H1 Title');
 
     vi.unstubAllGlobals();
   });
@@ -215,6 +251,34 @@ describe('HashnodeProvider', () => {
       'https://gql.hashnode.com',
       expect.objectContaining({ method: 'POST' })
     );
+
+    vi.unstubAllGlobals();
+  });
+
+  test('publish strips both frontmatter and H1 from body', async () => {
+    const content = '---\ntitle: FM Title\n---\n# FM Title\n\nBody content';
+    let capturedBody = '';
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        data: {
+          publishPost: {
+            post: { slug: 'fm-title', url: 'https://blog.example.com/fm-title', publication: { url: 'https://blog.example.com' } },
+          },
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await hashnode.publish(content, {});
+    expect(result.status).toBe('success');
+
+    const sentBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(sentBody.variables.input.title).toBe('FM Title');
+    expect(sentBody.variables.input.contentMarkdown).not.toContain('# FM Title');
+    expect(sentBody.variables.input.contentMarkdown).toContain('Body content');
 
     vi.unstubAllGlobals();
   });

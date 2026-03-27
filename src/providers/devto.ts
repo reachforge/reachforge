@@ -36,14 +36,13 @@ export class DevtoProvider implements PlatformProvider {
     // Extract title from first heading if not provided
     let title = meta.title;
     if (!title) {
-      const match = content.match(/^#\s+(.+)/m);
-      title = match ? match[1].trim() : 'Untitled';
+      const fmMatch = content.match(/^---\n[\s\S]*?title:\s*(.+?)\s*(?:\n|$)/m);
+      const h1Match = content.match(/^#\s+(.+)$/m);
+      title = fmMatch?.[1]?.trim() ?? h1Match?.[1]?.trim() ?? 'Untitled';
     }
 
     // Determine published state:
     //   Priority: meta.draft (CLI flag) > frontmatter `published` > default (true)
-    // Dev.to API uses frontmatter over body params, so we strip it from the
-    // markdown and pass a single consistent value via the API parameter.
     let shouldPublish = true;
     const fmPublishedMatch = content.match(/^---\n[\s\S]*?published:\s*(true|false)/m);
     if (fmPublishedMatch) {
@@ -53,9 +52,11 @@ export class DevtoProvider implements PlatformProvider {
       shouldPublish = !meta.draft;
     }
 
-    const cleanedContent = content.replace(
-      /^(---\n[\s\S]*?)published:\s*(true|false)\n([\s\S]*?---)/, '$1$3'
-    );
+    let cleanedContent = content;
+    if (cleanedContent.startsWith('---')) {
+      cleanedContent = cleanedContent.replace(/^---\n[\s\S]*?\n---\n?/, '');
+    }
+    cleanedContent = cleanedContent.replace(/^\s*#\s+.+\n?/, '');
 
     const body = JSON.stringify({
       article: {
