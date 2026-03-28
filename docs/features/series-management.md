@@ -4,94 +4,178 @@
 |--------------|------------------------------------------|
 | **Feature**  | Series -- Multi-Article Campaign Support |
 | **Status**   | Planned                                  |
-| **Date**     | 2026-03-27                               |
-| **Approach** | Lightweight metadata layer (Approach A)  |
+| **Date**     | 2026-03-28                               |
+| **Approach** | Gate-controlled outline-first workflow    |
 
 ---
 
 ## 1. Overview
 
-Series management adds the ability to organize multiple articles into a cohesive campaign with shared context, coordinated scheduling, and progress tracking. A series is a metadata layer on top of the existing 3-stage pipeline -- individual articles still flow through `01_drafts -> 02_adapted -> 03_published` independently.
+Series management organizes multiple articles into a cohesive campaign through a **gate-controlled workflow**: outline → approve → detail → approve → draft. Each gate ensures quality before proceeding. Series is a metadata layer on top of the existing 3-stage pipeline -- individual articles still flow through `01_drafts → 02_adapted → 03_published` independently.
+
+### Workflow
+
+```
+series init "topic"                    # Scaffold series.yaml template
+    ↓
+series outline <name>                  # AI generates master outline (series overview + article titles/synopses)
+    ↓
+User reviews & edits series.yaml       # Manual review
+    ↓
+series approve <name> --outline        # Gate 1: Lock outline
+    ↓
+series detail <name>                   # AI generates per-article detailed outlines
+    ↓
+User reviews & edits each outline      # Manual review
+    ↓
+series approve <name> --detail         # Gate 2: Lock outlines
+    ↓
+series draft <name> [--all]            # Generate content based on approved outlines
+    ↓
+series adapt <name>                    # Batch adapt for platforms
+    ↓
+series schedule <name>                 # Auto-calculate publish dates
+    ↓
+Normal pipeline: reach publish         # Publish as usual
+```
 
 ### What ReachForge Does
 
-- Scaffold a `series.yaml` with correct format (`reach series init`)
-- Inject preceding article context into LLM prompts during draft generation (continuity)
-- Batch operations: adapt, schedule, and publish across a series
-- AI-powered series review for consistency and completeness
-- Handle mid-series changes (insert, remove, reorder) with automatic schedule adjustment
-- Series progress dashboard
+- Scaffold `series.yaml` with correct format (`series init`)
+- AI-generate master outline and per-article outlines (`series outline`, `series detail`)
+- Gate-control quality via approval steps (`series approve`)
+- Generate content based on approved outlines with context injection (`series draft`)
+- Batch operations: adapt, schedule across a series
+- Series progress dashboard (`series status`)
 
 ### What ReachForge Does NOT Do
 
-- Content strategy or topic planning -- users (or their AI tools) decide what to write
-- Generate the series outline -- users create or let external AI generate `series.yaml` content
-- Enforce a rigid series state machine -- articles remain independently manageable
-
-The `series.yaml` format is the contract. Users can create it manually, via `reach series init`, or have an external AI generate it. ReachForge only consumes and operates on it.
+- Content strategy or topic planning -- users decide what to write
+- Skip approval gates -- quality control is the core value
+- Enforce article-level state machines -- articles remain independently manageable via standard pipeline commands
 
 ---
 
-## 2. Data Model
+## 2. State Machine
+
+```
+planned → outlined → outline_approved → detailed → detail_approved → drafting → completed
+```
+
+| State | Meaning | Transition Command |
+|-------|---------|-------------------|
+| `planned` | Template created, no AI content yet | `series init` creates this |
+| `outlined` | AI has generated master outline + article titles/synopses | `series outline` |
+| `outline_approved` | User has reviewed and approved the outline | `series approve --outline` |
+| `detailed` | AI has generated per-article detailed outlines | `series detail` |
+| `detail_approved` | User has reviewed and approved all outlines | `series approve --detail` |
+| `drafting` | Content generation in progress | `series draft` (auto-set) |
+| `completed` | All articles drafted | `series draft --all` (auto-set when done) |
+
+### Gate Enforcement
+
+Each command checks its prerequisite status. Failure message:
+
+```
+❌ Cannot run "series detail" — outline has not been approved yet.
+   Review the outline in series/apcore-deep-dive.yaml, then run:
+   reach series approve apcore-deep-dive --outline
+```
+
+---
+
+## 3. Data Model
 
 ### Series Definition (`series/{name}.yaml`)
 
 ```yaml
 name: apcore-deep-dive
 title: "Deep Dive into APCore"
-description: "A comprehensive technical series on the APCore framework"
+description: "A comprehensive technical series on APCore"
 audience: "Backend developers interested in API standardization"
 tone: professional
 language: en
+status: detail_approved
+
+# Master outline (generated by `series outline`, reviewed by user)
+outline: |
+  This series takes readers from the API fragmentation problem through
+  APCore's design philosophy, layered architecture, framework integration,
+  AI bridging, and testing strategies. By the end, readers can independently
+  integrate APCore into their projects.
+
+outline_approved_at: 2026-03-28T10:00:00Z
+detail_approved_at: 2026-03-28T11:00:00Z
 
 articles:
   - slug: apcore-intro
-    title: "What is APCore: A New Paradigm for Unified API Interaction"
+    title: "What is APCore: A New Paradigm"
     synopsis: "Motivation, core concepts, and problems APCore solves"
+    outline: |
+      - Opening: API fragmentation problem (REST/GraphQL/gRPC silos)
+      - Middle: APCore's three-layer abstraction (Protocol/Adapter/Transport)
+      - Closing: Comparison with LangChain Tools, MCP
     order: 1
 
   - slug: apcore-architecture
-    title: "APCore Architecture: From Protocol to Implementation"
-    synopsis: "Layered architecture, core abstractions, and design decisions"
+    title: "APCore Architecture"
+    synopsis: "Layered architecture, core abstractions, design decisions"
+    outline: |
+      - Protocol layer: unified interface definition
+      - Adapter layer: framework adaptation mechanism
+      - Transport layer: HTTP/WebSocket/MCP
     order: 2
     depends_on: [apcore-intro]
 
   - slug: apcore-integration
-    title: "Integrate APCore in 5 Minutes: Django, Flask, NestJS"
+    title: "Integrate APCore in 5 Minutes"
     synopsis: "Hands-on integration guide with code examples"
+    outline: |
+      - Django integration: step-by-step
+      - Flask integration: step-by-step
+      - NestJS integration: step-by-step
+      - Common patterns and gotchas
     order: 3
     depends_on: [apcore-architecture]
 
   - slug: apcore-mcp
     title: "APCore + MCP: Bridging AI Agents and APIs"
     synopsis: "How APCore's MCP bridge enables AI-native API access"
+    outline: |
+      - MCP protocol overview
+      - APCore MCP bridge architecture
+      - Tool discovery and invocation flow
+      - Demo: Claude calling an API via APCore MCP
     order: 4
     depends_on: [apcore-architecture]
 
   - slug: apcore-testing
-    title: "Testing APCore Integrations: Strategy and Tooling"
+    title: "Testing APCore Integrations"
     synopsis: "Cross-language test verification and behavioral consistency"
+    outline: |
+      - Testing philosophy: behavioral consistency > code coverage
+      - Cross-language test runner
+      - Integration test patterns
+      - CI/CD setup
     order: 5
     depends_on: [apcore-integration, apcore-mcp]
 
-# Schedule configuration (applied via `reach series schedule`)
 schedule:
-  start: 2026-04-01           # First article publish date
-  interval: 7d                # Default interval between articles
-  # Per-article overrides possible via article-level schedule field
+  start: 2026-04-01
+  interval: 7d
 
-# Platform defaults for the series (per-article override allowed)
-platforms: [devto, hashnode, wechat]
+platforms: [devto, hashnode]
 ```
 
 ### Key Design Decisions
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Where is series state stored? | `series.yaml` for definition, `meta.yaml` for article status | Series is organizational metadata; article state stays in the existing system |
-| Is series a pipeline stage? | No | Series is a grouping concept, not a state transition |
-| Can articles belong to multiple series? | Yes (by slug reference) | Flexible; a "best of" series could reference existing articles |
-| Are platforms/schedule per-series or per-article? | Both -- series provides defaults, articles can override | Flexibility: intro article on all platforms, deep-dive only on zhihu |
+| State storage | `status` field in series.yaml | One file shows everything |
+| Approval granularity | Whole-outline and whole-detail (not per-article) | 80% sufficient; per-article approval is 20% |
+| Series vs pipeline | Organizational layer only | Articles independently manageable |
+| Multiple series | Articles can belong to multiple series (by slug) | Flexible reuse |
+| Platforms/schedule | Series provides defaults, articles can override | Flexibility |
 
 ### Directory Structure
 
@@ -101,231 +185,191 @@ project/
 │   ├── apcore-deep-dive.yaml
 │   └── weekly-updates.yaml
 ├── 01_drafts/
-│   ├── apcore-intro.md
-│   └── apcore-architecture.md
 ├── 02_adapted/
 ├── 03_published/
-├── assets/
 ├── meta.yaml
 └── project.yaml
 ```
 
 ---
 
-## 3. Commands
+## 4. Commands (Phase 1)
 
 ### `reach series init <topic>`
 
-Scaffold a new series definition file with the correct YAML format.
+Scaffold a new series definition file. No LLM involved.
 
 ```bash
-reach series init "deep dive into apcore framework"
-# Interactive prompts:
-#   Series name (slug): apcore-deep-dive
-#   Target audience: backend developers
-#   Number of articles: 5
-#   Tone: professional
-#   Default platforms: devto,hashnode,wechat
-# Creates: series/apcore-deep-dive.yaml
+reach series init "deep dive into apcore"
+# Creates: series/deep-dive-into-apcore.yaml with status: planned
 ```
 
-This is a scaffolding command -- it generates the YAML structure with placeholder articles. Users then edit the file to fill in titles, synopses, and ordering. No LLM involved.
+The generated file has placeholder fields for the user to fill in (or leave for `series outline` to generate).
 
 ---
 
-### `reach series draft <series-name> [--all]`
+### `reach series outline <name>`
 
-Generate the next unwritten article in the series, automatically injecting context from previously written articles.
+AI generates master outline + article titles/synopses. Writes to series.yaml.
 
 ```bash
-reach series draft apcore-deep-dive        # Draft the next unwritten article
+reach series outline apcore-deep-dive
+```
+
+**Prerequisite:** `status = planned`
+**Result:** Populates `outline`, article `title`/`synopsis` fields. Sets `status = outlined`.
+
+User reviews the generated outline in series.yaml, edits as needed.
+
+---
+
+### `reach series approve <name> --outline|--detail`
+
+Approve the current stage.
+
+```bash
+reach series approve apcore-deep-dive --outline   # Gate 1
+reach series approve apcore-deep-dive --detail     # Gate 2
+```
+
+**`--outline`:** Requires `status = outlined`. Sets `status = outline_approved`, records `outline_approved_at`.
+**`--detail`:** Requires `status = detailed`. Sets `status = detail_approved`, records `detail_approved_at`.
+
+---
+
+### `reach series detail <name>`
+
+AI generates per-article detailed outlines based on the approved master outline.
+
+```bash
+reach series detail apcore-deep-dive
+```
+
+**Prerequisite:** `status = outline_approved`
+**Result:** Populates each article's `outline` field. Sets `status = detailed`.
+
+User reviews each article's outline, edits as needed.
+
+---
+
+### `reach series draft <name> [--all]`
+
+Generate article content based on approved outlines.
+
+```bash
+reach series draft apcore-deep-dive        # Draft next unwritten article
 reach series draft apcore-deep-dive --all  # Draft all unwritten articles sequentially
 ```
 
-**Context injection logic:**
+**Prerequisite:** `status = detail_approved` (or `drafting` for subsequent articles)
 
-1. Read the series definition to determine article order and dependencies.
-2. Identify the next article whose slug does NOT exist in `01_drafts/`.
-3. Collect synopses and key content from previously drafted articles (respecting `depends_on`).
-4. Build a prompt that includes:
-   - The series description and audience
-   - Summaries of preceding articles (truncated to fit context)
-   - The current article's title and synopsis from `series.yaml`
-5. Call `draftCommand` with the assembled prompt and `--name <slug>`.
+**Context injection (per article):**
 
-**`--all` mode:** Iterates through all unwritten articles in order, drafting each one sequentially (each subsequent draft benefits from the previous ones being written).
-
----
-
-### `reach series review <series-name>`
-
-AI-powered review of the complete series for consistency, completeness, and quality.
-
-```bash
-reach series review apcore-deep-dive
+```
+┌──────────────────────────────────────────┐
+│ 1. Approved master outline    ~500 token │  Always injected fully
+│ 2. All article title+synopsis ~300 token │  Series overview
+│ 3. Current article outline    ~300 token │  What to write
+│ 4. Previous 1-2 article       ~400 token │  First 200 words for continuity
+│                          Total ~1500 token │
+└──────────────────────────────────────────┘
 ```
 
-**Review checks:**
+Because outlines are pre-approved, we don't need full preceding articles -- just summaries for tone continuity.
 
-- **Terminology consistency**: Are the same concepts named the same way across articles?
-- **Cross-references**: Do articles reference each other correctly? Missing links?
-- **Completeness**: Does the series cover all points outlined in the synopses?
-- **Progression**: Is the difficulty/depth progressing logically?
-- **Redundancy**: Are topics unnecessarily repeated across articles?
-- **Gaps**: Are there missing topics that should be an article?
+**`--all` mode:** Iterates articles in order. Each subsequent draft benefits from prior articles existing in `01_drafts/`.
 
-**Output:** A report listing findings with severity and suggested fixes. Does NOT auto-modify articles -- users decide what to act on via `reach refine`.
+Sets `status = drafting` on first draft, `status = completed` when all articles are drafted.
 
 ---
 
-### `reach series adapt <series-name>`
+### `reach series adapt <name> [-p platforms]`
 
-Batch-adapt all drafted (but not yet adapted) articles in the series.
+Batch-adapt all drafted articles.
 
 ```bash
-reach series adapt apcore-deep-dive                    # Use series-level platforms
-reach series adapt apcore-deep-dive -p devto,hashnode  # Override platforms
+reach series adapt apcore-deep-dive
+reach series adapt apcore-deep-dive -p devto,hashnode
 ```
 
-Iterates through series articles in order. For each article in `01_drafts/` that is not yet in `02_adapted/`, runs `reach adapt <slug>`. Uses the series-level `platforms` as default, with per-article platform overrides from `series.yaml` taking precedence.
+Iterates articles in order. Calls `adaptCommand(engine, slug, { platforms })` for each article in `01_drafts/` not yet in `02_adapted/`. Platform resolution: CLI flag > series-level `platforms` > project.yaml > auto-detect.
 
 ---
 
-### `reach series schedule <series-name>`
+### `reach series schedule <name> [--dry-run]`
 
-Auto-calculate and apply schedule dates based on the series schedule configuration.
+Auto-calculate and apply schedule dates.
 
 ```bash
 reach series schedule apcore-deep-dive
-# Applies:
-#   apcore-intro:         2026-04-01 (start)
-#   apcore-architecture:  2026-04-08 (start + 7d)
-#   apcore-integration:   2026-04-15 (start + 14d)
-#   apcore-mcp:           2026-04-22 (start + 21d)
-#   apcore-testing:       2026-04-29 (start + 28d)
+# apcore-intro:         2026-04-01 (start)
+# apcore-architecture:  2026-04-08 (start + 7d)
+# apcore-integration:   2026-04-15 (start + 14d)
+# ...
 ```
 
-**Rules:**
-- Only schedules articles that are in `02_adapted/` (adapted but not yet scheduled/published).
-- Skips already-published articles.
-- Per-article `schedule` field in `series.yaml` overrides the calculated date.
-- Supports `--dry-run` to preview without applying.
+**Formula:** `date = start + interval × (order - 1)`
+
+Rules:
+- Only schedules articles in `02_adapted/` (not yet scheduled/published)
+- Skips already-published articles
+- Per-article `schedule` field in series.yaml overrides calculated date
+- `--dry-run` previews without applying
 
 ---
 
-### `reach series status <series-name>`
+### `reach series status <name>`
 
-Display series progress dashboard.
+Series progress dashboard.
 
 ```bash
 reach series status apcore-deep-dive
 
-# Output:
-#   Series: Deep Dive into APCore (5 articles)
+# Series: Deep Dive into APCore (5 articles)
+# Status: detail_approved
 #
-#   1. [published]  apcore-intro          Published 2026-04-01  devto,hashnode
-#   2. [scheduled]  apcore-architecture   Scheduled 2026-04-08  devto,hashnode,wechat
+#   1. [published]  apcore-intro          2026-04-01  devto,hashnode
+#   2. [scheduled]  apcore-architecture   2026-04-08  devto,hashnode
 #   3. [adapted]    apcore-integration    Ready to schedule
 #   4. [drafted]    apcore-mcp            Needs adaptation
 #   5. [planned]    apcore-testing        Not yet drafted
 #
-#   Progress: 1/5 published, 1 scheduled, 1 ready, 1 drafted, 1 planned
+#   Progress: 1/5 published, 1 scheduled, 1 adapted, 1 drafted, 1 planned
 ```
 
-Article status is read from `meta.yaml` (existing system). `planned` means the slug exists in `series.yaml` but has no corresponding file in any pipeline stage.
-
----
-
-### `reach series list`
-
-List all series in the current project.
-
-```bash
-reach series list
-
-# Output:
-#   apcore-deep-dive    5 articles  1/5 published
-#   weekly-updates      12 articles 8/12 published
-```
-
----
-
-## 4. Mid-Series Changes
-
-### Insert an Article
-
-```bash
-reach series add apcore-deep-dive --after apcore-architecture
-# Interactive: enter slug, title, synopsis
-# Or: reach series add apcore-deep-dive --after apcore-architecture --slug apcore-security --title "..."
-```
-
-**Behavior:**
-- Inserts a new entry into `series.yaml` after the specified article.
-- `order` fields are recalculated for all subsequent articles.
-- If subsequent articles are already scheduled, their dates are pushed forward by one interval.
-- Already-published articles are never affected.
-- Prints a summary of schedule changes and suggests `reach series review` to check continuity.
-
-### Remove an Article
-
-```bash
-reach series remove apcore-deep-dive apcore-mcp
-```
-
-**Behavior:**
-- Removes the entry from `series.yaml`.
-- Does NOT delete the article files from the pipeline (they become standalone articles).
-- `order` fields are recalculated.
-- If subsequent articles are scheduled, their dates are pulled forward by one interval.
-- Already-published articles are never affected.
-- Warns if other articles have `depends_on` referencing the removed article.
-
-### Reorder Articles
-
-```bash
-reach series reorder apcore-deep-dive
-# Opens interactive reorder (or --move <slug> --to <position>)
-```
-
-**Behavior:**
-- Updates `order` fields in `series.yaml`.
-- Recalculates schedule dates for all un-published articles.
-- Suggests `reach series review` to verify continuity after reorder.
-
-### Schedule Adjustment Rules
-
-| Change | Already Published | Scheduled | Not Yet Scheduled |
-|--------|-------------------|-----------|-------------------|
-| Insert after | No change | Push forward by 1 interval | No change (not scheduled yet) |
-| Remove | No change | Pull forward by 1 interval | No change |
-| Reorder | No change | Recalculate from series schedule config | No change |
+Article status read from `meta.yaml`. `planned` = slug in series.yaml but no pipeline file.
 
 ---
 
 ## 5. Context Injection Detail
 
-When `reach series draft` generates an article, the LLM prompt is assembled as:
+When `reach series draft` generates an article, the LLM prompt:
 
 ```
 You are writing article {order} of {total} in a series titled "{series.title}".
 
-Series context:
-- Audience: {series.audience}
-- Tone: {series.tone}
+Series overview (approved outline):
+{series.outline}
 
-Previously published articles in this series:
-1. "{article_1.title}" - {brief summary or first 200 words}
-2. "{article_2.title}" - {brief summary or first 200 words}
+Series structure:
+{for each article: "- {order}. {title}: {synopsis}"}
 
 Your task:
-Write "{current.title}": {current.synopsis}
+Write article {order}: "{current.title}"
 
-Maintain consistent terminology and style with the preceding articles.
-Reference previous articles where relevant for continuity.
+Detailed outline for this article:
+{current.outline}
+
+{if previous articles exist:}
+For continuity, here is a summary of the preceding article(s):
+{previous_article_title}: {first 200 words of drafted content}
+
+Guidelines:
+- Follow the approved outline closely
+- Maintain consistent terminology with the series overview
+- Target audience: {series.audience}
+- Tone: {series.tone}
 ```
-
-The context window budget is managed by truncating summaries of earlier articles. The most recent 2-3 articles get full summaries; earlier articles get only their title and synopsis from `series.yaml`.
 
 ---
 
@@ -338,10 +382,9 @@ Series is purely an organizational layer. Every operation maps to existing comma
 | `series draft` | `reach draft <prompt> --name <slug>` (with context-enriched prompt) |
 | `series adapt` | `reach adapt <slug>` for each article |
 | `series schedule` | `reach schedule <slug> <date>` for each article |
-| `series review` | LLM call with all article contents (new, no pipeline equivalent) |
 | `series status` | `reach status` data + series.yaml ordering |
 
-Individual articles remain fully manageable with standard pipeline commands. A user can `reach refine apcore-intro` or `reach publish apcore-intro` without going through series commands.
+Individual articles remain fully manageable with standard pipeline commands.
 
 ---
 
@@ -349,23 +392,36 @@ Individual articles remain fully manageable with standard pipeline commands. A u
 
 | File | Change |
 |------|--------|
-| `src/commands/series.ts` | New: all series subcommands |
-| `src/types/series.ts` | New: Series, SeriesArticle types + Zod schema |
-| `src/core/series-manager.ts` | New: CRUD for series.yaml, schedule calculation, context assembly |
-| `src/index.ts` | Register series command group |
-| `src/mcp/tools.ts` | Add series MCP tools |
-| `src/help.ts` | Add series to command groups |
-| `skills/stages/series-review.md` | New: review prompt template |
-| `tests/unit/commands/series.test.ts` | New: series command tests |
+| `src/types/series.ts` | New: Zod schema + types for Series, SeriesArticle, SeriesSchedule |
+| `src/core/series-manager.ts` | New: CRUD, state transitions, schedule calculation, context assembly |
+| `src/commands/series.ts` | New: 9 command functions (init, outline, approve, detail, draft, adapt, schedule, status) |
+| `src/core/constants.ts` | Add `SERIES_DIR` constant |
+| `src/index.ts` | Register series subcommand group + APCore tools |
+| `src/help.ts` | Add Series Management to command groups |
+| `src/mcp/tools.ts` | Add series MCP tool schemas |
+| `CLAUDE.md` | Document series commands |
 | `tests/unit/core/series-manager.test.ts` | New: series manager tests |
+| `tests/unit/commands/series.test.ts` | New: series command tests |
 
 ---
 
-## 8. Out of Scope
+## 8. Phase 2 (Future)
 
-- **Series-level approval gate**: No "approve entire series" step. Each article is independently manageable.
-- **Cross-series dependencies**: Series are independent of each other.
-- **Series templates**: Reusable series structures (e.g., "product launch template"). Consider for future.
-- **Collaborative editing**: Single-user CLI tool.
-- **Auto-update published articles**: No mechanism to update already-published content on platforms.
-- **Image/media generation for series**: ReachForge does not generate images. Users manage assets independently.
+| Feature | Description |
+|---------|-------------|
+| `series review` | AI-powered consistency/completeness review |
+| `series add/remove/reorder` | Mid-series changes with schedule auto-adjustment |
+| `series list` | List all series in project |
+| Platform series mapping | Dev.to `series` field, Hashnode `seriesId` |
+| Per-article outline approval | Fine-grained gate for individual article outlines |
+
+---
+
+## 9. Out of Scope
+
+- Content strategy or topic planning
+- Cross-series dependencies
+- Series templates (reusable structures)
+- Collaborative editing
+- Image/media generation
+- Skipping approval gates (`--skip-approval` not provided — quality control is core value)

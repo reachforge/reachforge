@@ -23,6 +23,7 @@ import { publishCommand } from './commands/publish.js';
 import { rollbackCommand } from './commands/rollback.js';
 import { refreshCommand } from './commands/refresh.js';
 import { updateCommand } from './commands/update.js';
+import { seriesInitCommand, seriesOutlineCommand, seriesApproveCommand, seriesDetailCommand, seriesDraftCommand, seriesAdaptCommand, seriesScheduleCommand, seriesStatusCommand } from './commands/series.js';
 import { watchCommand } from './commands/watch.js';
 import { mcpCommand } from './commands/mcp.js';
 import { initCommand } from './commands/init.js';
@@ -456,6 +457,81 @@ program
     const engine = await getEngine();
     await analyticsCommand(engine, { ...options, json: program.opts().json });
   }, 'analytics'));
+
+// ── Series Management ────────────────────────────────────
+
+const seriesCmd = program
+  .command('series')
+  .description('Manage article series (outline → approve → draft)');
+
+seriesCmd
+  .command('init <topic>')
+  .description('Scaffold a new series definition file')
+  .action(withErrorHandler(async (topic: string) => {
+    const ctx = await getContext();
+    await seriesInitCommand(ctx.projectDir, topic, { json: program.opts().json });
+  }, 'series.init'));
+
+seriesCmd
+  .command('outline <name>')
+  .description('AI-generate master outline and article plan')
+  .action(withErrorHandler(async (name: string) => {
+    const engine = await getEngine();
+    await seriesOutlineCommand(engine, name, { json: program.opts().json });
+  }, 'series.outline'));
+
+seriesCmd
+  .command('approve <name>')
+  .description('Approve outline or detail outlines')
+  .option('--outline', 'Approve master outline')
+  .option('--detail', 'Approve per-article detail outlines')
+  .action(withErrorHandler(async (name: string, options: { outline?: boolean; detail?: boolean }) => {
+    const engine = await getEngine();
+    await seriesApproveCommand(engine, name, { ...options, json: program.opts().json });
+  }, 'series.approve'));
+
+seriesCmd
+  .command('detail <name>')
+  .description('AI-generate detailed outlines for each article')
+  .action(withErrorHandler(async (name: string) => {
+    const engine = await getEngine();
+    await seriesDetailCommand(engine, name, { json: program.opts().json });
+  }, 'series.detail'));
+
+seriesCmd
+  .command('draft <name>')
+  .description('Draft next article (or all with --all) based on approved outlines')
+  .option('--all', 'Draft all unwritten articles sequentially')
+  .action(withErrorHandler(async (name: string, options: { all?: boolean }) => {
+    const engine = await getEngine();
+    await seriesDraftCommand(engine, name, { ...options, json: program.opts().json });
+  }, 'series.draft'));
+
+seriesCmd
+  .command('adapt <name>')
+  .description('Batch-adapt all drafted articles in the series')
+  .option('-p, --platforms <list>', 'Comma-separated platform list')
+  .action(withErrorHandler(async (name: string, options: { platforms?: string }) => {
+    const [engine, config] = await Promise.all([getEngine(), getConfig().catch(() => getGlobalConfig())]);
+    await seriesAdaptCommand(engine, name, { ...options, json: program.opts().json, config: config.getConfig() });
+  }, 'series.adapt'));
+
+seriesCmd
+  .command('schedule <name>')
+  .description('Auto-calculate and apply schedule dates')
+  .option('-n, --dry-run', 'Preview without applying')
+  .action(withErrorHandler(async (name: string, options: { dryRun?: boolean }) => {
+    const engine = await getEngine();
+    await seriesScheduleCommand(engine, name, { ...options, json: program.opts().json });
+  }, 'series.schedule'));
+
+seriesCmd
+  .command('status <name>')
+  .description('Show series progress dashboard')
+  .action(withErrorHandler(async (name: string) => {
+    const engine = await getEngine();
+    await seriesStatusCommand(engine, name, { json: program.opts().json });
+  }, 'series.status'));
 
 const assetCmd = program
   .command('asset')

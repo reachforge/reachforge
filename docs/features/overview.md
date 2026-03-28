@@ -23,12 +23,12 @@ reachforge is decomposed into 14 functional components across 9 source directori
 | 3b | Session Manager | `src/llm/session.ts` | [session-manager.md](session-manager.md) | P0 | Implemented |
 | 3c | Skill Resolver | `src/llm/skills.ts` | [skill-resolver.md](skill-resolver.md) | P0 | Implemented |
 | 3d | Refine Command | `src/commands/refine.ts` | [refine-command.md](refine-command.md) | P0 | Implemented |
-| 4 | Platform Providers | `src/providers/` | [platform-providers.md](platform-providers.md) | P0/P1 | Implemented (DevTo, Postiz, Hashnode, GitHub, Mock) |
-| 5 | Content Validation | `src/validators/` | [content-validation.md](content-validation.md) | P1 | Implemented (X, DevTo, Hashnode, GitHub) |
+| 4 | Platform Providers | `src/providers/` | [platform-providers.md](platform-providers.md) | P0/P1 | Implemented (DevTo, Postiz, Hashnode, GitHub, Ghost, WordPress, Telegraph, Write.as, Reddit, Mock) |
+| 5 | Content Validation | `src/validators/` | [content-validation.md](content-validation.md) | P1 | Implemented (X, DevTo, Hashnode, GitHub, Ghost, WordPress, Telegraph, Write.as, Reddit) |
 | 6 | Media Manager | `src/utils/media.ts` | [media-manager.md](media-manager.md) | P1 | Implemented (detect, upload, cache, CDN replace) |
 | 6a | Asset Library | `src/core/asset-manager.ts` | — | P1 | Implemented (@assets/ registry + reference resolution) |
 | 7 | Watcher Daemon | `src/commands/watch.ts` | [watcher-daemon.md](watcher-daemon.md) | P1 | Implemented |
-| 8 | MCP Server | `src/mcp/` | [mcp-server.md](mcp-server.md) | P2 | Implemented (9 tools, stdio + SSE) |
+| 8 | MCP Server | `src/mcp/` | [mcp-server.md](mcp-server.md) | P2 | Implemented (22 tools, stdio + SSE) |
 | 9 | Plugin System | `src/providers/loader.ts` | [plugin-system.md](plugin-system.md) | P1 | Implemented |
 | 10 | Shared Types | `src/types/` | (Defined across all specs) | P0 | Implemented |
 | 11 | Workspace Management | `src/core/workspace.ts` | — | P0 | Implemented (multi-project workspaces) |
@@ -103,11 +103,11 @@ These features refactor the pipeline from single-article-per-project to multi-ar
 
 | # | Feature | Description | Dependencies | Priority | Status |
 |---|---------|-------------|--------------|----------|--------|
-| 1 | [filename-parser](filename-parser.md) | Parse/build `{article}.{platform}.md` filenames | — | P0 | draft |
-| 2 | [multi-article-metadata](multi-article-metadata.md) | Centralized multi-article meta.yaml schema | filename-parser | P0 | draft |
-| 3 | [pipeline-engine-refactor](pipeline-engine-refactor.md) | File-level pipeline operations | filename-parser, multi-article-metadata | P0 | draft |
-| 4 | [command-updates](command-updates.md) | Update all CLI commands for article param | pipeline-engine-refactor, multi-article-metadata | P0 | draft |
-| 5 | [mcp-tool-updates](mcp-tool-updates.md) | Update MCP tool schemas | command-updates | P1 | draft |
+| 1 | [filename-parser](filename-parser.md) | Parse/build `{article}.{platform}.md` filenames | — | P0 | ✅ implemented |
+| 2 | [multi-article-metadata](multi-article-metadata.md) | Centralized multi-article meta.yaml schema | filename-parser | P0 | ✅ implemented |
+| 3 | [pipeline-engine-refactor](pipeline-engine-refactor.md) | File-level pipeline operations | filename-parser, multi-article-metadata | P0 | ✅ implemented |
+| 4 | [command-updates](command-updates.md) | Update all CLI commands for article param | pipeline-engine-refactor, multi-article-metadata | P0 | ✅ implemented |
+| 5 | [mcp-tool-updates](mcp-tool-updates.md) | Update MCP tool schemas | command-updates | P1 | ✅ implemented |
 
 ### Execution Order
 
@@ -127,10 +127,10 @@ New `reach update <article>` command to push content changes to already-publishe
 
 | # | Feature | Description | Dependencies | Priority | Status |
 |---|---------|-------------|--------------|----------|--------|
-| 1 | [update-schema-changes](update-schema-changes.md) | Add `article_id` and `updated_at` to PlatformPublishStatus, `articleId` to PublishResult, `update()` to PlatformProvider | — | P0 | draft |
-| 2 | [update-publish-id-capture](update-publish-id-capture.md) | Capture platform article IDs in provider publish() responses and persist to meta.yaml | update-schema-changes | P0 | draft |
-| 3 | [update-provider-methods](update-provider-methods.md) | Implement update() on DevTo, Hashnode, GitHub, and Mock providers | update-schema-changes, update-publish-id-capture | P0 | draft |
-| 4 | [update-command](update-command.md) | The `reach update` command, CLI registration, MCP tool, help text | update-provider-methods | P0 | draft |
+| 1 | [update-schema-changes](update-schema-changes.md) | Add `article_id` and `updated_at` to PlatformPublishStatus, `articleId` to PublishResult, `update()` to PlatformProvider | — | P0 | ✅ implemented |
+| 2 | [update-publish-id-capture](update-publish-id-capture.md) | Capture platform article IDs in provider publish() responses and persist to meta.yaml | update-schema-changes | P0 | ✅ implemented |
+| 3 | [update-provider-methods](update-provider-methods.md) | Implement update() on DevTo, Hashnode, GitHub, and Mock providers | update-schema-changes, update-publish-id-capture | P0 | ✅ implemented |
+| 4 | [update-command](update-command.md) | The `reach update` command, CLI registration, MCP tool, help text | update-provider-methods | P0 | ✅ implemented |
 
 ### Execution Order
 
@@ -149,11 +149,11 @@ New `reach update <article>` command to push content changes to already-publishe
 
 | # | Feature | Platform ID | Content Format | Auth Method | Priority | Status |
 |---|---------|-------------|---------------|-------------|----------|--------|
-| 1 | [provider-ghost](provider-ghost.md) | `ghost` | HTML | JWT (HS256 from admin key) | P1 | draft |
-| 2 | [provider-wordpress](provider-wordpress.md) | `wordpress` | HTML | Basic Auth (App Password) | P1 | draft |
-| 3 | [provider-telegraph](provider-telegraph.md) | `telegraph` | HTML (node JSON) | Access token | P2 | draft |
-| 4 | [provider-writeas](provider-writeas.md) | `writeas` | Markdown | Access token | P2 | draft |
-| 5 | [provider-reddit](provider-reddit.md) | `reddit` | Markdown | OAuth2 password grant | P1 | draft |
+| 1 | [provider-ghost](provider-ghost.md) | `ghost` | HTML | JWT (HS256 from admin key) | P1 | ✅ implemented |
+| 2 | [provider-wordpress](provider-wordpress.md) | `wordpress` | HTML | Basic Auth (App Password) | P1 | ✅ implemented |
+| 3 | [provider-telegraph](provider-telegraph.md) | `telegraph` | HTML (node JSON) | Access token | P2 | ✅ implemented |
+| 4 | [provider-writeas](provider-writeas.md) | `writeas` | Markdown | Access token | P2 | ✅ implemented |
+| 5 | [provider-reddit](provider-reddit.md) | `reddit` | Markdown | OAuth2 password grant | P1 | ✅ implemented |
 
 ### Execution Order
 
@@ -176,6 +176,36 @@ New `reach update <article>` command to push content changes to already-publishe
 | `src/core/filename-parser.ts` | Add `ghost`, `wordpress`, `telegraph`, `writeas` to `PLATFORM_IDS` |
 | `src/providers/loader.ts` | Import + register 5 providers, add display names/languages |
 | `src/validators/runner.ts` | Register 5 new validators |
+
+---
+
+---
+
+## Series Management
+
+> Added: 2026-03-28. See [Series Management Feature Spec](series-management.md) for full specification.
+
+Gate-controlled multi-article campaign workflow: init → outline → approve → detail → approve → draft → adapt → schedule.
+
+| # | Command | Description | Status |
+|---|---------|-------------|--------|
+| 1 | `series init <topic>` | Scaffold series.yaml template | ✅ implemented |
+| 2 | `series outline <name>` | AI-generate master outline + article plan | ✅ implemented |
+| 3 | `series approve <name> --outline` | Gate 1: approve master outline | ✅ implemented |
+| 4 | `series detail <name>` | AI-generate per-article detailed outlines | ✅ implemented |
+| 5 | `series approve <name> --detail` | Gate 2: approve detail outlines | ✅ implemented |
+| 6 | `series draft <name> [--all]` | Draft articles based on approved outlines | ✅ implemented |
+| 7 | `series adapt <name> [-p]` | Batch adapt for platforms | ✅ implemented |
+| 8 | `series schedule <name>` | Auto-calculate publish dates | ✅ implemented |
+| 9 | `series status <name>` | Progress dashboard | ✅ implemented |
+
+### Key Files
+
+| File | Content |
+|------|---------|
+| `src/types/series.ts` | Zod schemas, status enum, Series types |
+| `src/core/series-manager.ts` | CRUD, state transitions, schedule calc, context assembly |
+| `src/commands/series.ts` | 8 command functions |
 
 ---
 

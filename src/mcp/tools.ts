@@ -74,6 +74,44 @@ export const GoToolSchema = z.object({
   cover: z.string().optional().describe('Cover image path or URL'),
 });
 
+// Series tools
+export const SeriesInitToolSchema = z.object({
+  topic: z.string().min(1).describe('Series topic or title'),
+});
+
+export const SeriesOutlineToolSchema = z.object({
+  name: z.string().min(1).describe('Series name (slug from series.yaml filename)'),
+});
+
+export const SeriesApproveToolSchema = z.object({
+  name: z.string().min(1).describe('Series name'),
+  outline: z.boolean().optional().describe('Approve master outline'),
+  detail: z.boolean().optional().describe('Approve per-article detail outlines'),
+});
+
+export const SeriesDetailToolSchema = z.object({
+  name: z.string().min(1).describe('Series name'),
+});
+
+export const SeriesDraftToolSchema = z.object({
+  name: z.string().min(1).describe('Series name'),
+  all: z.boolean().optional().describe('Draft all unwritten articles sequentially'),
+});
+
+export const SeriesAdaptToolSchema = z.object({
+  name: z.string().min(1).describe('Series name'),
+  platforms: z.string().optional().describe('Comma-separated platform list'),
+});
+
+export const SeriesScheduleToolSchema = z.object({
+  name: z.string().min(1).describe('Series name'),
+  dryRun: z.boolean().optional().describe('Preview without applying'),
+});
+
+export const SeriesStatusToolSchema = z.object({
+  name: z.string().min(1).describe('Series name'),
+});
+
 export const AnalyticsToolSchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Start date filter in YYYY-MM-DD format'),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('End date filter in YYYY-MM-DD format'),
@@ -151,6 +189,38 @@ export const TOOL_METADATA: Record<string, { description: string; inputSchema: R
     description: 'List all available publishing platforms and whether they are configured with API keys. No inputs required.',
     inputSchema: jsonSchema(z.object({})),
   },
+  'reach.series.init': {
+    description: 'Scaffold a new series definition file.',
+    inputSchema: jsonSchema(SeriesInitToolSchema),
+  },
+  'reach.series.outline': {
+    description: 'AI-generate master outline and article plan for a series.',
+    inputSchema: jsonSchema(SeriesOutlineToolSchema),
+  },
+  'reach.series.approve': {
+    description: 'Approve master outline (--outline) or per-article detail outlines (--detail). Gate-controls series progression.',
+    inputSchema: jsonSchema(SeriesApproveToolSchema),
+  },
+  'reach.series.detail': {
+    description: 'AI-generate detailed outlines for each article in the series, based on the approved master outline.',
+    inputSchema: jsonSchema(SeriesDetailToolSchema),
+  },
+  'reach.series.draft': {
+    description: 'Draft the next unwritten article (or all with --all) based on approved outlines, with series context injection.',
+    inputSchema: jsonSchema(SeriesDraftToolSchema),
+  },
+  'reach.series.adapt': {
+    description: 'Batch-adapt all drafted articles in the series for target platforms.',
+    inputSchema: jsonSchema(SeriesAdaptToolSchema),
+  },
+  'reach.series.schedule': {
+    description: 'Auto-calculate and apply publish schedule dates based on start date and interval.',
+    inputSchema: jsonSchema(SeriesScheduleToolSchema),
+  },
+  'reach.series.status': {
+    description: 'Show series progress dashboard with per-article pipeline status.',
+    inputSchema: jsonSchema(SeriesStatusToolSchema),
+  },
 };
 
 // Legacy export for backward compatibility with tests
@@ -173,6 +243,14 @@ export const MCP_TOOL_DEFINITIONS = Object.entries(TOOL_METADATA).map(([moduleId
       'reach.asset.list': AssetListToolSchema,
       'reach.analytics': AnalyticsToolSchema,
       'reach.platforms': z.object({}),
+      'reach.series.init': SeriesInitToolSchema,
+      'reach.series.outline': SeriesOutlineToolSchema,
+      'reach.series.approve': SeriesApproveToolSchema,
+      'reach.series.detail': SeriesDetailToolSchema,
+      'reach.series.draft': SeriesDraftToolSchema,
+      'reach.series.adapt': SeriesAdaptToolSchema,
+      'reach.series.schedule': SeriesScheduleToolSchema,
+      'reach.series.status': SeriesStatusToolSchema,
     };
     return schemaMap[moduleId];
   })(),

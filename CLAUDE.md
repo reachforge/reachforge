@@ -25,6 +25,22 @@ reach update <article>             # Update published article on platforms
 reach rollback <article>           # Move back one stage
 ```
 
+## Series (multi-article campaigns)
+
+```
+reach series init <topic>                # Scaffold series.yaml
+reach series outline <name>              # AI-generate master outline
+reach series approve <name> --outline    # Approve outline (gate 1)
+reach series detail <name>               # AI-generate per-article outlines
+reach series approve <name> --detail     # Approve outlines (gate 2)
+reach series draft <name> [--all]        # Draft articles based on approved outlines
+reach series adapt <name> [-p platforms] # Batch adapt
+reach series schedule <name>             # Auto-calculate publish dates
+reach series status <name>               # Progress dashboard
+```
+
+Workflow: init → outline → approve → detail → approve → draft → adapt → schedule → publish
+
 ## Key Options
 
 - `-p, --platforms <list>` — comma-separated platforms (devto, hashnode, ghost, wordpress, telegraph, writeas, reddit, x, github, wechat, zhihu)

@@ -27,6 +27,7 @@ export const ASSET_REGISTRY_FILENAME = '.asset-registry.yaml';
 export const ASSET_PREFIX = '@assets/';
 
 export const TEMPLATES_DIR = 'templates';
+export const SERIES_DIR = 'series';
 
 export const LANGUAGE_NAMES: Record<string, string> = {
   'en': 'English',

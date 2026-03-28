@@ -11,7 +11,7 @@ const COMMAND_GROUPS: Array<{ title: string; commands: string[] }> = [
   },
   {
     title: 'Pipeline Steps',
-    commands: ['draft', 'refine', 'adapt', 'schedule', 'update', 'rollback', 'refresh'],
+    commands: ['draft', 'refine', 'adapt', 'schedule', 'update', 'rollback', 'refresh', 'series'],
   },
   {
     title: 'System',
@@ -56,6 +56,22 @@ export function buildFullReference(program: Command): string {
       if (opts.length > 0) {
         for (const opt of opts) {
           lines.push(`    ${cmdHelp.optionTerm(opt).padEnd(28)} ${cmdHelp.optionDescription(opt)}`);
+        }
+      }
+
+      // Expand subcommands (for command groups like series, asset)
+      const subHelp = new Help();
+      const subCmds = subHelp.visibleCommands(cmd).filter(c => c.name() !== 'help');
+      if (subCmds.length > 0) {
+        lines.push('');
+        for (const sub of subCmds) {
+          const subTerm = `${cmdName} ${help.subcommandTerm(sub)}`;
+          lines.push(`    ${subTerm}`);
+          lines.push(`      ${help.subcommandDescription(sub)}`);
+          const subOpts = cmdHelp.visibleOptions(sub).filter(o => !['help', 'version'].includes(o.long?.replace('--', '') ?? ''));
+          for (const opt of subOpts) {
+            lines.push(`      ${cmdHelp.optionTerm(opt).padEnd(28)} ${cmdHelp.optionDescription(opt)}`);
+          }
         }
       }
       lines.push('');
