@@ -203,6 +203,36 @@ describe('DevtoProvider', () => {
 
     vi.unstubAllGlobals();
   });
+
+  test('update sends PUT to /api/articles/{id} and returns articleId', async () => {
+    let capturedUrl = '';
+    let capturedMethod = '';
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string, opts: any) => {
+      capturedUrl = url;
+      capturedMethod = opts.method;
+      return { ok: true, status: 200, text: async () => JSON.stringify({ id: 42, url: 'https://dev.to/user/updated' }) };
+    }));
+
+    const result = await devto.update!('42', '# Updated\n\nNew body', {});
+    expect(capturedMethod).toBe('PUT');
+    expect(capturedUrl).toContain('/articles/42');
+    expect(result.status).toBe('success');
+    expect(result.articleId).toBe('42');
+    expect(result.url).toBe('https://dev.to/user/updated');
+
+    vi.unstubAllGlobals();
+  });
+
+  test('update throws ProviderError on API error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false, status: 404, text: async () => 'Not Found',
+    }));
+
+    await expect(devto.update!('99999', '# Test\n\nBody', {})).rejects.toThrow('404');
+
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('PostizProvider', () => {
@@ -365,6 +395,28 @@ describe('HashnodeProvider', () => {
 
     vi.unstubAllGlobals();
   });
+
+  test('update sends updatePost mutation and returns articleId', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        data: { updatePost: { post: { id: 'abc123', slug: 'updated', url: 'https://blog.example.com/updated', publication: { url: 'https://blog.example.com' } } } },
+      }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await hashnode.update!('abc123', '# Updated\n\nBody', {});
+    expect(result.status).toBe('success');
+    expect(result.articleId).toBe('abc123');
+
+    const sentBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(sentBody.query).toContain('updatePost');
+    expect(sentBody.variables.input.id).toBe('abc123');
+    expect(sentBody.variables.input.publicationId).toBeUndefined();
+
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('GitHubProvider', () => {
@@ -444,6 +496,39 @@ describe('GitHubProvider', () => {
     expect(result.error).toContain('not found');
 
     vi.unstubAllGlobals();
+  });
+
+  test('update sends single updateDiscussion mutation and returns articleId', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        data: { updateDiscussion: { discussion: { id: 'disc-789', url: 'https://github.com/myorg/myrepo/discussions/1' } } },
+      }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await github.update!('disc-789', '# Updated Discussion\n\nNew body', {});
+    expect(result.status).toBe('success');
+    expect(result.articleId).toBe('disc-789');
+    expect(mockFetch).toHaveBeenCalledTimes(1); // single call, no repo resolution
+
+    const sentBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(sentBody.query).toContain('updateDiscussion');
+    expect(sentBody.variables.input.discussionId).toBe('disc-789');
+
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('MockProvider update', () => {
+  test('update returns success with provided articleId', async () => {
+    const mock = new MockProvider();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await mock.update!('test-id', '# Test', {});
+    expect(result.status).toBe('success');
+    expect(result.articleId).toBe('test-id');
+    vi.restoreAllMocks();
   });
 });
 

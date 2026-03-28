@@ -117,7 +117,52 @@ export class GitHubProvider implements PlatformProvider {
       }
 
       const discussion = createData.data?.createDiscussion?.discussion;
-      return { platform: 'github', status: 'success', url: discussion?.url };
+      return { platform: 'github', status: 'success', url: discussion?.url, articleId: discussion?.id };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { platform: 'github', status: 'failed', error: message };
+    }
+  }
+
+  async update(articleId: string, content: string, meta: PublishMeta = {}): Promise<PublishResult> {
+    const h1Match = content.match(/^#\s+(.+)$/m);
+    const title = meta.title ?? h1Match?.[1]?.trim() ?? 'Untitled';
+    const body = h1Match ? content.replace(/^#\s+.+\n?/, '').trim() : content;
+
+    try {
+      const response = await httpRequest(GITHUB_GQL_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({
+          query: `mutation UpdateDiscussion($input: UpdateDiscussionInput!) {
+            updateDiscussion(input: $input) {
+              discussion { id url }
+            }
+          }`,
+          variables: {
+            input: { discussionId: articleId, title, body },
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new ProviderError('github', `API returned ${response.status}: ${response.body}`);
+      }
+
+      const data = response.json<{
+        data?: { updateDiscussion?: { discussion?: { id?: string; url?: string } } };
+        errors?: Array<{ message: string }>;
+      }>();
+
+      if (data.errors?.length) {
+        throw new ProviderError('github', `GitHub API error: ${data.errors[0].message}`);
+      }
+
+      const discussion = data.data?.updateDiscussion?.discussion;
+      return { platform: 'github', status: 'success', url: discussion?.url, articleId: discussion?.id };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       return { platform: 'github', status: 'failed', error: message };

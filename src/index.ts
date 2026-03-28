@@ -22,6 +22,7 @@ import { scheduleCommand } from './commands/schedule.js';
 import { publishCommand } from './commands/publish.js';
 import { rollbackCommand } from './commands/rollback.js';
 import { refreshCommand } from './commands/refresh.js';
+import { updateCommand } from './commands/update.js';
 import { watchCommand } from './commands/watch.js';
 import { mcpCommand } from './commands/mcp.js';
 import { initCommand } from './commands/init.js';
@@ -203,6 +204,13 @@ apcore.register('reach.refresh', {
   execute: async (inputs: { article: string }) => {
     const engine = await getEngine();
     await refreshCommand(engine, inputs.article);
+  },
+});
+apcore.register('reach.update', {
+  ...meta('reach.update'),
+  execute: async (inputs: { article: string; platforms?: string; dryRun?: boolean; force?: boolean; cover?: string }) => {
+    const [engine, config] = await Promise.all([getEngine(), getConfig().catch(() => getGlobalConfig())]);
+    await updateCommand(engine, { ...inputs, config: config.getConfig() });
   },
 });
 apcore.register('reach.asset.add', {
@@ -395,6 +403,18 @@ program
     const engine = await getEngine();
     await refreshCommand(engine, article, { json: program.opts().json });
   }, 'refresh'));
+
+program
+  .command('update <article>')
+  .description('Update a published article on its platforms')
+  .option('-p, --platforms <list>', 'Comma-separated platform filter')
+  .option('-n, --dry-run', 'Preview without executing')
+  .option('--force', 'Skip platforms without article_id')
+  .option('-c, --cover <path>', 'Cover image path or URL')
+  .action(withErrorHandler(async (article: string, options: { platforms?: string; dryRun?: boolean; force?: boolean; cover?: string }) => {
+    const [engine, config] = await Promise.all([getEngine(), getConfig().catch(() => getGlobalConfig())]);
+    await updateCommand(engine, { article, ...options, json: program.opts().json, config: config.getConfig() });
+  }, 'update'));
 
 // ── System ───────────────────────────────────────────────
 

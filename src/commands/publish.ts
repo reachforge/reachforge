@@ -26,7 +26,7 @@ export interface PublishOptions {
   config?: ReachforgeConfig;
 }
 
-function getCredentialsForPlatform(platform: string, config: ReachforgeConfig): Record<string, string> {
+export function getCredentialsForPlatform(platform: string, config: ReachforgeConfig): Record<string, string> {
   const creds: Record<string, string> = {};
   if (platform === 'devto' && config.devtoApiKey) {
     creds['api_key'] = config.devtoApiKey;
@@ -250,7 +250,7 @@ async function publishContentToPlatforms(
       const result = await provider.publish(formatted, publishMeta);
 
       if (result.status === 'success') {
-        platformResults[platform] = { status: 'success', url: result.url, published_at: new Date().toISOString() };
+        platformResults[platform] = { status: 'success', url: result.url, published_at: new Date().toISOString(), ...(result.articleId ? { article_id: result.articleId } : {}) };
         jsonPublished.push({ article: articleLabel, platform, status: 'success', url: result.url });
         if (!options.json) console.log(chalk.green(`  \u2714 ${platform}: ${result.url}`));
       } else {

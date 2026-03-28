@@ -23,6 +23,8 @@ export const PlatformPublishStatusSchema = z.object({
   url: z.string().url().optional(),
   error: z.string().optional(),
   published_at: z.string().optional(),
+  article_id: z.string().optional(),
+  updated_at: z.string().optional(),
 });
 
 // Legacy status migration: map old 'inbox'/'master' to 'drafted'

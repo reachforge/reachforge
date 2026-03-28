@@ -35,6 +35,14 @@ export const PublishToolSchema = z.object({
   cover: z.string().optional().describe('Cover image path or URL. Uploaded to platform CDN at publish time'),
 });
 
+export const UpdateToolSchema = z.object({
+  article: z.string().min(1).describe('Name of the published article to update on platforms'),
+  platforms: z.string().optional().describe('Comma-separated platform filter. Default: all published platforms with article_id'),
+  dryRun: z.boolean().optional().describe('If true, preview what would be updated without calling APIs'),
+  force: z.boolean().optional().describe('If true, skip platforms without article_id instead of erroring'),
+  cover: z.string().optional().describe('Cover image path or URL'),
+});
+
 export const RollbackToolSchema = z.object({
   article: z.string().min(1).describe('Name of the article to move back one pipeline stage'),
 });
@@ -115,6 +123,10 @@ export const TOOL_METADATA: Record<string, { description: string; inputSchema: R
     description: 'Refine an existing draft article by applying feedback via AI. Performs a single non-interactive refinement turn: sends the feedback to the LLM, saves the updated article, and returns. Use this to iteratively improve content before adapting.',
     inputSchema: jsonSchema(RefineToolSchema),
   },
+  'reach.update': {
+    description: 'Update an already-published article on its platforms. Reads updated content from 02_adapted (or 03_published) and pushes changes via platform update APIs. Only works for pipeline articles with stored article_id.',
+    inputSchema: jsonSchema(UpdateToolSchema),
+  },
   'reach.rollback': {
     description: 'Move a specific article back one pipeline stage (e.g., from 03_published back to 02_adapted). Useful for re-adapting or re-publishing content.',
     inputSchema: jsonSchema(RollbackToolSchema),
@@ -154,6 +166,7 @@ export const MCP_TOOL_DEFINITIONS = Object.entries(TOOL_METADATA).map(([moduleId
       'reach.publish': PublishToolSchema,
       'reach.go': GoToolSchema,
       'reach.refine': RefineToolSchema,
+      'reach.update': UpdateToolSchema,
       'reach.rollback': RollbackToolSchema,
       'reach.refresh': RefreshToolSchema,
       'reach.asset.add': AssetAddToolSchema,

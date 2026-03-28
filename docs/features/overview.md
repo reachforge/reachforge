@@ -119,4 +119,26 @@ These features refactor the pipeline from single-article-per-project to multi-ar
 
 ---
 
+## Update Published Articles Feature
+
+> Added: 2026-03-27. See [Update Command Tech Design](../update-command/tech-design.md) for architecture context.
+
+New `reach update <article>` command to push content changes to already-published platforms via their update APIs.
+
+| # | Feature | Description | Dependencies | Priority | Status |
+|---|---------|-------------|--------------|----------|--------|
+| 1 | [update-schema-changes](update-schema-changes.md) | Add `article_id` and `updated_at` to PlatformPublishStatus, `articleId` to PublishResult, `update()` to PlatformProvider | — | P0 | draft |
+| 2 | [update-publish-id-capture](update-publish-id-capture.md) | Capture platform article IDs in provider publish() responses and persist to meta.yaml | update-schema-changes | P0 | draft |
+| 3 | [update-provider-methods](update-provider-methods.md) | Implement update() on DevTo, Hashnode, GitHub, and Mock providers | update-schema-changes, update-publish-id-capture | P0 | draft |
+| 4 | [update-command](update-command.md) | The `reach update` command, CLI registration, MCP tool, help text | update-provider-methods | P0 | draft |
+
+### Execution Order
+
+1. **update-schema-changes** -- no dependencies, additive schema changes only
+2. **update-publish-id-capture** -- depends on schema changes, modifies providers and publish flow
+3. **update-provider-methods** -- depends on schema + ID capture, adds update() to each provider
+4. **update-command** -- depends on all above, implements the command and MCP integration
+
+---
+
 *Each component has a dedicated feature spec linked above with implementation-level detail.*

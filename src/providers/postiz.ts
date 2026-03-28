@@ -67,6 +67,7 @@ export class PostizProvider implements PlatformProvider {
         platform: 'x',
         status: 'success',
         url: data.url || `https://x.com/i/status/${data.id}`,
+        articleId: data.id,
       };
     } catch (err: unknown) {
       if (err instanceof ProviderError) throw err;

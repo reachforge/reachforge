@@ -34,7 +34,7 @@ export class HashnodeProvider implements PlatformProvider {
     return { valid: errors.length === 0, errors };
   }
 
-  async publish(content: string, meta: PublishMeta = {}): Promise<PublishResult> {
+  private _prepareContent(content: string, meta: PublishMeta): { title: string; body: string } {
     const h1Match = content.match(/^#\s+(.+)$/m);
     const fmMatch = content.match(/^---\n[\s\S]*?title:\s*(.+?)\s*(?:\n|$)/m);
     const title = meta.title ?? h1Match?.[1]?.trim() ?? fmMatch?.[1]?.trim() ?? 'Untitled';
@@ -45,10 +45,35 @@ export class HashnodeProvider implements PlatformProvider {
     }
     body = body.replace(/^\s*#\s+.+\n?/, '');
 
+    return { title, body };
+  }
+
+  private _parsePostResponse(data: {
+    data?: {
+      publishPost?: { post?: { id?: string; slug?: string; url?: string; publication?: { url?: string } } };
+      updatePost?: { post?: { id?: string; slug?: string; url?: string; publication?: { url?: string } } };
+    };
+    errors?: Array<{ message: string }>;
+  }): PublishResult {
+    if (data.errors?.length) {
+      throw new ProviderError('hashnode', `Hashnode API error: ${data.errors[0].message}`);
+    }
+
+    const post = data.data?.publishPost?.post ?? data.data?.updatePost?.post;
+    const url = post?.url;
+    const publicationUrl = post?.publication?.url?.replace(/\/$/, '') ?? '';
+    const slug = post?.slug ?? 'post';
+
+    return { platform: 'hashnode', status: 'success', url: url ?? `${publicationUrl}/${slug}`, articleId: post?.id };
+  }
+
+  async publish(content: string, meta: PublishMeta = {}): Promise<PublishResult> {
+    const { title, body } = this._prepareContent(content, meta);
+
     const mutation = `
       mutation PublishPost($input: PublishPostInput!) {
         publishPost(input: $input) {
-          post { slug, url, publication { url } }
+          post { id, slug, url, publication { url } }
         }
       }
     `;
@@ -56,10 +81,7 @@ export class HashnodeProvider implements PlatformProvider {
     try {
       const response = await httpRequest(HASHNODE_GQL_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': this.apiKey,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': this.apiKey },
         body: JSON.stringify({
           query: mutation,
           variables: {
@@ -78,25 +100,47 @@ export class HashnodeProvider implements PlatformProvider {
         throw new ProviderError('hashnode', `API returned ${response.status}: ${response.body}`);
       }
 
-      const data = response.json<{
-        data?: {
-          publishPost?: {
-            post?: { slug?: string; url?: string; publication?: { url?: string } };
-          };
-        };
-        errors?: Array<{ message: string }>;
-      }>();
+      return this._parsePostResponse(response.json());
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { platform: 'hashnode', status: 'failed', error: message };
+    }
+  }
 
-      if (data.errors?.length) {
-        throw new ProviderError('hashnode', `Hashnode API error: ${data.errors[0].message}`);
+  async update(articleId: string, content: string, meta: PublishMeta = {}): Promise<PublishResult> {
+    const { title, body } = this._prepareContent(content, meta);
+
+    const mutation = `
+      mutation UpdatePost($input: UpdatePostInput!) {
+        updatePost(input: $input) {
+          post { id, slug, url, publication { url } }
+        }
+      }
+    `;
+
+    try {
+      const response = await httpRequest(HASHNODE_GQL_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': this.apiKey },
+        body: JSON.stringify({
+          query: mutation,
+          variables: {
+            input: {
+              id: articleId,
+              title,
+              contentMarkdown: body.trim(),
+              tags: (meta.tags ?? []).map(name => ({ name, slug: name.toLowerCase().replace(/\s+/g, '-') })),
+              ...(meta.coverImage ? { coverImageOptions: { coverImageURL: meta.coverImage } } : {}),
+            },
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new ProviderError('hashnode', `API returned ${response.status}: ${response.body}`);
       }
 
-      const post = data.data?.publishPost?.post;
-      const url = post?.url;
-      const publicationUrl = post?.publication?.url?.replace(/\/$/, '') ?? '';
-      const slug = post?.slug ?? 'post';
-
-      return { platform: 'hashnode', status: 'success', url: url ?? `${publicationUrl}/${slug}` };
+      return this._parsePostResponse(response.json());
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       return { platform: 'hashnode', status: 'failed', error: message };

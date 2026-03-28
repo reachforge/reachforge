@@ -32,8 +32,7 @@ export class DevtoProvider implements PlatformProvider {
     return { valid: errors.length === 0, errors };
   }
 
-  async publish(content: string, meta: PublishMeta = {}): Promise<PublishResult> {
-    // Extract title from first heading if not provided
+  private _prepareArticlePayload(content: string, meta: PublishMeta): { article: Record<string, unknown> } {
     let title = meta.title;
     if (!title) {
       const fmMatch = content.match(/^---\n[\s\S]*?title:\s*(.+?)\s*(?:\n|$)/m);
@@ -41,16 +40,10 @@ export class DevtoProvider implements PlatformProvider {
       title = fmMatch?.[1]?.trim() ?? h1Match?.[1]?.trim() ?? 'Untitled';
     }
 
-    // Determine published state:
-    //   Priority: meta.draft (CLI flag) > frontmatter `published` > default (true)
     let shouldPublish = true;
     const fmPublishedMatch = content.match(/^---\n[\s\S]*?published:\s*(true|false)/m);
-    if (fmPublishedMatch) {
-      shouldPublish = fmPublishedMatch[1] === 'true';
-    }
-    if (meta.draft !== undefined) {
-      shouldPublish = !meta.draft;
-    }
+    if (fmPublishedMatch) shouldPublish = fmPublishedMatch[1] === 'true';
+    if (meta.draft !== undefined) shouldPublish = !meta.draft;
 
     let cleanedContent = content;
     if (cleanedContent.startsWith('---')) {
@@ -58,7 +51,7 @@ export class DevtoProvider implements PlatformProvider {
     }
     cleanedContent = cleanedContent.replace(/^\s*#\s+.+\n?/, '');
 
-    const body = JSON.stringify({
+    return {
       article: {
         title,
         body_markdown: cleanedContent,
@@ -67,42 +60,56 @@ export class DevtoProvider implements PlatformProvider {
         canonical_url: meta.canonical,
         ...(meta.coverImage ? { main_image: meta.coverImage } : {}),
       },
-    });
+    };
+  }
+
+  async publish(content: string, meta: PublishMeta = {}): Promise<PublishResult> {
+    const body = JSON.stringify(this._prepareArticlePayload(content, meta));
 
     try {
       const response = await httpRequest(`${DEVTO_API_BASE}/articles`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api-key': this.apiKey,
-        },
+        headers: { 'Content-Type': 'application/json', 'api-key': this.apiKey },
         body,
       });
 
       if (!response.ok) {
-        const errorBody = response.body;
-        throw new ProviderError('devto', `API returned ${response.status}: ${errorBody}`);
+        throw new ProviderError('devto', `API returned ${response.status}: ${response.body}`);
       }
 
-      const data = response.json<{ url: string }>();
-      return {
-        platform: 'devto',
-        status: 'success',
-        url: data.url,
-      };
+      const data = response.json<{ id: number; url: string }>();
+      return { platform: 'devto', status: 'success', url: data.url, articleId: String(data.id) };
     } catch (err: unknown) {
       if (err instanceof ProviderError) throw err;
       const message = err instanceof Error ? err.message : String(err);
-      return {
-        platform: 'devto',
-        status: 'failed',
-        error: message,
-      };
+      return { platform: 'devto', status: 'failed', error: message };
+    }
+  }
+
+  async update(articleId: string, content: string, meta: PublishMeta = {}): Promise<PublishResult> {
+    const body = JSON.stringify(this._prepareArticlePayload(content, meta));
+
+    try {
+      const response = await httpRequest(`${DEVTO_API_BASE}/articles/${articleId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'api-key': this.apiKey },
+        body,
+      });
+
+      if (!response.ok) {
+        throw new ProviderError('devto', `API returned ${response.status}: ${response.body}`);
+      }
+
+      const data = response.json<{ id: number; url: string }>();
+      return { platform: 'devto', status: 'success', url: data.url, articleId: String(data.id) };
+    } catch (err: unknown) {
+      if (err instanceof ProviderError) throw err;
+      const message = err instanceof Error ? err.message : String(err);
+      return { platform: 'devto', status: 'failed', error: message };
     }
   }
 
   formatContent(content: string): string {
-    // Dev.to accepts standard markdown — minimal formatting needed
     return content;
   }
 }

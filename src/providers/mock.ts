@@ -16,12 +16,22 @@ export class MockProvider implements PlatformProvider {
 
   async publish(content: string, meta: PublishMeta): Promise<PublishResult> {
     const id = Math.random().toString(36).substring(7);
-    // Clearly warn this is mock mode
     console.warn(`⚠ [MOCK MODE] No real API call — content not actually published.`);
     return {
       platform: 'mock',
       status: 'success',
       url: `https://mock.reach.dev/post/${id}`,
+      articleId: id,
+    };
+  }
+
+  async update(articleId: string, content: string, meta: PublishMeta): Promise<PublishResult> {
+    console.warn(`⚠ [MOCK MODE] No real API call — content not actually updated.`);
+    return {
+      platform: 'mock',
+      status: 'success',
+      url: `https://mock.reach.dev/post/${articleId}`,
+      articleId,
     };
   }
 

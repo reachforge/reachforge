@@ -11,6 +11,7 @@ export interface PlatformProvider {
   validate(content: string): ValidationResult;
   publish(content: string, meta: PublishMeta): Promise<PublishResult>;
   formatContent(content: string): string;
+  update?(articleId: string, content: string, meta: PublishMeta): Promise<PublishResult>;
 }
 
 export interface PublishMeta {
@@ -26,6 +27,7 @@ export interface PublishResult {
   status: 'success' | 'failed';
   url?: string;
   error?: string;
+  articleId?: string;
 }
 
 export interface ValidationResult {

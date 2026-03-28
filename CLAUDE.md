@@ -10,6 +10,7 @@ reach status                       # Pipeline dashboard
 reach publish                      # Publish all due articles
 reach publish <article>            # Publish specific article
 reach publish ./file.md -p devto   # Publish external file to platform(s)
+reach update <article>             # Update already-published article on platforms
 ```
 
 ## Pipeline Steps (manual control)
@@ -20,6 +21,7 @@ reach refine <article> -f "..."    # AI refine draft
 reach adapt <article>              # draft → platform versions
 reach schedule <article> [date]    # Set publish date (metadata only, no file move)
 reach publish                      # Publish due articles
+reach update <article>             # Update published article on platforms
 reach rollback <article>           # Move back one stage
 ```
 
