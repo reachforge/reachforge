@@ -98,7 +98,7 @@ export async function resolveInput(
 export async function draftCommand(
   engine: PipelineEngine,
   source: string,
-  options: { name?: string; json?: boolean } = {},
+  options: { name?: string; cover?: string; json?: boolean } = {},
 ): Promise<void> {
   await engine.initPipeline();
 
@@ -134,7 +134,10 @@ export async function draftCommand(
   }
 
   await engine.writeArticleFile('01_drafts', draftName, result.content);
-  await engine.metadata.writeArticleMeta(draftName, { status: 'drafted' });
+  await engine.metadata.writeArticleMeta(draftName, {
+    status: 'drafted',
+    ...(options.cover ? { cover_image: options.cover } : {}),
+  });
 
   if (options.json) {
     process.stdout.write(jsonSuccess('draft', {

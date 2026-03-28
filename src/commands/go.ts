@@ -47,6 +47,7 @@ export interface GoOptions {
   schedule?: string;
   dryRun?: boolean;
   draft?: boolean;
+  cover?: string;
   json?: boolean;
   config?: ReachforgeConfig;
 }
@@ -74,6 +75,7 @@ export async function goCommand(
   await engine.initPipeline();
 
   // Resolve slug collision: append -2, -3, etc. if article already exists
+  const originalSlug = slug;
   const existing = await engine.metadata.readArticleMeta(slug);
   if (existing) {
     let suffix = 2;
@@ -81,6 +83,9 @@ export async function goCommand(
       suffix++;
     }
     slug = `${slug}-${suffix}`;
+    if (!options.json) {
+      console.log(chalk.yellow(`  \u26a0 "${originalSlug}" already exists, using "${slug}" instead`));
+    }
   }
 
   const log = (msg: string) => { if (!options.json) console.log(msg); };
@@ -96,11 +101,11 @@ export async function goCommand(
   try {
     // Step 1: Draft (accepts prompt directly)
     step(0);
-    await draftCommand(engine, prompt, { name: slug });
+    await draftCommand(engine, prompt, { name: slug, cover: options.cover });
 
     // Step 2: Adapt
     step(1);
-    await adaptCommand(engine, slug);
+    await adaptCommand(engine, slug, { config: options.config });
 
     // Step 3: Schedule or Publish
     step(2);
@@ -112,6 +117,7 @@ export async function goCommand(
         article: slug,
         dryRun: options.dryRun,
         draft: options.draft,
+        cover: options.cover,
         config: options.config,
       });
     }

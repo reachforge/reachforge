@@ -7,8 +7,7 @@ import { TemplateResolver } from '../core/templates.js';
 import { jsonSuccess } from '../core/json-output.js';
 import { LANGUAGE_NAMES } from '../core/constants.js';
 import { ProviderLoader } from '../providers/loader.js';
-
-const DEFAULT_PLATFORMS = ['x', 'wechat', 'zhihu'];
+import type { ReachforgeConfig } from '../types/index.js';
 
 /**
  * Resolve the target language for a platform.
@@ -32,7 +31,7 @@ function buildLanguageInstruction(targetLanguage: string): string {
 export async function adaptCommand(
   engine: PipelineEngine,
   article: string,
-  options: { platforms?: string; lang?: string; force?: boolean; json?: boolean } = {},
+  options: { platforms?: string; lang?: string; force?: boolean; json?: boolean; config?: ReachforgeConfig } = {},
 ): Promise<void> {
   const safeName = sanitizePath(article);
   if (!options.json) console.log(chalk.cyan(`🤖 Starting AI adaptation for "${safeName}"...`));
@@ -48,17 +47,26 @@ export async function adaptCommand(
 
   const meta = await engine.metadata.readArticleMeta(safeName);
 
-  // Platform resolution: CLI flag > project.yaml > default
+  // Platform resolution: CLI flag > project.yaml > auto-detect from config API keys
   const { readProjectConfig } = await import('../core/project-config.js');
   const projConfig = await readProjectConfig(engine.projectDir);
 
   let platforms: string[];
   if (options.platforms) {
     platforms = options.platforms.split(',').map(p => p.trim());
+  } else if (projConfig?.platforms && projConfig.platforms.length > 0) {
+    platforms = projConfig.platforms;
   } else {
-    platforms = projConfig?.platforms && projConfig.platforms.length > 0
-      ? projConfig.platforms
-      : DEFAULT_PLATFORMS;
+    // Auto-detect from configured API keys
+    const loader = new ProviderLoader(options.config ?? {});
+    const configured = loader.listPlatforms().filter(p => p.configured).map(p => p.platform);
+    if (configured.length === 0) {
+      throw new Error(
+        'No platforms configured. Set platforms in project.yaml or configure API keys in config.yaml.\n' +
+        '  Run `reach platforms` to see available platforms.',
+      );
+    }
+    platforms = configured;
   }
 
   const projectDir = engine.projectDir;

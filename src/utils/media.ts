@@ -31,8 +31,8 @@ export interface UploadCache {
 const NO_UPLOAD_PLATFORMS = new Set(['x', 'wechat', 'zhihu']);
 
 // Upload endpoints per platform
+// Note: Dev.to has no public image upload API — images must be hosted externally.
 const UPLOAD_ENDPOINTS: Record<string, string> = {
-  devto: 'https://dev.to/api/images',
   hashnode: 'https://api.hashnode.com/upload',
 };
 
@@ -84,7 +84,7 @@ export class MediaManager {
     const endpoint = UPLOAD_ENDPOINTS[platform];
 
     if (!endpoint) {
-      console.warn(`No upload endpoint configured for platform '${platform}'; skipping media upload.`);
+      console.warn(`${platform} does not support image upload — use an already-hosted URL instead.`);
       return null;
     }
 
@@ -210,6 +210,54 @@ export class MediaManager {
       result = result.replace(new RegExp(escapedPath, 'g'), upload.cdnUrl);
     }
     return result;
+  }
+
+  async uploadCoverImage(
+    coverPath: string,
+    platform: string,
+    credentials: Record<string, string>,
+    cache: UploadCache | null,
+  ): Promise<{ cdnUrl: string; updatedCache: UploadCache } | null> {
+    // Already a remote URL — use directly
+    if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
+      return { cdnUrl: coverPath, updatedCache: cache ?? { uploads: {} } };
+    }
+
+    const absolutePath = path.resolve(this.workingDir, coverPath);
+    const cacheKey = `cover:${coverPath}`;
+    const updatedCache: UploadCache = { uploads: { ...(cache?.uploads ?? {}) } };
+
+    // Check cache
+    const cached = updatedCache.uploads[cacheKey];
+    if (cached && cached.platform === platform) {
+      try {
+        const stat = await fs.stat(absolutePath);
+        if (stat.size === cached.sizeBytes) {
+          return { cdnUrl: cached.cdnUrl, updatedCache };
+        }
+      } catch {
+        // file changed or missing — re-upload
+      }
+    }
+
+    const ref: MediaReference = {
+      alt: 'cover',
+      localPath: coverPath,
+      absolutePath,
+      lineNumber: 0,
+    };
+
+    const result = await this.uploadImage(ref, platform, credentials);
+    if (!result) return null;
+
+    updatedCache.uploads[cacheKey] = {
+      cdnUrl: result.cdnUrl,
+      platform: result.platform,
+      uploadedAt: result.uploadedAt,
+      sizeBytes: result.sizeBytes,
+    };
+
+    return { cdnUrl: result.cdnUrl, updatedCache };
   }
 
   async processMedia(

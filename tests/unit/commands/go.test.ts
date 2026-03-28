@@ -104,9 +104,12 @@ afterEach(async () => {
   await fs.remove(tmpDir);
 });
 
+// Fake config with a postiz key so adapt auto-detects the 'x' platform
+const testConfig = { postizApiKey: 'test-key' };
+
 describe('goCommand', () => {
   test('immediate mode: full pipeline reaches adapted or published', async () => {
-    await goCommand(engine, 'write about apcore');
+    await goCommand(engine, 'write about apcore', { config: testConfig });
 
     const slug = 'write-about-apcore';
 
@@ -122,7 +125,7 @@ describe('goCommand', () => {
   });
 
   test('schedule mode: stays in 02_adapted, does not publish', async () => {
-    await goCommand(engine, 'write about apcore', { schedule: '2099-12-31' });
+    await goCommand(engine, 'write about apcore', { schedule: '2099-12-31', config: testConfig });
 
     const slug = 'write-about-apcore';
 
@@ -136,7 +139,7 @@ describe('goCommand', () => {
   });
 
   test('schedule mode with time: stores normalized date in meta', async () => {
-    await goCommand(engine, 'time test', { schedule: '2099-12-31T14:30' });
+    await goCommand(engine, 'time test', { schedule: '2099-12-31T14:30', config: testConfig });
 
     const adapted = await engine.listArticles('02_adapted');
     expect(adapted.length).toBe(1);
@@ -148,7 +151,7 @@ describe('goCommand', () => {
   });
 
   test('--dry-run passes through to publish', async () => {
-    await goCommand(engine, 'dry run test', { dryRun: true });
+    await goCommand(engine, 'dry run test', { dryRun: true, config: testConfig });
 
     // With dry-run, content stays in 02_adapted (publish previewed but not executed)
     const adapted = await engine.listArticles('02_adapted');
@@ -165,7 +168,7 @@ describe('goCommand', () => {
     mockExecute.mockRejectedValueOnce(new Error('API down'));
 
     await expect(
-      goCommand(engine, 'fail test'),
+      goCommand(engine, 'fail test', { config: testConfig }),
     ).rejects.toThrow('API down');
 
     // Draft should NOT exist (step 1 failed)
@@ -176,7 +179,7 @@ describe('goCommand', () => {
   test('json mode outputs structured result', async () => {
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
-    await goCommand(engine, 'json test', { json: true });
+    await goCommand(engine, 'json test', { json: true, config: testConfig });
 
     const jsonCall = writeSpy.mock.calls.find(
       c => typeof c[0] === 'string' && c[0].includes('"command":"go"'),

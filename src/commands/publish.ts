@@ -12,7 +12,7 @@ import { MediaManager } from '../utils/media.js';
 import { jsonSuccess } from '../core/json-output.js';
 import { parseArticleFilename, buildArticleFilename } from '../core/filename-parser.js';
 import { readProjectConfig } from '../core/project-config.js';
-import type { PlatformPublishStatus } from '../types/schemas.js';
+import type { PlatformPublishStatus, ArticleMeta } from '../types/schemas.js';
 
 export interface PublishOptions {
   article?: string;
@@ -21,6 +21,7 @@ export interface PublishOptions {
   force?: boolean;
   dryRun?: boolean;
   draft?: boolean;
+  cover?: string;
   json?: boolean;
   config?: ReachforgeConfig;
 }
@@ -120,6 +121,28 @@ export function ensurePlatformFrontmatter(content: string, platform: string, opt
 }
 
 /**
+ * Extract cover_image from frontmatter if present.
+ */
+export function extractCoverFromContent(content: string): string | null {
+  const match = content.match(/^---\n[\s\S]*?cover_image:\s*(.+?)\s*(?:\n|$)/m);
+  return match?.[1]?.replace(/^["']|["']$/g, '').trim() ?? null;
+}
+
+/**
+ * Resolve cover image source with priority: --cover flag > frontmatter > meta.yaml.
+ */
+export function resolveCoverImage(
+  options: PublishOptions,
+  content: string,
+  articleMeta: ArticleMeta | null | undefined,
+): string | null {
+  if (options.cover) return options.cover;
+  const fromContent = extractCoverFromContent(content);
+  if (fromContent) return fromContent;
+  return articleMeta?.cover_image ?? null;
+}
+
+/**
  * Publish content from a single platform map through providers.
  * Shared core logic used by all three publish modes.
  *
@@ -133,6 +156,7 @@ async function publishContentToPlatforms(
   jsonPublished: Array<{ article: string; platform: string; status: 'success'; url?: string }>,
   jsonFailed: Array<{ article: string; platform: string; status: 'failed'; error?: string }>,
   existingStatuses?: Record<string, PlatformPublishStatus>,
+  coverImagePath?: string | null,
 ): Promise<Record<string, { status: 'pending' | 'success' | 'failed'; url?: string; error?: string; published_at?: string }>> {
   const config = options.config || {};
   const loader = new ProviderLoader(config);
@@ -189,13 +213,40 @@ async function publishContentToPlatforms(
       }
     }
 
+    // Upload cover image if provided
+    let coverImageUrl: string | undefined;
+    if (coverImagePath) {
+      if (coverImagePath.startsWith('http://') || coverImagePath.startsWith('https://')) {
+        coverImageUrl = coverImagePath;
+      } else if (mediaManager) {
+        const credentials = getCredentialsForPlatform(platform, config);
+        try {
+          const coverResult = await mediaManager.uploadCoverImage(
+            coverImagePath, platform, credentials, uploadCache,
+          );
+          if (coverResult) {
+            coverImageUrl = coverResult.cdnUrl;
+            uploadCache = coverResult.updatedCache;
+          }
+        } catch (coverErr: unknown) {
+          const msg = coverErr instanceof Error ? coverErr.message : String(coverErr);
+          if (!options.json) console.warn(chalk.yellow(`  \u26a0 Cover image upload warning for ${platform}: ${msg}`));
+        }
+      } else {
+        if (!options.json) console.warn(chalk.yellow(`  \u26a0 Cannot upload local cover image without project context`));
+      }
+    }
+
     // Convert format
     const formatted = provider.contentFormat === 'html'
       ? markdownToHtml(publishContent)
       : provider.formatContent(publishContent);
 
     try {
-      const publishMeta = options.draft !== undefined ? { draft: options.draft } : {};
+      const publishMeta = {
+        ...(options.draft !== undefined ? { draft: options.draft } : {}),
+        ...(coverImageUrl ? { coverImage: coverImageUrl } : {}),
+      };
       const result = await provider.publish(formatted, publishMeta);
 
       if (result.status === 'success') {
@@ -219,6 +270,36 @@ async function publishContentToPlatforms(
 }
 
 /**
+ * Print a consolidated publish summary with URLs and errors.
+ */
+function printPublishSummary(
+  platformResults: Record<string, { status: string; url?: string; error?: string }>,
+  articleLabel: string,
+  json: boolean,
+): void {
+  if (json) return;
+
+  const succeeded = Object.entries(platformResults).filter(([, r]) => r.status === 'success');
+  const failed = Object.entries(platformResults).filter(([, r]) => r.status === 'failed');
+
+  if (succeeded.length === 0 && failed.length === 0) return;
+
+  console.log('');
+  if (succeeded.length > 0) {
+    console.log(chalk.green(`  \u2705 "${articleLabel}" published to ${succeeded.length} platform(s):`));
+    for (const [platform, r] of succeeded) {
+      console.log(chalk.dim(`     ${platform}: `) + (r.url ?? ''));
+    }
+  }
+  if (failed.length > 0) {
+    console.log(chalk.red(`  \u274c ${failed.length} platform(s) failed:`));
+    for (const [platform, r] of failed) {
+      console.log(chalk.red(`     ${platform}: ${r.error ?? 'unknown error'}`));
+    }
+  }
+}
+
+/**
  * Publish an external file directly to specified platforms.
  * By default, sends without pipeline tracking (no engine required).
  * With --track, copies to 03_published and records in meta.yaml (requires engine/project).
@@ -232,7 +313,7 @@ async function publishExternalFile(
   if (!await fs.pathExists(resolvedPath)) {
     throw new ReachforgeError(
       `File not found: ${resolvedPath}`,
-      'Provide a valid file path',
+      'Provide a valid file path (include the file extension, e.g. reach publish article.md)',
     );
   }
 
@@ -305,10 +386,12 @@ async function publishExternalFile(
       await engine.writeArticleFile('02_adapted', basename, platformContent, platform);
     }
 
-    // Record in meta.yaml as adapted
+    // Record in meta.yaml as adapted (include cover if provided)
+    const trackCover = resolveCoverImage(options, content, null);
     await engine.metadata.writeArticleMeta(basename, {
       status: 'adapted',
       adapted_platforms: platformFilter,
+      ...(trackCover ? { cover_image: trackCover } : {}),
     });
 
     if (!options.json) console.log(chalk.dim(`  Imported to pipeline: 02_adapted/${basename}.*.md`));
@@ -316,6 +399,9 @@ async function publishExternalFile(
     // Delegate to normal pipeline publish (handles lock, validate, publish, move to 03_published)
     return publishPipelineArticle(engine, basename, options);
   }
+
+  // Resolve cover image: --cover flag > frontmatter cover_image
+  const coverImagePath = resolveCoverImage(options, content, null);
 
   // Direct send (no pipeline tracking)
   if (options.dryRun) {
@@ -328,16 +414,11 @@ async function publishExternalFile(
   }
 
   const platformResults = await publishContentToPlatforms(
-    contentByPlatform, basename, engine?.projectDir ?? null, options, jsonPublished, jsonFailed,
+    contentByPlatform, basename, engine?.projectDir ?? path.dirname(resolvedPath), options, jsonPublished, jsonFailed,
+    undefined, coverImagePath,
   );
 
-  const anySuccess = Object.values(platformResults).some(p => p.status === 'success');
-
-  if (anySuccess) {
-    if (!options.json) console.log(chalk.green(`\u2705 Published: ${basename}`));
-  } else {
-    if (!options.json) console.log(chalk.red(`\u274c All platforms failed for "${basename}"`));
-  }
+  printPublishSummary(platformResults, basename, !!options.json);
 
   if (options.json) {
     process.stdout.write(jsonSuccess('publish', {
@@ -452,11 +533,14 @@ async function publishPipelineArticle(
   }
 
   try {
-    // Read existing meta for resume support
+    // Read existing meta for resume support and cover image
     const articleMeta = await engine.metadata.readArticleMeta(articleName);
+    const sampleContent = Object.values(contentByPlatform)[0] ?? '';
+    const coverImagePath = resolveCoverImage(options, sampleContent, articleMeta);
+
     const platformResults = await publishContentToPlatforms(
       contentByPlatform, articleName, engine.projectDir, options, jsonPublished, jsonFailed,
-      articleMeta?.platforms,
+      articleMeta?.platforms, coverImagePath,
     );
 
     // Merge with existing platform statuses for resume (keep already-succeeded platforms)
@@ -491,17 +575,9 @@ async function publishPipelineArticle(
 
     if (allPlatformsDone) {
       await engine.moveArticle(articleName, '02_adapted', '03_published');
-      if (!options.json) console.log(chalk.green(`\u2705 Published and archived: ${articleName}`));
-    } else if (anySuccess) {
-      if (!options.json) {
-        const done = Object.entries(platformResults).filter(([, r]) => r.status === 'success').map(([p]) => p);
-        const remaining = allPlatforms.filter(p => !done.includes(p));
-        console.log(chalk.green(`\u2705 Partial publish: ${articleName}`));
-        console.log(chalk.dim(`  Remaining: ${remaining.join(', ')}`));
-      }
-    } else {
-      if (!options.json) console.log(chalk.red(`\u274c All platforms failed for "${articleName}" \u2014 remains in 02_adapted`));
     }
+
+    printPublishSummary(platformResults, articleName, !!options.json);
   } catch (err) {
     await engine.metadata.unlockArticle(articleName);
     throw err;
@@ -618,13 +694,15 @@ async function publishAllDue(
     }
 
     try {
-      // 5. Read existing meta for resume support
+      // 5. Read existing meta for resume support and cover image
       const articleMeta = await engine.metadata.readArticleMeta(article);
+      const sampleContent = Object.values(contentByPlatform)[0] ?? '';
+      const coverImagePath = resolveCoverImage(options, sampleContent, articleMeta);
 
       // 6. Publish via shared helper (handles assets, media, format, resume)
       const platformResults = await publishContentToPlatforms(
         contentByPlatform, article, engine.projectDir, options, jsonPublished, jsonFailed,
-        articleMeta?.platforms,
+        articleMeta?.platforms, coverImagePath,
       );
 
       // 7. Batch-write all platform results to meta.yaml
@@ -651,17 +729,9 @@ async function publishAllDue(
 
       if (allPlatformsDone) {
         await engine.moveArticle(article, '02_adapted', '03_published');
-        if (!options.json) console.log(chalk.green(`\u2705 Published and archived: ${article}`));
-      } else if (anySuccess) {
-        if (!options.json) {
-          const done = Object.entries(platformResults).filter(([, r]) => r.status === 'success').map(([p]) => p);
-          const remaining = allPlatforms.filter(p => !done.includes(p));
-          console.log(chalk.green(`\u2705 Partial publish: ${article}`));
-          console.log(chalk.dim(`  Remaining: ${remaining.join(', ')}`));
-        }
-      } else {
-        if (!options.json) console.log(chalk.red(`\u274c All platforms failed for "${article}" \u2014 remains in 02_adapted`));
       }
+
+      printPublishSummary(platformResults, article, !!options.json);
     } catch (err) {
       await engine.metadata.unlockArticle(article);
       throw err;
@@ -710,8 +780,8 @@ export async function publishCommand(
 
   if (!engine) {
     throw new ReachforgeError(
-      'No project context for pipeline publish',
-      'Run from inside a project directory, or use a file path: reach publish ./file.md --platforms devto',
+      `"${article}" is not a recognized file. Did you mean: reach publish ${article}.md?`,
+      'For external files, include the extension: reach publish ./file.md --platforms devto',
     );
   }
   return publishPipelineArticle(engine, article, options);

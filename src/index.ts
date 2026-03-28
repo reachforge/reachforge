@@ -143,17 +143,17 @@ apcore.register('reach.status', {
 });
 apcore.register('reach.draft', {
   ...meta('reach.draft'),
-  execute: async (inputs: { source: string }) => {
+  execute: async (inputs: { source: string; name?: string; cover?: string }) => {
     const engine = await getEngine();
-    await draftCommand(engine, inputs.source);
+    await draftCommand(engine, inputs.source, { name: inputs.name, cover: inputs.cover });
   },
 });
 
 apcore.register('reach.adapt', {
   ...meta('reach.adapt'),
   execute: async (inputs: { article: string; platforms?: string; lang?: string; force?: boolean }) => {
-    const engine = await getEngine();
-    await adaptCommand(engine, inputs.article, { platforms: inputs.platforms, lang: inputs.lang, force: inputs.force });
+    const [engine, config] = await Promise.all([getEngine(), getConfig().catch(() => getGlobalConfig())]);
+    await adaptCommand(engine, inputs.article, { platforms: inputs.platforms, lang: inputs.lang, force: inputs.force, config: config.getConfig() });
   },
 });
 apcore.register('reach.schedule', {
@@ -166,7 +166,7 @@ apcore.register('reach.schedule', {
 });
 apcore.register('reach.publish', {
   ...meta('reach.publish'),
-  execute: async (inputs?: { article?: string; platforms?: string; track?: boolean; dryRun?: boolean }) => {
+  execute: async (inputs?: { article?: string; platforms?: string; track?: boolean; dryRun?: boolean; cover?: string }) => {
     const { isExternalFile } = await import('./commands/publish.js');
     const isExternal = inputs?.article && isExternalFile(inputs.article);
     let engine: PipelineEngine | null = null;
@@ -179,7 +179,7 @@ apcore.register('reach.publish', {
 });
 apcore.register('reach.go', {
   ...meta('reach.go'),
-  execute: async (inputs: { prompt: string; name?: string; schedule?: string; dryRun?: boolean; draft?: boolean }) => {
+  execute: async (inputs: { prompt: string; name?: string; schedule?: string; dryRun?: boolean; draft?: boolean; cover?: string }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await goCommand(engine, inputs.prompt, { ...inputs, config: config.getConfig() });
   },
@@ -272,7 +272,8 @@ program
   .option('-s, --schedule <date>', 'Schedule for a future date (YYYY-MM-DD) instead of publishing immediately')
   .option('-n, --dry-run', 'Run full pipeline but skip actual publishing')
   .option('-d, --draft', 'Publish as draft on supported platforms')
-  .action(withErrorHandler(async (prompt: string, options: { name?: string; schedule?: string; dryRun?: boolean; draft?: boolean }) => {
+  .option('-c, --cover <path>', 'Cover image path or URL')
+  .action(withErrorHandler(async (prompt: string, options: { name?: string; schedule?: string; dryRun?: boolean; draft?: boolean; cover?: string }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await goCommand(engine, prompt, { ...options, json: program.opts().json, config: config.getConfig() });
   }, 'go'));
@@ -308,14 +309,26 @@ program
   .option('--force', 'Publish even if article is scheduled for a future date')
   .option('-n, --dry-run', 'Preview what would be published')
   .option('-d, --draft', 'Publish as draft (overrides frontmatter published field)')
-  .action(withErrorHandler(async (article: string | undefined, options: { platforms?: string; track?: boolean; force?: boolean; dryRun?: boolean; draft?: boolean }) => {
+  .option('-c, --cover <path>', 'Cover image path or URL')
+  .action(withErrorHandler(async (article: string | undefined, options: { platforms?: string; track?: boolean; force?: boolean; dryRun?: boolean; draft?: boolean; cover?: string }) => {
     const { isExternalFile } = await import('./commands/publish.js');
     const isExternal = article && isExternalFile(article);
 
     // External file without --track: no engine needed, just config
     let engine: PipelineEngine | null = null;
     if (!isExternal || options.track) {
-      engine = await getEngine();
+      try {
+        engine = await getEngine();
+      } catch (err) {
+        // No project context: if it looks like the user forgot .md, give a helpful hint
+        if (article && !isExternal) {
+          throw new Error(
+            `"${article}" is not a recognized file. Did you mean: reach publish ${article}.md?\n` +
+            `  For external files, include the extension: reach publish ./file.md --platforms devto`,
+          );
+        }
+        throw err;
+      }
     }
     const config = await getConfig().catch(() => getGlobalConfig());
     await publishCommand(engine, { article, ...options, json: program.opts().json, config: config.getConfig() });
@@ -327,7 +340,8 @@ program
   .command('draft <input>')
   .description('Generate an AI draft from a prompt, file, or directory')
   .option('--name <slug>', 'Explicit article name (default: auto-generated from input)')
-  .action(withErrorHandler(async (input: string, options: { name?: string }) => {
+  .option('-c, --cover <path>', 'Cover image to store in meta.yaml for publish')
+  .action(withErrorHandler(async (input: string, options: { name?: string; cover?: string }) => {
     const engine = await getEngine();
     await draftCommand(engine, input, { ...options, json: program.opts().json });
   }, 'draft'));
@@ -351,8 +365,8 @@ program
   .option('-l, --lang <code>', 'Override target language for all platforms (e.g., en, zh-CN, ja)')
   .option('-f, --force', 'Overwrite existing platform versions')
   .action(withErrorHandler(async (article: string, options: { platforms?: string; lang?: string; force?: boolean }) => {
-    const engine = await getEngine();
-    await adaptCommand(engine, article, { ...options, json: program.opts().json });
+    const [engine, config] = await Promise.all([getEngine(), getConfig().catch(() => getGlobalConfig())]);
+    await adaptCommand(engine, article, { ...options, json: program.opts().json, config: config.getConfig() });
   }, 'adapt'));
 
 program

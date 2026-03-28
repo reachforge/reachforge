@@ -18,6 +18,7 @@ export interface PublishMeta {
   tags?: string[];
   canonical?: string;
   draft?: boolean;
+  coverImage?: string;
 }
 
 export interface PublishResult {

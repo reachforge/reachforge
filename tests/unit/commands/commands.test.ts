@@ -7,7 +7,7 @@ import { PipelineEngine } from '../../../src/core/pipeline.js';
 import { draftCommand } from '../../../src/commands/draft.js';
 import { adaptCommand } from '../../../src/commands/adapt.js';
 import { scheduleCommand } from '../../../src/commands/schedule.js';
-import { publishCommand, isExternalFile, parsePlatformFilter, ensurePlatformFrontmatter } from '../../../src/commands/publish.js';
+import { publishCommand, isExternalFile, parsePlatformFilter, ensurePlatformFrontmatter, extractCoverFromContent, resolveCoverImage } from '../../../src/commands/publish.js';
 import { rollbackCommand } from '../../../src/commands/rollback.js';
 
 const mockExecute = vi.fn();
@@ -95,7 +95,7 @@ describe('adaptCommand', () => {
     // Flat file: 01_drafts/my-article.md
     await fs.writeFile(path.join(tmpDir, '01_drafts', 'my-article.md'), '# Great Article\n\nContent here.');
 
-    await adaptCommand(engine, 'my-article');
+    await adaptCommand(engine, 'my-article', { platforms: 'x,wechat,zhihu' });
 
     // Flat files: 02_adapted/my-article.{platform}.md
     const xExists = await fs.pathExists(path.join(tmpDir, '02_adapted', 'my-article.x.md'));
@@ -104,6 +104,12 @@ describe('adaptCommand', () => {
     expect(xExists).toBe(true);
     expect(wechatExists).toBe(true);
     expect(zhihuExists).toBe(true);
+  });
+
+  test('throws when no platforms configured and no flag specified', async () => {
+    await fs.writeFile(path.join(tmpDir, '01_drafts', 'no-platforms.md'), 'Content');
+    await expect(adaptCommand(engine, 'no-platforms'))
+      .rejects.toThrow(/No platforms configured/);
   });
 
   test('throws when draft article does not exist', async () => {
@@ -475,5 +481,71 @@ describe('rollbackCommand', () => {
     await engine.metadata.writeArticleMeta('first-stage', { status: 'drafted' });
 
     await expect(rollbackCommand(engine, 'first-stage')).rejects.toThrow(/first stage/i);
+  });
+});
+
+describe('extractCoverFromContent', () => {
+  test('extracts unquoted cover_image from frontmatter', () => {
+    const content = '---\ntitle: Test\ncover_image: ./cover.png\n---\nBody';
+    expect(extractCoverFromContent(content)).toBe('./cover.png');
+  });
+
+  test('extracts double-quoted cover_image', () => {
+    const content = '---\ntitle: Test\ncover_image: "./path/to/cover.png"\n---\nBody';
+    expect(extractCoverFromContent(content)).toBe('./path/to/cover.png');
+  });
+
+  test('extracts single-quoted cover_image', () => {
+    const content = "---\ntitle: Test\ncover_image: './cover.png'\n---\nBody";
+    expect(extractCoverFromContent(content)).toBe('./cover.png');
+  });
+
+  test('extracts URL cover_image', () => {
+    const content = '---\ntitle: Test\ncover_image: https://example.com/cover.jpg\n---\nBody';
+    expect(extractCoverFromContent(content)).toBe('https://example.com/cover.jpg');
+  });
+
+  test('returns null when no cover_image in frontmatter', () => {
+    const content = '---\ntitle: Test\n---\nBody';
+    expect(extractCoverFromContent(content)).toBeNull();
+  });
+
+  test('returns null when no frontmatter', () => {
+    const content = '# Title\n\nBody';
+    expect(extractCoverFromContent(content)).toBeNull();
+  });
+
+  test('returns null for cover_image outside frontmatter', () => {
+    const content = '# Title\n\ncover_image: ./not-frontmatter.png';
+    expect(extractCoverFromContent(content)).toBeNull();
+  });
+});
+
+describe('resolveCoverImage', () => {
+  test('--cover flag takes highest priority', () => {
+    const content = '---\ntitle: T\ncover_image: ./fm-cover.png\n---\nBody';
+    const meta = { status: 'drafted' as const, cover_image: './meta-cover.png' };
+    expect(resolveCoverImage({ cover: './flag-cover.png' }, content, meta)).toBe('./flag-cover.png');
+  });
+
+  test('frontmatter cover_image is second priority', () => {
+    const content = '---\ntitle: T\ncover_image: ./fm-cover.png\n---\nBody';
+    const meta = { status: 'drafted' as const, cover_image: './meta-cover.png' };
+    expect(resolveCoverImage({}, content, meta)).toBe('./fm-cover.png');
+  });
+
+  test('meta.yaml cover_image is third priority', () => {
+    const content = '---\ntitle: T\n---\nBody';
+    const meta = { status: 'drafted' as const, cover_image: './meta-cover.png' };
+    expect(resolveCoverImage({}, content, meta)).toBe('./meta-cover.png');
+  });
+
+  test('returns null when no cover source exists', () => {
+    const content = '---\ntitle: T\n---\nBody';
+    expect(resolveCoverImage({}, content, null)).toBeNull();
+  });
+
+  test('returns null when articleMeta is undefined', () => {
+    expect(resolveCoverImage({}, '# Title\nBody', undefined)).toBeNull();
   });
 });

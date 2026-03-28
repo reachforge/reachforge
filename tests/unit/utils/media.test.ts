@@ -227,7 +227,7 @@ describe('MediaManager.uploadImage', () => {
       json: async () => ({ url: 'https://dev-to-uploads.s3.amazonaws.com/abc.png' }),
     }));
 
-    const result = await manager.uploadImage(ref, 'devto', { api_key: 'test-key' });
+    const result = await manager.uploadImage(ref, 'hashnode', { api_key: 'test-key' });
     expect(result).not.toBeNull();
     expect(result?.cdnUrl).toBe('https://dev-to-uploads.s3.amazonaws.com/abc.png');
     expect(result?.sizeBytes).toBe(15); // length of 'fake image data'
@@ -245,7 +245,7 @@ describe('MediaManager.uploadImage', () => {
       text: async () => 'Unprocessable Entity',
     }));
 
-    const result = await manager.uploadImage(ref, 'devto', { api_key: 'key' });
+    const result = await manager.uploadImage(ref, 'hashnode', { api_key: 'key' });
     expect(result).toBeNull();
 
     vi.restoreAllMocks();
@@ -293,7 +293,7 @@ describe('MediaManager.processMedia', () => {
       uploads: {
         './a.png': {
           cdnUrl: 'https://cdn.example.com/old.png',
-          platform: 'devto',
+          platform: 'hashnode',
           uploadedAt: '2026-01-01T00:00:00Z',
           sizeBytes: 50, // different from current
         },
@@ -308,7 +308,7 @@ describe('MediaManager.processMedia', () => {
       json: async () => ({ url: 'https://cdn.example.com/new.png' }),
     }));
 
-    const result = await manager.processMedia(content, PROJECT_DIR, 'devto', { api_key: 'key' }, cache);
+    const result = await manager.processMedia(content, PROJECT_DIR, 'hashnode', { api_key: 'key' }, cache);
     expect(result.uploads[0].cdnUrl).toBe('https://cdn.example.com/new.png');
 
     vi.unstubAllGlobals();
@@ -344,10 +344,78 @@ describe('MediaManager.processMedia', () => {
       json: async () => ({ url: 'https://cdn.example.com/a.png' }),
     }));
 
-    const result = await manager.processMedia(content, PROJECT_DIR, 'devto', { api_key: 'key' }, null);
+    const result = await manager.processMedia(content, PROJECT_DIR, 'hashnode', { api_key: 'key' }, null);
     expect(result.updatedCache.uploads['./a.png']).toBeDefined();
     expect(result.updatedCache.uploads['./a.png'].cdnUrl).toBe('https://cdn.example.com/a.png');
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe('MediaManager.uploadCoverImage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const manager = new MediaManager(WORKING_DIR);
+
+  test('returns URL directly when cover is already a remote URL', async () => {
+    const result = await manager.uploadCoverImage(
+      'https://cdn.example.com/existing-cover.png', 'devto', {}, null,
+    );
+    expect(result).not.toBeNull();
+    expect(result!.cdnUrl).toBe('https://cdn.example.com/existing-cover.png');
+  });
+
+  test('uploads local file and returns CDN URL', async () => {
+    vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+    vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('imagedata') as never);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ url: 'https://cdn.example.com/uploaded-cover.png' }),
+    }));
+
+    const result = await manager.uploadCoverImage(
+      './cover.png', 'hashnode', { api_key: 'key' }, null,
+    );
+    expect(result).not.toBeNull();
+    expect(result!.cdnUrl).toBe('https://cdn.example.com/uploaded-cover.png');
+    expect(result!.updatedCache.uploads['cover:./cover.png']).toBeDefined();
+
+    vi.unstubAllGlobals();
+  });
+
+  test('returns cached URL when file size matches', async () => {
+    vi.mocked(fs.stat).mockResolvedValue({ size: 100 } as never);
+
+    const cache = {
+      uploads: {
+        'cover:./cover.png': {
+          cdnUrl: 'https://cdn.example.com/cached-cover.png',
+          platform: 'devto',
+          uploadedAt: '2026-01-01T00:00:00Z',
+          sizeBytes: 100,
+        },
+      },
+    };
+
+    const result = await manager.uploadCoverImage(
+      './cover.png', 'devto', {}, cache,
+    );
+    expect(result).not.toBeNull();
+    expect(result!.cdnUrl).toBe('https://cdn.example.com/cached-cover.png');
+  });
+
+  test('returns null when local file upload fails', async () => {
+    vi.mocked(fs.pathExists).mockResolvedValue(false as never);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await manager.uploadCoverImage(
+      './missing.png', 'devto', {}, null,
+    );
+    expect(result).toBeNull();
+
+    vi.restoreAllMocks();
   });
 });

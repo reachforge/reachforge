@@ -30,6 +30,7 @@ reach rollback <article>           # Move back one stage
 - `--force` — publish even if article is scheduled for a future date
 - `--clear` — unschedule an article (revert status to adapted, remove schedule date)
 - `--track` — opt-in pipeline tracking for external file publish (imports to 02_adapted, then publishes)
+- `-c, --cover <path>` — cover image path or URL for `draft`, `publish`, and `go` commands (uploaded to platform CDN at publish time)
 - `-n, --dry-run` — preview without executing
 - `--json` — JSON output envelope: `{ jsonVersion, command, success, data, error? }`
 

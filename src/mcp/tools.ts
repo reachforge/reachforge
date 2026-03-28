@@ -10,6 +10,7 @@ export const StatusToolSchema = z.object({
 export const DraftToolSchema = z.object({
   source: z.string().min(1).describe('Prompt text, file path, or directory to generate a draft from'),
   name: z.string().optional().describe('Explicit article name. If omitted, auto-generated from input'),
+  cover: z.string().optional().describe('Cover image path or URL to store in meta.yaml for publish'),
 });
 
 export const AdaptToolSchema = z.object({
@@ -31,6 +32,7 @@ export const PublishToolSchema = z.object({
   track: z.boolean().optional().describe('If true, track external file in pipeline (import to 02_adapted, then publish). Requires project context'),
   force: z.boolean().optional().describe('If true, publish even if article is scheduled for a future date'),
   dryRun: z.boolean().optional().describe('If true, preview what would be published without actually sending to platforms'),
+  cover: z.string().optional().describe('Cover image path or URL. Uploaded to platform CDN at publish time'),
 });
 
 export const RollbackToolSchema = z.object({
@@ -61,6 +63,7 @@ export const GoToolSchema = z.object({
   schedule: z.string().optional().describe('If set, schedule for this date/time instead of publishing immediately. Format: YYYY-MM-DD or YYYY-MM-DDTHH:MM'),
   dryRun: z.boolean().optional().describe('If true, run the full pipeline but skip the actual publish step'),
   draft: z.boolean().optional().describe('If true, publish as draft on platforms that support it'),
+  cover: z.string().optional().describe('Cover image path or URL'),
 });
 
 export const AnalyticsToolSchema = z.object({

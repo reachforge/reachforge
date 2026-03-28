@@ -43,10 +43,14 @@ describe('DevtoProvider', () => {
     expect(devto.validate('---\ntitle: My Post\n---\nContent').valid).toBe(true);
   });
 
-  test('rejects content without frontmatter block', () => {
-    const result = devto.validate('# My Article\n\nContent here');
+  test('validates content with H1 heading but no frontmatter', () => {
+    expect(devto.validate('# My Article\n\nContent here').valid).toBe(true);
+  });
+
+  test('rejects content without frontmatter or H1', () => {
+    const result = devto.validate('Just body content without heading or frontmatter');
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toContain('frontmatter');
+    expect(result.errors[0]).toContain('title');
   });
 
   test('rejects content without title in frontmatter', () => {
@@ -167,6 +171,38 @@ describe('DevtoProvider', () => {
 
     vi.unstubAllGlobals();
   });
+
+  test('publish passes coverImage as main_image', async () => {
+    const content = '---\ntitle: Test\n---\nBody';
+    let capturedBody = '';
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+      capturedBody = opts.body;
+      return { ok: true, status: 201, text: async () => JSON.stringify({ url: 'https://dev.to/user/test' }) };
+    }));
+
+    await devto.publish(content, { coverImage: 'https://cdn.example.com/cover.png' });
+    const parsed = JSON.parse(capturedBody);
+    expect(parsed.article.main_image).toBe('https://cdn.example.com/cover.png');
+
+    vi.unstubAllGlobals();
+  });
+
+  test('publish omits main_image when no coverImage', async () => {
+    const content = '---\ntitle: Test\n---\nBody';
+    let capturedBody = '';
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+      capturedBody = opts.body;
+      return { ok: true, status: 201, text: async () => JSON.stringify({ url: 'https://dev.to/user/test' }) };
+    }));
+
+    await devto.publish(content, {});
+    const parsed = JSON.parse(capturedBody);
+    expect(parsed.article.main_image).toBeUndefined();
+
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('PostizProvider', () => {
@@ -279,6 +315,40 @@ describe('HashnodeProvider', () => {
     expect(sentBody.variables.input.title).toBe('FM Title');
     expect(sentBody.variables.input.contentMarkdown).not.toContain('# FM Title');
     expect(sentBody.variables.input.contentMarkdown).toContain('Body content');
+
+    vi.unstubAllGlobals();
+  });
+
+  test('publish passes coverImage as coverImageOptions', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        data: { publishPost: { post: { slug: 'test', url: 'https://blog.example.com/test', publication: { url: 'https://blog.example.com' } } } },
+      }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    await hashnode.publish('# Test\n\nBody', { coverImage: 'https://cdn.example.com/cover.png' });
+    const sentBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(sentBody.variables.input.coverImageOptions).toEqual({ coverImageURL: 'https://cdn.example.com/cover.png' });
+
+    vi.unstubAllGlobals();
+  });
+
+  test('publish omits coverImageOptions when no coverImage', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        data: { publishPost: { post: { slug: 'test', url: 'https://blog.example.com/test', publication: { url: 'https://blog.example.com' } } } },
+      }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    await hashnode.publish('# Test\n\nBody', {});
+    const sentBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(sentBody.variables.input.coverImageOptions).toBeUndefined();
 
     vi.unstubAllGlobals();
   });

@@ -20,12 +20,12 @@ export class DevtoProvider implements PlatformProvider {
       return { valid: false, errors: ['Dev.to article content is empty.'] };
     }
 
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!fmMatch) {
-      return { valid: false, errors: ['Dev.to article missing required frontmatter block (---...--).' ] };
-    }
+    const hasFm = content.match(/^---\n([\s\S]*?)\n---/);
+    const hasH1 = content.match(/^#\s+(.+)$/m);
 
-    if (!content.match(/^---[\s\S]*?title:/m)) {
+    if (!hasFm && !hasH1) {
+      errors.push('Dev.to article missing title (no frontmatter block or H1 heading found).');
+    } else if (hasFm && !content.match(/^---[\s\S]*?title:/m)) {
       errors.push('Dev.to article missing required frontmatter field: title.');
     }
 
@@ -65,6 +65,7 @@ export class DevtoProvider implements PlatformProvider {
         published: shouldPublish,
         tags: meta.tags || [],
         canonical_url: meta.canonical,
+        ...(meta.coverImage ? { main_image: meta.coverImage } : {}),
       },
     });
 

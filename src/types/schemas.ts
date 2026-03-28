@@ -42,6 +42,7 @@ export const ArticleMetaSchema = z.object({
   template: z.string().optional(),
   notes: z.string().optional(),
   error: z.string().optional(),
+  cover_image: z.string().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
