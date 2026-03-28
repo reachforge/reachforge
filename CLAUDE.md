@@ -27,7 +27,7 @@ reach rollback <article>           # Move back one stage
 
 ## Key Options
 
-- `-p, --platforms <list>` — comma-separated platforms (devto, hashnode, x, wechat, zhihu, github)
+- `-p, --platforms <list>` — comma-separated platforms (devto, hashnode, ghost, wordpress, telegraph, writeas, reddit, x, github, wechat, zhihu)
 - `--name <slug>` — explicit article name for `draft` and `go` commands (default: auto-generated)
 - `--force` — publish even if article is scheduled for a future date
 - `--clear` — unschedule an article (revert status to adapted, remove schedule date)

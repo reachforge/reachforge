@@ -3,6 +3,11 @@ import { validateXContent } from './x.js';
 import { validateDevtoContent } from './devto.js';
 import { validateHashnodeContent } from './hashnode.js';
 import { validateGitHubContent } from './github.js';
+import { validateGhostContent } from './ghost.js';
+import { validateWordPressContent } from './wordpress.js';
+import { validateTelegraphContent } from './telegraph.js';
+import { validateWriteasContent } from './writeas.js';
+import { validateRedditContent } from './reddit.js';
 
 type ValidatorFn = (content: string) => ValidationResult;
 
@@ -11,6 +16,11 @@ const VALIDATORS: Record<string, ValidatorFn> = {
   devto: validateDevtoContent,
   hashnode: validateHashnodeContent,
   github: validateGitHubContent,
+  ghost: validateGhostContent,
+  wordpress: validateWordPressContent,
+  telegraph: validateTelegraphContent,
+  writeas: validateWriteasContent,
+  reddit: validateRedditContent,
 };
 
 export interface AggregateValidationResult {

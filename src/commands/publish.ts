@@ -36,6 +36,16 @@ export function getCredentialsForPlatform(platform: string, config: ReachforgeCo
     if (config.githubToken) creds['token'] = config.githubToken;
     if (config.githubOwner) creds['github_owner'] = config.githubOwner;
     if (config.githubRepo) creds['github_repo'] = config.githubRepo;
+  } else if (platform === 'ghost' && config.ghostAdminApiKey) {
+    creds['api_key'] = config.ghostAdminApiKey;
+  } else if (platform === 'wordpress' && config.wordpressAppPassword) {
+    creds['api_key'] = config.wordpressAppPassword;
+  } else if (platform === 'telegraph' && config.telegraphAccessToken) {
+    creds['api_key'] = config.telegraphAccessToken;
+  } else if (platform === 'writeas' && config.writeasAccessToken) {
+    creds['api_key'] = config.writeasAccessToken;
+  } else if (platform === 'reddit' && config.redditClientId) {
+    creds['api_key'] = config.redditClientId;
   }
   return creds;
 }

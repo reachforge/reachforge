@@ -141,4 +141,42 @@ New `reach update <article>` command to push content changes to already-publishe
 
 ---
 
+## New Publishing Providers
+
+> Added: 2026-03-27. See [New Providers Tech Design](../new-providers/tech-design.md) for architecture context.
+
+5 new platform providers expanding ReachForge's publishing reach. All follow the existing `PlatformProvider` interface pattern.
+
+| # | Feature | Platform ID | Content Format | Auth Method | Priority | Status |
+|---|---------|-------------|---------------|-------------|----------|--------|
+| 1 | [provider-ghost](provider-ghost.md) | `ghost` | HTML | JWT (HS256 from admin key) | P1 | draft |
+| 2 | [provider-wordpress](provider-wordpress.md) | `wordpress` | HTML | Basic Auth (App Password) | P1 | draft |
+| 3 | [provider-telegraph](provider-telegraph.md) | `telegraph` | HTML (node JSON) | Access token | P2 | draft |
+| 4 | [provider-writeas](provider-writeas.md) | `writeas` | Markdown | Access token | P2 | draft |
+| 5 | [provider-reddit](provider-reddit.md) | `reddit` | Markdown | OAuth2 password grant | P1 | draft |
+
+### Execution Order
+
+1. **Config + IDs** -- `ReachforgeConfig` fields, `PLATFORM_IDS`, display names (modify-only)
+2. **Validators** -- 5 new validator files + runner registration
+3. **Providers** (in order of complexity):
+   - Write.as (simplest -- Markdown, token auth)
+   - WordPress (HTML, Basic Auth)
+   - Ghost (HTML, JWT signing)
+   - Telegraph (HTML-to-nodes conversion)
+   - Reddit (OAuth token flow)
+4. **Loader** -- Register all providers
+5. **Exports/MCP/Help** -- Update index, MCP tools, help text
+
+### Shared Changes
+
+| File | Change |
+|------|--------|
+| `src/types/pipeline.ts` | Add 13 config fields to `ReachforgeConfig` |
+| `src/core/filename-parser.ts` | Add `ghost`, `wordpress`, `telegraph`, `writeas` to `PLATFORM_IDS` |
+| `src/providers/loader.ts` | Import + register 5 providers, add display names/languages |
+| `src/validators/runner.ts` | Register 5 new validators |
+
+---
+
 *Each component has a dedicated feature spec linked above with implementation-level detail.*

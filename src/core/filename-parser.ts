@@ -6,6 +6,7 @@ import { ReachforgeError } from '../types/index.js';
 export const PLATFORM_IDS = [
   'x', 'devto', 'hashnode', 'wechat', 'zhihu',
   'github', 'linkedin', 'medium', 'reddit',
+  'ghost', 'wordpress', 'telegraph', 'writeas',
 ] as const;
 
 export type PlatformId = typeof PLATFORM_IDS[number];

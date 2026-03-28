@@ -5,6 +5,11 @@ import { DevtoProvider } from './devto.js';
 import { PostizProvider } from './postiz.js';
 import { HashnodeProvider } from './hashnode.js';
 import { GitHubProvider } from './github.js';
+import { GhostProvider } from './ghost.js';
+import { WordPressProvider } from './wordpress.js';
+import { TelegraphProvider } from './telegraph.js';
+import { WriteasProvider } from './writeas.js';
+import { RedditProvider } from './reddit.js';
 import { PLATFORM_IDS } from '../core/filename-parser.js';
 
 /** Human-readable display names for all known platforms. */
@@ -18,6 +23,10 @@ const PLATFORM_DISPLAY_NAMES: Record<string, string> = {
   linkedin: 'LinkedIn',
   medium: 'Medium',
   reddit: 'Reddit',
+  ghost: 'Ghost',
+  wordpress: 'WordPress',
+  telegraph: 'Telegraph',
+  writeas: 'Write.as',
 };
 
 /**
@@ -60,6 +69,30 @@ export class ProviderLoader {
         repo: config.githubRepo,
         category: config.githubDiscussionCategory ?? 'General',
       }));
+    }
+
+    if (config.ghostUrl && config.ghostAdminApiKey) {
+      this.register(new GhostProvider(config.ghostUrl, config.ghostAdminApiKey));
+    }
+
+    if (config.wordpressUrl && config.wordpressUsername && config.wordpressAppPassword) {
+      this.register(new WordPressProvider(config.wordpressUrl, config.wordpressUsername, config.wordpressAppPassword));
+    }
+
+    if (config.telegraphAccessToken) {
+      this.register(new TelegraphProvider(config.telegraphAccessToken));
+    }
+
+    if (config.writeasAccessToken) {
+      this.register(new WriteasProvider(config.writeasAccessToken, config.writeasUrl));
+    }
+
+    if (config.redditClientId && config.redditClientSecret && config.redditUsername && config.redditPassword) {
+      this.register(new RedditProvider(
+        config.redditClientId, config.redditClientSecret,
+        config.redditUsername, config.redditPassword,
+        config.redditSubreddit ?? 'programming',
+      ));
     }
   }
 
