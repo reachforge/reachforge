@@ -6,6 +6,7 @@ import * as readline from 'readline';
 import chalk from 'chalk';
 import { APCore } from 'apcore-js';
 import { serve } from 'apcore-mcp';
+import { GroupedModuleGroup } from 'apcore-cli';
 
 import { PipelineEngine } from './core/pipeline.js';
 import { ConfigManager } from './core/config.js';
@@ -32,8 +33,12 @@ import { workspaceInfoCommand } from './commands/workspace-info.js';
 import { refineCommand } from './commands/refine.js';
 
 import { assetAddCommand, assetListCommand } from './commands/asset.js';
-import { analyticsCommand, collectAnalytics } from './commands/analytics.js';
+import { analyticsCommand } from './commands/analytics.js';
 import { goCommand } from './commands/go.js';
+
+import { TOOL_METADATA } from './mcp/tools.js';
+
+// ── Program Setup ────────────────────────────────────────
 
 const program = new Command();
 
@@ -57,7 +62,8 @@ function withErrorHandler(fn: (...args: any[]) => Promise<void>, commandName?: s
   };
 }
 
-// Resolve workspace context lazily
+// ── Context Resolvers ────────────────────────────────────
+
 let _context: WorkspaceContext | undefined;
 async function getContext(): Promise<WorkspaceContext> {
   if (!_context) {
@@ -73,8 +79,6 @@ async function getContext(): Promise<WorkspaceContext> {
 async function getEngine(): Promise<PipelineEngine> {
   const ctx = await getContext();
 
-  // Guard: if we resolved to a workspace root without a specific project,
-  // the user needs to cd into a project or use --project
   if (ctx.isWorkspace && !ctx.projectName) {
     const projects = await WorkspaceResolver.listProjects(ctx.workspaceRoot!);
     const names = projects.map(p => p.name).join(', ');
@@ -85,12 +89,10 @@ async function getEngine(): Promise<PipelineEngine> {
     );
   }
 
-  // Guard: if not in a workspace and not in a project (fallback cwd),
-  // prevent accidental pipeline creation in arbitrary directories
   if (!ctx.isWorkspace && !ctx.projectName) {
     const hasProjectConfig = await fs.pathExists(path.join(ctx.projectDir, 'project.yaml'));
     const hasPipelineDirs = await fs.pathExists(path.join(ctx.projectDir, '01_drafts'))
-      || await fs.pathExists(path.join(ctx.projectDir, '01_inbox')); // legacy
+      || await fs.pathExists(path.join(ctx.projectDir, '01_inbox'));
     if (!hasProjectConfig && !hasPipelineDirs) {
       throw new Error(
         'No workspace or project found in the current directory.\n'
@@ -110,39 +112,38 @@ async function getConfig() {
   return ConfigManager.load(ctx.workspaceRoot);
 }
 
-/** Load config from env vars + global ~/.reach/ only (no project context needed). */
 async function getGlobalConfig() {
   return ConfigManager.load();
 }
 
-// APCore registration for MCP/programmatic access
-// TOOL_METADATA provides description + inputSchema so apcore-mcp exposes them to LLMs.
-import { TOOL_METADATA } from './mcp/tools.js';
+// ── APCore Module Registration ───────────────────────────
+// Single source of truth: each module is registered once with apcore.
+// CLI commands are auto-generated from the registry via GroupedModuleGroup.
+// MCP tools are exposed via serve(apcore).
 
 const apcore = new APCore();
 
 function meta(moduleId: string) {
-  return TOOL_METADATA[moduleId] ?? { description: '', inputSchema: {} };
+  const toolMeta = TOOL_METADATA[moduleId] ?? { description: '', inputSchema: {} };
+  // Strip "reach." prefix for CLI command names.
+  // "reach.status" → alias "status" (top-level)
+  // "reach.series.init" → alias "series.init" (auto-groups to "series" / "init")
+  // "reach.asset.add" → alias "asset.add" (auto-groups to "asset" / "add")
+  const alias = moduleId.replace(/^reach\./, '');
+  return {
+    ...toolMeta,
+    metadata: { display: { cli: { alias } } },
+  };
 }
 
 apcore.register('reach.status', {
   ...meta('reach.status'),
   execute: async (inputs?: { article?: string }) => {
     const engine = await getEngine();
-    const status = await engine.getStatus();
-    if (inputs?.article) {
-      // Filter to single article: only show stages where this article appears
-      for (const stage of Object.keys(status.stages) as Array<keyof typeof status.stages>) {
-        const info = status.stages[stage];
-        const filtered = info.items.filter(item => item === inputs.article);
-        status.stages[stage] = { count: filtered.length, items: filtered };
-      }
-      status.dueToday = status.dueToday.filter(a => a === inputs.article);
-      status.totalProjects = Object.values(status.stages).reduce((sum, s) => sum + s.count, 0);
-    }
-    return status;
+    await statusCommand(engine, { article: inputs?.article });
   },
 });
+
 apcore.register('reach.draft', {
   ...meta('reach.draft'),
   execute: async (inputs: { source: string; name?: string; cover?: string }) => {
@@ -158,6 +159,7 @@ apcore.register('reach.adapt', {
     await adaptCommand(engine, inputs.article, { platforms: inputs.platforms, lang: inputs.lang, force: inputs.force, config: config.getConfig() });
   },
 });
+
 apcore.register('reach.schedule', {
   ...meta('reach.schedule'),
   execute: async (inputs: { article: string; date?: string; clear?: boolean }) => {
@@ -166,6 +168,7 @@ apcore.register('reach.schedule', {
     await scheduleCommand(engine, inputs.article, resolvedDate, { clear: inputs.clear });
   },
 });
+
 apcore.register('reach.publish', {
   ...meta('reach.publish'),
   execute: async (inputs?: { article?: string; platforms?: string; track?: boolean; dryRun?: boolean; cover?: string }) => {
@@ -179,6 +182,7 @@ apcore.register('reach.publish', {
     await publishCommand(engine, { ...inputs, config: config.getConfig() });
   },
 });
+
 apcore.register('reach.go', {
   ...meta('reach.go'),
   execute: async (inputs: { prompt: string; name?: string; schedule?: string; dryRun?: boolean; draft?: boolean; cover?: string }) => {
@@ -186,6 +190,7 @@ apcore.register('reach.go', {
     await goCommand(engine, inputs.prompt, { ...inputs, config: config.getConfig() });
   },
 });
+
 apcore.register('reach.refine', {
   ...meta('reach.refine'),
   execute: async (inputs: { article: string; feedback: string }) => {
@@ -193,6 +198,7 @@ apcore.register('reach.refine', {
     await refineCommand(engine, inputs.article, { feedback: inputs.feedback });
   },
 });
+
 apcore.register('reach.rollback', {
   ...meta('reach.rollback'),
   execute: async (inputs: { article: string }) => {
@@ -200,6 +206,7 @@ apcore.register('reach.rollback', {
     await rollbackCommand(engine, inputs.article);
   },
 });
+
 apcore.register('reach.refresh', {
   ...meta('reach.refresh'),
   execute: async (inputs: { article: string }) => {
@@ -207,6 +214,7 @@ apcore.register('reach.refresh', {
     await refreshCommand(engine, inputs.article);
   },
 });
+
 apcore.register('reach.update', {
   ...meta('reach.update'),
   execute: async (inputs: { article: string; platforms?: string; dryRun?: boolean; force?: boolean; cover?: string }) => {
@@ -214,6 +222,7 @@ apcore.register('reach.update', {
     await updateCommand(engine, { ...inputs, config: config.getConfig() });
   },
 });
+
 apcore.register('reach.asset.add', {
   ...meta('reach.asset.add'),
   execute: async (inputs: { file: string; subdir?: string }) => {
@@ -221,20 +230,20 @@ apcore.register('reach.asset.add', {
     await assetAddCommand(ctx.projectDir, inputs.file, { subdir: inputs.subdir });
   },
 });
+
 apcore.register('reach.asset.list', {
   ...meta('reach.asset.list'),
   execute: async (inputs: { subdir?: string }) => {
     const ctx = await getContext();
-    const { AssetManager } = await import('./core/asset-manager.js');
-    const mgr = new AssetManager(ctx.projectDir);
-    return mgr.listAssets(inputs.subdir as import('./types/assets.js').AssetSubdir | undefined);
+    await assetListCommand(ctx.projectDir, { subdir: inputs.subdir });
   },
 });
+
 apcore.register('reach.analytics', {
   ...meta('reach.analytics'),
   execute: async (inputs: { from?: string; to?: string }) => {
     const engine = await getEngine();
-    return collectAnalytics(engine, inputs);
+    await analyticsCommand(engine, inputs);
   },
 });
 
@@ -244,11 +253,128 @@ apcore.register('reach.platforms', {
     const { ProviderLoader } = await import('./providers/loader.js');
     const configManager = await getGlobalConfig();
     const loader = new ProviderLoader(configManager.getConfig());
-    return { platforms: loader.listPlatforms() };
+    const platforms = loader.listPlatforms();
+    console.log(chalk.bold('\nPublishing Platforms\n'));
+    for (const p of platforms) {
+      const status = p.configured
+        ? chalk.green('✓ configured')
+        : chalk.gray('✗ not configured');
+      console.log(`  ${chalk.cyan(p.platform.padEnd(12))} ${p.provider.padEnd(24)} ${status}`);
+    }
+    console.log();
   },
 });
 
-// CLI Setup
+// Series modules
+apcore.register('reach.series.init', {
+  ...meta('reach.series.init'),
+  execute: async (inputs: { topic: string }) => {
+    const ctx = await getContext();
+    await seriesInitCommand(ctx.projectDir, inputs.topic);
+  },
+});
+
+apcore.register('reach.series.outline', {
+  ...meta('reach.series.outline'),
+  execute: async (inputs: { name: string }) => {
+    const engine = await getEngine();
+    await seriesOutlineCommand(engine, inputs.name);
+  },
+});
+
+apcore.register('reach.series.approve', {
+  ...meta('reach.series.approve'),
+  execute: async (inputs: { name: string; outline?: boolean; detail?: boolean }) => {
+    const engine = await getEngine();
+    await seriesApproveCommand(engine, inputs.name, { outline: inputs.outline, detail: inputs.detail });
+  },
+});
+
+apcore.register('reach.series.detail', {
+  ...meta('reach.series.detail'),
+  execute: async (inputs: { name: string }) => {
+    const engine = await getEngine();
+    await seriesDetailCommand(engine, inputs.name);
+  },
+});
+
+apcore.register('reach.series.draft', {
+  ...meta('reach.series.draft'),
+  execute: async (inputs: { name: string; all?: boolean }) => {
+    const engine = await getEngine();
+    await seriesDraftCommand(engine, inputs.name, { all: inputs.all });
+  },
+});
+
+apcore.register('reach.series.adapt', {
+  ...meta('reach.series.adapt'),
+  execute: async (inputs: { name: string; platforms?: string }) => {
+    const [engine, config] = await Promise.all([getEngine(), getConfig().catch(() => getGlobalConfig())]);
+    await seriesAdaptCommand(engine, inputs.name, { platforms: inputs.platforms, config: config.getConfig() });
+  },
+});
+
+apcore.register('reach.series.schedule', {
+  ...meta('reach.series.schedule'),
+  execute: async (inputs: { name: string; dryRun?: boolean }) => {
+    const engine = await getEngine();
+    await seriesScheduleCommand(engine, inputs.name, { dryRun: inputs.dryRun });
+  },
+});
+
+apcore.register('reach.series.status', {
+  ...meta('reach.series.status'),
+  execute: async (inputs: { name: string }) => {
+    const engine = await getEngine();
+    await seriesStatusCommand(engine, inputs.name);
+  },
+});
+
+// System modules
+apcore.register('reach.new', {
+  ...meta('reach.new'),
+  execute: async (inputs: { name: string }) => {
+    const ctx = await getContext();
+    await newProjectCommand(inputs.name, ctx);
+  },
+});
+
+apcore.register('reach.init', {
+  ...meta('reach.init'),
+  execute: async (inputs: { path?: string }) => {
+    await initCommand(inputs.path);
+  },
+});
+
+apcore.register('reach.workspace', {
+  ...meta('reach.workspace'),
+  execute: async () => {
+    const ctx = await getContext();
+    await workspaceInfoCommand(ctx);
+  },
+});
+
+apcore.register('reach.watch', {
+  ...meta('reach.watch'),
+  execute: async (inputs: { interval?: string; all?: boolean; list?: boolean; stop?: string }) => {
+    const ctx = await getContext();
+    const engine = (inputs.list || inputs.stop !== undefined) ? null! : new PipelineEngine(ctx.projectDir);
+    await watchCommand(engine, inputs, ctx);
+  },
+});
+
+apcore.register('reach.mcp', {
+  ...meta('reach.mcp'),
+  execute: async (inputs: { port?: string; transport?: string }) => {
+    const engine = await getEngine();
+    await mcpCommand(engine, apcore, serve, inputs);
+  },
+});
+
+// ── CLI Setup ────────────────────────────────────────────
+// Auto-generate CLI commands from the apcore registry using GroupedModuleGroup.
+// This eliminates manual .command().option().action() duplication.
+
 program
   .name('reach')
   .description('ReachForge: The Social Influence Engine')
@@ -261,9 +387,7 @@ program
 configureGroupedHelp(program);
 
 // Intercept --help --all to show full reference
-program.on('option:all', () => {
-  // Deferred: will be checked after parse in the help hook
-});
+program.on('option:all', () => {});
 program.addHelpText('beforeAll', () => {
   if (program.opts().all) {
     console.log(buildFullReference(program));
@@ -272,326 +396,45 @@ program.addHelpText('beforeAll', () => {
   return '';
 });
 
-// ── Quick Start ──────────────────────────────────────────
+// Adapter: bridge apcore-js Registry/Executor to apcore-cli's expected interface.
+// apcore-js 0.14 uses list()/get(), apcore-cli 0.3 expects listModules()/getModule().
+import type { Registry as CliRegistry, Executor as CliExecutor } from 'apcore-cli';
 
-program
-  .command('go <prompt>')
-  .description('One-shot: create, adapt, and publish content from a prompt (requires LLM config)')
-  .option('--name <name>', 'Explicit article name (default: auto-generated from prompt)')
-  .option('-s, --schedule <date>', 'Schedule for a future date (YYYY-MM-DD) instead of publishing immediately')
-  .option('-n, --dry-run', 'Run full pipeline but skip actual publishing')
-  .option('-d, --draft', 'Publish as draft on supported platforms')
-  .option('-c, --cover <path>', 'Cover image path or URL')
-  .action(withErrorHandler(async (prompt: string, options: { name?: string; schedule?: string; dryRun?: boolean; draft?: boolean; cover?: string }) => {
-    const [engine, config] = await Promise.all([getEngine(), getConfig()]);
-    await goCommand(engine, prompt, { ...options, json: program.opts().json, config: config.getConfig() });
-  }, 'go'));
-
-program
-  .command('new <project-name>')
-  .description('Create a new project in the current workspace')
-  .action(withErrorHandler(async (projectName: string) => {
-    const ctx = await getContext();
-    await newProjectCommand(projectName, ctx, { json: program.opts().json });
-  }, 'new'));
-
-program
-  .command('status [article]')
-  .description('Show pipeline dashboard or article detail')
-  .option('-a, --all', 'Show status across all projects in workspace')
-  .action(withErrorHandler(async (article: string | undefined, options: { all?: boolean }) => {
-    const ctx = await getContext();
-    if (options.all) {
-      const engine = new PipelineEngine(ctx.projectDir);
-      await statusCommand(engine, { ...options, json: program.opts().json }, ctx);
-    } else {
-      const engine = await getEngine();
-      await statusCommand(engine, { article, json: program.opts().json }, ctx);
-    }
-  }, 'status'));
-
-program
-  .command('publish [article]')
-  .description('Publish to platforms (all due, specific article, or external file)')
-  .option('-p, --platforms <list>', 'Comma-separated platform filter (e.g., devto,hashnode)')
-  .option('--track', 'Track external file in pipeline (import to 02_adapted, then publish)')
-  .option('--force', 'Publish even if article is scheduled for a future date')
-  .option('-n, --dry-run', 'Preview what would be published')
-  .option('-d, --draft', 'Publish as draft (overrides frontmatter published field)')
-  .option('-c, --cover <path>', 'Cover image path or URL')
-  .action(withErrorHandler(async (article: string | undefined, options: { platforms?: string; track?: boolean; force?: boolean; dryRun?: boolean; draft?: boolean; cover?: string }) => {
-    const { isExternalFile } = await import('./commands/publish.js');
-    const isExternal = article && isExternalFile(article);
-
-    // External file without --track: no engine needed, just config
-    let engine: PipelineEngine | null = null;
-    if (!isExternal || options.track) {
-      try {
-        engine = await getEngine();
-      } catch (err) {
-        // No project context: if it looks like the user forgot .md, give a helpful hint
-        if (article && !isExternal) {
-          throw new Error(
-            `"${article}" is not a recognized file. Did you mean: reach publish ${article}.md?\n` +
-            `  For external files, include the extension: reach publish ./file.md --platforms devto`,
-          );
-        }
-        throw err;
-      }
-    }
-    const config = await getConfig().catch(() => getGlobalConfig());
-    await publishCommand(engine, { article, ...options, json: program.opts().json, config: config.getConfig() });
-  }, 'publish'));
-
-// ── Pipeline Steps ───────────────────────────────────────
-
-program
-  .command('draft <input>')
-  .description('Generate an AI draft from a prompt, file, or directory')
-  .option('--name <slug>', 'Explicit article name (default: auto-generated from input)')
-  .option('-c, --cover <path>', 'Cover image to store in meta.yaml for publish')
-  .action(withErrorHandler(async (input: string, options: { name?: string; cover?: string }) => {
-    const engine = await getEngine();
-    await draftCommand(engine, input, { ...options, json: program.opts().json });
-  }, 'draft'));
-
-program
-  .command('refine <article>')
-  .description('Refine a draft or adapted article with AI feedback')
-  .option('-f, --feedback <text>', 'Non-interactive single refinement turn with the given feedback')
-  .action(withErrorHandler(async (article: string, options: { feedback?: string }) => {
-    const engine = await getEngine();
-    await refineCommand(engine, article, {
-      feedback: options.feedback,
-      json: program.opts().json,
+const registryAdapter: CliRegistry = {
+  listModules() {
+    return apcore.registry.list().map((id: string) => {
+      const mod = apcore.registry.get(id) as Record<string, unknown> | undefined;
+      return { id, name: id, ...(mod ?? {}) } as ReturnType<CliRegistry['listModules']>[number];
     });
-  }));
+  },
+  getModule(moduleId: string) {
+    const mod = apcore.registry.get(moduleId) as Record<string, unknown> | undefined;
+    if (!mod) return null;
+    return { id: moduleId, name: moduleId, ...mod } as ReturnType<CliRegistry['getModule']>;
+  },
+};
 
-program
-  .command('adapt <article>')
-  .description('Generate platform-specific versions from a draft')
-  .option('-p, --platforms <list>', 'Comma-separated platform list (e.g., x,devto,wechat)')
-  .option('-l, --lang <code>', 'Override target language for all platforms (e.g., en, zh-CN, ja)')
-  .option('-f, --force', 'Overwrite existing platform versions')
-  .action(withErrorHandler(async (article: string, options: { platforms?: string; lang?: string; force?: boolean }) => {
-    const [engine, config] = await Promise.all([getEngine(), getConfig().catch(() => getGlobalConfig())]);
-    await adaptCommand(engine, article, { ...options, json: program.opts().json, config: config.getConfig() });
-  }, 'adapt'));
+const executorAdapter: CliExecutor = {
+  async execute(moduleId: string, input: Record<string, unknown>) {
+    return apcore.executor.call(moduleId, input) as Promise<unknown>;
+  },
+};
 
-program
-  .command('schedule <article> [date]')
-  .description('Schedule an article for publishing (defaults to now)')
-  .option('-n, --dry-run', 'Preview without scheduling')
-  .option('--clear', 'Unschedule: revert status to adapted and remove schedule date')
-  .action(withErrorHandler(async (article: string, date: string | undefined, options: { dryRun?: boolean; clear?: boolean }) => {
-    const engine = await getEngine();
-    const resolvedDate = date || new Date().toISOString().split('T')[0];
-    await scheduleCommand(engine, article, resolvedDate, { ...options, json: program.opts().json });
-  }, 'schedule'));
+// Auto-wire module commands from apcore registry
+const moduleGroup = new GroupedModuleGroup(registryAdapter, executorAdapter);
 
-program
-  .command('rollback <article>')
-  .description('Move an article back one pipeline stage')
-  .action(withErrorHandler(async (article: string) => {
-    const engine = await getEngine();
-    await rollbackCommand(engine, article, { json: program.opts().json });
-  }, 'rollback'));
+// Filter out apcore-cli built-in commands that are irrelevant for ReachForge users.
+// Note: apcore-cli also has a built-in "init" but our reach.init takes precedence
+// since GroupedModuleGroup returns our module's command for the "init" name.
+const APCORE_BUILTINS = new Set(['completion', 'describe', 'exec', 'list', 'man']);
 
-program
-  .command('refresh <article>')
-  .description('Copy a published/adapted article back to drafts for re-editing')
-  .action(withErrorHandler(async (article: string) => {
-    const engine = await getEngine();
-    await refreshCommand(engine, article, { json: program.opts().json });
-  }, 'refresh'));
+for (const cmdName of moduleGroup.listCommands()) {
+  if (APCORE_BUILTINS.has(cmdName)) continue;
+  const cmd = moduleGroup.getCommand(cmdName);
+  if (cmd) program.addCommand(cmd);
+}
 
-program
-  .command('update <article>')
-  .description('Update a published article on its platforms')
-  .option('-p, --platforms <list>', 'Comma-separated platform filter')
-  .option('-n, --dry-run', 'Preview without executing')
-  .option('--force', 'Skip platforms without article_id')
-  .option('-c, --cover <path>', 'Cover image path or URL')
-  .action(withErrorHandler(async (article: string, options: { platforms?: string; dryRun?: boolean; force?: boolean; cover?: string }) => {
-    const [engine, config] = await Promise.all([getEngine(), getConfig().catch(() => getGlobalConfig())]);
-    await updateCommand(engine, { article, ...options, json: program.opts().json, config: config.getConfig() });
-  }, 'update'));
-
-// ── System ───────────────────────────────────────────────
-
-program
-  .command('init [path]')
-  .description('Initialize global config (~/.reach), or a workspace at <path>')
-  .action(withErrorHandler(async (targetPath?: string) => {
-    await initCommand(targetPath);
-  }));
-
-program
-  .command('workspace')
-  .description('Show workspace info and project list')
-  .action(withErrorHandler(async () => {
-    const ctx = await getContext();
-    await workspaceInfoCommand(ctx);
-  }));
-
-program
-  .command('watch')
-  .description('Start daemon to auto-publish due content')
-  .option('-i, --interval <minutes>', 'Check interval in minutes (min: 1)', '60')
-  .option('-a, --all', 'Watch all projects in workspace')
-  .option('-l, --list', 'List running watch daemons')
-  .option('--stop [project]', 'Stop a running watch daemon')
-  .action(withErrorHandler(async (options: { interval?: string; all?: boolean; list?: boolean; stop?: string | true }) => {
-    const ctx = await getContext();
-    // Only create engine when needed (not for --list/--stop)
-    const engine = (options.list || options.stop !== undefined) ? null! : new PipelineEngine(ctx.projectDir);
-    await watchCommand(engine, options, ctx);
-  }));
-
-program
-  .command('analytics')
-  .description('Show publishing analytics and success metrics')
-  .option('--from <date>', 'Filter from date (YYYY-MM-DD)')
-  .option('--to <date>', 'Filter to date (YYYY-MM-DD)')
-  .action(withErrorHandler(async (options: { from?: string; to?: string }) => {
-    const engine = await getEngine();
-    await analyticsCommand(engine, { ...options, json: program.opts().json });
-  }, 'analytics'));
-
-// ── Series Management ────────────────────────────────────
-
-const seriesCmd = program
-  .command('series')
-  .description('Manage article series (outline → approve → draft)');
-
-seriesCmd
-  .command('init <topic>')
-  .description('Scaffold a new series definition file')
-  .action(withErrorHandler(async (topic: string) => {
-    const ctx = await getContext();
-    await seriesInitCommand(ctx.projectDir, topic, { json: program.opts().json });
-  }, 'series.init'));
-
-seriesCmd
-  .command('outline <name>')
-  .description('AI-generate master outline and article plan')
-  .action(withErrorHandler(async (name: string) => {
-    const engine = await getEngine();
-    await seriesOutlineCommand(engine, name, { json: program.opts().json });
-  }, 'series.outline'));
-
-seriesCmd
-  .command('approve <name>')
-  .description('Approve outline or detail outlines')
-  .option('--outline', 'Approve master outline')
-  .option('--detail', 'Approve per-article detail outlines')
-  .action(withErrorHandler(async (name: string, options: { outline?: boolean; detail?: boolean }) => {
-    const engine = await getEngine();
-    await seriesApproveCommand(engine, name, { ...options, json: program.opts().json });
-  }, 'series.approve'));
-
-seriesCmd
-  .command('detail <name>')
-  .description('AI-generate detailed outlines for each article')
-  .action(withErrorHandler(async (name: string) => {
-    const engine = await getEngine();
-    await seriesDetailCommand(engine, name, { json: program.opts().json });
-  }, 'series.detail'));
-
-seriesCmd
-  .command('draft <name>')
-  .description('Draft next article (or all with --all) based on approved outlines')
-  .option('--all', 'Draft all unwritten articles sequentially')
-  .action(withErrorHandler(async (name: string, options: { all?: boolean }) => {
-    const engine = await getEngine();
-    await seriesDraftCommand(engine, name, { ...options, json: program.opts().json });
-  }, 'series.draft'));
-
-seriesCmd
-  .command('adapt <name>')
-  .description('Batch-adapt all drafted articles in the series')
-  .option('-p, --platforms <list>', 'Comma-separated platform list')
-  .action(withErrorHandler(async (name: string, options: { platforms?: string }) => {
-    const [engine, config] = await Promise.all([getEngine(), getConfig().catch(() => getGlobalConfig())]);
-    await seriesAdaptCommand(engine, name, { ...options, json: program.opts().json, config: config.getConfig() });
-  }, 'series.adapt'));
-
-seriesCmd
-  .command('schedule <name>')
-  .description('Auto-calculate and apply schedule dates')
-  .option('-n, --dry-run', 'Preview without applying')
-  .action(withErrorHandler(async (name: string, options: { dryRun?: boolean }) => {
-    const engine = await getEngine();
-    await seriesScheduleCommand(engine, name, { ...options, json: program.opts().json });
-  }, 'series.schedule'));
-
-seriesCmd
-  .command('status <name>')
-  .description('Show series progress dashboard')
-  .action(withErrorHandler(async (name: string) => {
-    const engine = await getEngine();
-    await seriesStatusCommand(engine, name, { json: program.opts().json });
-  }, 'series.status'));
-
-const assetCmd = program
-  .command('asset')
-  .description('Manage project assets (images, videos, audio)');
-
-assetCmd
-  .command('add <file>')
-  .description('Register an asset file into the project asset library')
-  .option('-s, --subdir <type>', 'Asset subdirectory (images, videos, audio)')
-  .action(withErrorHandler(async (file: string, options: { subdir?: string }) => {
-    const ctx = await getContext();
-    await assetAddCommand(ctx.projectDir, file, { ...options, json: program.opts().json });
-  }, 'asset.add'));
-
-assetCmd
-  .command('list')
-  .description('List registered assets')
-  .option('-s, --subdir <type>', 'Filter by subdirectory (images, videos, audio)')
-  .action(withErrorHandler(async (options: { subdir?: string }) => {
-    const ctx = await getContext();
-    await assetListCommand(ctx.projectDir, { ...options, json: program.opts().json });
-  }, 'asset.list'));
-
-program
-  .command('platforms')
-  .description('List available publishing platforms and their config status')
-  .action(withErrorHandler(async () => {
-    const configManager = await getGlobalConfig();
-    const { ProviderLoader } = await import('./providers/loader.js');
-    const loader = new ProviderLoader(configManager.getConfig());
-    const platforms = loader.listPlatforms();
-    const isJson = program.opts().json;
-
-    if (isJson) {
-      const { jsonSuccess } = await import('./core/json-output.js');
-      process.stdout.write(jsonSuccess('platforms', { platforms }));
-      return;
-    }
-
-    console.log(chalk.bold('\nPublishing Platforms\n'));
-    for (const p of platforms) {
-      const status = p.configured
-        ? chalk.green('✓ configured')
-        : chalk.gray('✗ not configured');
-      console.log(`  ${chalk.cyan(p.platform.padEnd(12))} ${p.provider.padEnd(24)} ${status}`);
-    }
-    console.log();
-  }, 'platforms'));
-
-program
-  .command('mcp')
-  .description('Launch reach as an MCP Server (AI agent integration)')
-  .option('-p, --port <number>', 'Port for SSE transport', '8000')
-  .option('-t, --transport <type>', 'Transport type (stdio, sse)', 'stdio')
-  .action(withErrorHandler(async (options: { port?: string; transport?: string }) => {
-    const engine = await getEngine();
-    await mcpCommand(engine, apcore, serve, options);
-  }));
-
-// Default action: when no command is given, check for workspace or show help
+// Default action: when no command is given
 program.action(withErrorHandler(async () => {
   const ctx = await getContext();
   if (ctx.isWorkspace) {
@@ -599,18 +442,15 @@ program.action(withErrorHandler(async () => {
     return;
   }
 
-  // No workspace found
   const defaultPath = path.join(os.homedir(), DEFAULT_WORKSPACE_NAME);
 
   if (!process.stdin.isTTY) {
-    // Non-interactive: show instructions without prompting
     console.log(`No workspace found. Initialize one with:`);
     console.log(chalk.dim(`  reach init [path]`));
     console.log(chalk.dim(`\nRun ${chalk.white('reach --help')} for all available commands.`));
     return;
   }
 
-  // Interactive: prompt user to create workspace
   const answer = await confirm(
     `No workspace found. Create one at ${chalk.cyan(defaultPath)}? [Y/n] `,
   );

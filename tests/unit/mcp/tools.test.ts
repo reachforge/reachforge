@@ -76,8 +76,8 @@ describe('MCP Tool Schemas', () => {
 });
 
 describe('TOOL_METADATA', () => {
-  test('has 22 tool entries', () => {
-    expect(Object.keys(TOOL_METADATA)).toHaveLength(22);
+  test('has 27 tool entries', () => {
+    expect(Object.keys(TOOL_METADATA)).toHaveLength(27);
   });
 
   test('all entries have description and inputSchema', () => {
@@ -104,8 +104,8 @@ describe('TOOL_METADATA', () => {
 });
 
 describe('MCP_TOOL_DEFINITIONS', () => {
-  test('has 21 tool definitions', () => {
-    expect(MCP_TOOL_DEFINITIONS).toHaveLength(22);
+  test('has 26 tool definitions', () => {
+    expect(MCP_TOOL_DEFINITIONS).toHaveLength(27);
   });
 
   test('all tools have name, description, and schema', () => {

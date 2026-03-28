@@ -112,6 +112,29 @@ export const SeriesStatusToolSchema = z.object({
   name: z.string().min(1).describe('Series name'),
 });
 
+// System tools
+export const NewProjectToolSchema = z.object({
+  name: z.string().min(1).describe('Project name to create in the current workspace'),
+});
+
+export const InitToolSchema = z.object({
+  path: z.string().optional().describe('Path to initialize workspace at (defaults to ~/.reach)'),
+});
+
+export const WorkspaceToolSchema = z.object({});
+
+export const WatchToolSchema = z.object({
+  interval: z.string().optional().describe('Check interval in minutes (min: 1, default: 60)'),
+  all: z.boolean().optional().describe('Watch all projects in workspace'),
+  list: z.boolean().optional().describe('List running watch daemons'),
+  stop: z.string().optional().describe('Stop a running watch daemon for the given project'),
+});
+
+export const McpToolSchema = z.object({
+  port: z.string().optional().describe('Port for SSE transport (default: 8000)'),
+  transport: z.string().optional().describe('Transport type: stdio or sse (default: stdio)'),
+});
+
 export const AnalyticsToolSchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Start date filter in YYYY-MM-DD format'),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('End date filter in YYYY-MM-DD format'),
@@ -221,6 +244,26 @@ export const TOOL_METADATA: Record<string, { description: string; inputSchema: R
     description: 'Show series progress dashboard with per-article pipeline status.',
     inputSchema: jsonSchema(SeriesStatusToolSchema),
   },
+  'reach.new': {
+    description: 'Create a new project in the current workspace.',
+    inputSchema: jsonSchema(NewProjectToolSchema),
+  },
+  'reach.init': {
+    description: 'Initialize global config (~/.reach), or a workspace at the given path.',
+    inputSchema: jsonSchema(InitToolSchema),
+  },
+  'reach.workspace': {
+    description: 'Show workspace info and project list.',
+    inputSchema: jsonSchema(WorkspaceToolSchema),
+  },
+  'reach.watch': {
+    description: 'Start daemon to auto-publish due content. Use list/stop to manage daemons.',
+    inputSchema: jsonSchema(WatchToolSchema),
+  },
+  'reach.mcp': {
+    description: 'Launch reach as an MCP Server for AI agent integration.',
+    inputSchema: jsonSchema(McpToolSchema),
+  },
 };
 
 // Legacy export for backward compatibility with tests
@@ -251,6 +294,11 @@ export const MCP_TOOL_DEFINITIONS = Object.entries(TOOL_METADATA).map(([moduleId
       'reach.series.adapt': SeriesAdaptToolSchema,
       'reach.series.schedule': SeriesScheduleToolSchema,
       'reach.series.status': SeriesStatusToolSchema,
+      'reach.new': NewProjectToolSchema,
+      'reach.init': InitToolSchema,
+      'reach.workspace': WorkspaceToolSchema,
+      'reach.watch': WatchToolSchema,
+      'reach.mcp': McpToolSchema,
     };
     return schemaMap[moduleId];
   })(),
