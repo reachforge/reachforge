@@ -1,3 +1,8 @@
+<div align="center">
+  <img src="https://raw.githubusercontent.com/reachforge/reachforge/main/reachforge-logo.svg" alt="reachforge logo" width="200"/>
+</div>
+
+
 # ReachForge (`reach`)
 
 > **ReachForge: The Social Influence Engine for AI-Native Content.**
