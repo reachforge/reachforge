@@ -1,4 +1,4 @@
-> **DEPRECATED**: This document describes the original 6-stage pipeline architecture. The pipeline has been simplified to 3 stages (`01_drafts → 02_adapted → 03_published`). See [Pipeline Simplification Tech Design](../pipeline-simplification/tech-design.md) for the current architecture.
+> **Note**: This document describes the original 6-stage pipeline architecture. The current implementation uses a simplified 3-stage pipeline (`01_drafts → 02_adapted → 03_published`). Stage references such as `01_inbox`, `02_drafts`, `03_master`, `04_adapted`, `05_scheduled`, and `06_sent` in this document correspond to the original design; the current architecture consolidates these into three stages with scheduling handled via metadata rather than directory placement.
 
 # Technical Design Document: reachforge
 

@@ -1,0 +1,100 @@
+site_name: ReachForge
+site_description: "The Social Influence Engine — AI-powered content publishing CLI"
+site_url: https://aiperceivable.github.io/reachforge
+repo_url: https://github.com/aiperceivable/reachforge
+repo_name: aiperceivable/reachforge
+
+theme:
+  name: material
+  logo: assets/reachforge-logo.svg
+  favicon: assets/reachforge-logo.svg
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - User Manual: user-manual.md
+
+  - Product:
+    - PRD: reachforge/prd.md
+    - SRS: reachforge/srs.md
+    - Test Plan: reachforge/test-plan.md
+
+  - Architecture:
+    - Core Tech Design: reachforge/tech-design.md
+    - LLM Adapter: llm-adapter/tech-design.md
+    - Multi-Article Pipeline: multi-article/tech-design.md
+    - Update Command: update-command/tech-design.md
+    - New Providers: new-providers/tech-design.md
+
+  - Features:
+    - Overview: features/overview.md
+    - Pipeline:
+      - Pipeline Core: features/pipeline-core.md
+      - Pipeline Engine Refactor: features/pipeline-engine-refactor.md
+      - Filename Parser: features/filename-parser.md
+      - Multi-Article Metadata: features/multi-article-metadata.md
+    - Commands:
+      - CLI Commands: features/cli-commands.md
+      - Command Updates: features/command-updates.md
+      - Refine Command: features/refine-command.md
+      - Update Command: features/update-command.md
+      - Update Schema Changes: features/update-schema-changes.md
+      - Update ID Capture: features/update-publish-id-capture.md
+      - Update Provider Methods: features/update-provider-methods.md
+    - LLM:
+      - CLI Adapter Core: features/cli-adapter-core.md
+      - LLM Provider: features/llm-provider.md
+      - Session Manager: features/session-manager.md
+      - Skill Resolver: features/skill-resolver.md
+    - Publishing:
+      - Platform Providers: features/platform-providers.md
+      - Plugin System: features/plugin-system.md
+      - Content Validation: features/content-validation.md
+      - Media Manager: features/media-manager.md
+    - Providers:
+      - Ghost: features/provider-ghost.md
+      - WordPress: features/provider-wordpress.md
+      - Telegraph: features/provider-telegraph.md
+      - Write.as: features/provider-writeas.md
+      - Reddit: features/provider-reddit.md
+    - Series:
+      - Series Management: features/series-management.md
+    - System:
+      - MCP Server: features/mcp-server.md
+      - MCP Tool Updates: features/mcp-tool-updates.md
+      - Watcher Daemon: features/watcher-daemon.md

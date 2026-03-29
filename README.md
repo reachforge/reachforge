@@ -4,12 +4,15 @@
 
 **ReachForge** is an **AI-native Social Influence Engine** for end-users. It adopts a "File-as-State" design philosophy, transforming inspiration fragments into multi-platform viral assets through a lightweight three-stage pipeline.
 
+Built on the [apcore](https://github.com/aiperceivable/apcore-typescript) ecosystem — `apcore-js` for module registration, `apcore-mcp` for AI agent integration, `apcore-cli` for CLI generation.
+
 ## Core Design Philosophy
 - **File-as-State**: No database required. Flat `.md` files flow through 3 pipeline stages. A single `meta.yaml` at project root tracks all article states.
 - **Multi-Article Projects**: One project holds multiple articles, each independently targeting different platforms and schedules.
 - **Bun Driven**: Extreme execution efficiency and single-file binary distribution, perfectly suited for CLI and desktop environments.
 - **Hybrid Publishing Strategy**: Supports direct local API publishing and SaaS-bridged (e.g., Postiz) publishing.
-- **AI Adapter Pattern**: Automatically rewrites the draft into optimal versions for different platforms (X, WeChat, Zhihu) via LLM.
+- **AI Adapter Pattern**: Automatically rewrites the draft into optimal versions for different platforms via LLM.
+- **apcore Ecosystem**: Single module registration powers both CLI commands and MCP tools — 27 modules auto-wired.
 
 ## Pipeline (01-03) + Assets
 
@@ -22,7 +25,21 @@ Each project contains 3 stage directories. Articles are flat `.md` files that mo
 | `03_published` | `{article}.{platform}.md` | Published archive (results in `meta.yaml`) |
 | `assets/` | images, videos, audio | Shared asset library — referenced via `@assets/` prefix |
 
-Platform IDs: `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`
+## Supported Platforms
+
+| Platform | Type | Auth | Format |
+|----------|------|------|--------|
+| **Dev.to** | Blog | API key | Markdown |
+| **Hashnode** | Blog | PAT + Publication ID | Markdown |
+| **Ghost** | Self-hosted CMS | Admin API key (JWT) | HTML |
+| **WordPress** | Self-hosted (5.6+) | Application Password | HTML |
+| **Telegraph** | Instant publishing | Access token | Node JSON |
+| **Write.as** | Minimalist blog | Access token | Markdown |
+| **Reddit** | Community | OAuth password grant | Markdown |
+| **GitHub Discussions** | Developer community | PAT | Markdown |
+| **X/Twitter** | Social (via Postiz) | API key | Plain text |
+
+Platform IDs: `devto`, `hashnode`, `ghost`, `wordpress`, `telegraph`, `writeas`, `reddit`, `github`, `x`, `wechat`, `zhihu`, `linkedin`, `medium`
 
 ## Quick Start
 
@@ -48,22 +65,26 @@ cd ~/reach-workspace
 ```yaml
 # ~/reach-workspace/.reach/config.yaml
 
-# LLM adapter (claude, gemini, or codex)
-# llm:
-#   adapter: claude
-
 # Platform API keys — only for the platforms you publish to
-# devto:
-#   apiKey: your-key
-# postiz:
-#   apiKey: your-key
-# hashnode:
-#   apiKey: your-key
-#   publicationId: your-id
-# github:
-#   token: your-token
-#   owner: your-username
-#   repo: your-repo
+# devto_api_key: your-key
+# hashnode_api_key: your-key
+# hashnode_publication_id: your-id
+# ghost_url: https://myblog.com
+# ghost_admin_api_key: "key_id:secret"
+# wordpress_url: https://mysite.com
+# wordpress_username: admin
+# wordpress_app_password: "xxxx xxxx xxxx xxxx"
+# telegraph_access_token: your-token
+# writeas_access_token: your-token
+# reddit_client_id: your-id
+# reddit_client_secret: your-secret
+# reddit_username: your-username
+# reddit_password: your-password
+# reddit_subreddit: programming
+# github_token: your-token
+# github_owner: your-username
+# github_repo: your-repo
+# postiz_api_key: your-key
 ```
 
 ### What needs configuration and when
@@ -71,23 +92,17 @@ cd ~/reach-workspace
 | Task | Required Configuration | Without it |
 |------|----------------------|------------|
 | `reach draft` / `reach adapt` | None (uses local CLI) | Just install & auth the CLI (`claude`, `gemini`, or `codex`) |
-| Publish to **Dev.to** | `DEVTO_API_KEY` | Falls back to mock mode — publish "succeeds" but nothing is actually posted |
-| Publish to **X/Twitter** (via Postiz) | `POSTIZ_API_KEY` | Falls back to mock mode |
-| Publish to **Hashnode** | `HASHNODE_API_KEY` + `HASHNODE_PUBLICATION_ID` | Falls back to mock mode (both required) |
-| Publish to **GitHub Discussions** | `GITHUB_TOKEN` + `GITHUB_OWNER` + `GITHUB_REPO` | Falls back to mock mode (all three required) |
-| Gemini API mode | `GEMINI_API_KEY` | Error: `LLMNotConfiguredError` |
-| MCP server auth | `MCP_AUTH_KEY` | MCP server runs without authentication |
+| Publish to **Dev.to** | `devto_api_key` | Falls back to mock mode |
+| Publish to **Hashnode** | `hashnode_api_key` + `hashnode_publication_id` | Falls back to mock mode |
+| Publish to **Ghost** | `ghost_url` + `ghost_admin_api_key` | Falls back to mock mode |
+| Publish to **WordPress** | `wordpress_url` + `wordpress_username` + `wordpress_app_password` | Falls back to mock mode |
+| Publish to **Telegraph** | `telegraph_access_token` | Falls back to mock mode |
+| Publish to **Write.as** | `writeas_access_token` | Falls back to mock mode |
+| Publish to **Reddit** | `reddit_client_id` + `reddit_client_secret` + `reddit_username` + `reddit_password` | Falls back to mock mode |
+| Publish to **GitHub** | `github_token` + `github_owner` + `github_repo` | Falls back to mock mode |
+| Publish to **X/Twitter** | `postiz_api_key` | Falls back to mock mode |
 
-> **Important:** When a platform API key is missing, `reach publish` silently uses a mock provider — the receipt shows "success" but no content is actually published. Use `--dry-run` or check `reach analytics` to verify real publishing.
-
-You can also use different adapters for different stages:
-
-```yaml
-# In config.yaml
-llm:
-  draftAdapter: gemini    # Use Gemini for drafting
-  adaptAdapter: claude    # Use Claude for platform adaptation
-```
+> **Important:** When a platform API key is missing, `reach publish` silently uses a mock provider. Use `reach platforms` to check which platforms are configured.
 
 **Configuration precedence** (highest to lowest):
 
@@ -103,37 +118,41 @@ llm:
 reach new product-launch
 cd product-launch
 
-# Multiple articles in one project, each with independent platforms & schedules:
+# Pipeline workflow
 reach status                                     # View pipeline dashboard
-reach status teaser                              # Detail for one article
-
 reach draft "write a teaser about our launch"    # Generate draft from prompt
-reach draft ./notes.md                           # Generate draft from file
-reach draft ./research/ --name teaser            # Generate draft from directory
-reach adapt teaser --platforms x,devto           # Adapt for specific platforms
-reach schedule teaser 2026-03-25T09:00           # Schedule with date+time (metadata only)
-reach schedule teaser                            # Schedule for now (immediate)
+reach adapt teaser --platforms devto,hashnode     # Adapt for platforms
+reach schedule teaser 2026-03-25T09:00           # Schedule with date+time
+reach publish                                    # Publish all due articles
+reach update teaser                              # Update already-published article
 
-reach draft "deep dive into architecture"        # Another article in same project
-reach adapt deep-dive --platforms zhihu,wechat   # Different platforms
-reach schedule deep-dive 2026-03-28              # Different schedule
+# Cover image support
+reach publish ./file.md -p devto --cover ./cover.png
+reach draft "my article" --cover https://example.com/cover.jpg
 
-reach publish                                    # Publish all due scheduled articles
-reach publish teaser                             # Publish specific article (bypasses schedule)
-reach publish teaser --force                     # Publish even if scheduled for a future date
-reach schedule teaser --clear                    # Unschedule (revert to adapted status)
-reach adapt teaser -p hashnode                   # Add hashnode (additive — keeps existing x, devto)
-reach watch                                      # Daemon mode: auto-publish
-reach analytics                                  # View publishing success metrics
-
-# Publish an external file directly:
-reach publish ./file.md -p devto                 # Publish external file to platform(s)
+# Publish external files directly
+reach publish ./file.md -p devto                 # Direct publish
 reach publish ./file.md -p devto --track         # Import to pipeline, then publish
 
-# Or do it all in one shot (draft -> adapt -> publish):
-reach go "write about apcore framework"                    # Full auto -> publish now
-reach go "write about apcore" --name teaser                # Explicit article name
-reach go "write about apcore framework" -s 2026-04-01      # Full auto -> schedule
+# One-shot (draft → adapt → publish)
+reach go "write about apcore framework"
+reach go "write about apcore" --name teaser -s 2026-04-01
+```
+
+### Series Management
+
+Manage multi-article campaigns with gate-controlled quality:
+
+```bash
+reach series init "deep dive into apcore"           # Scaffold series.yaml
+reach series outline apcore-deep-dive                # AI-generate master outline
+reach series approve apcore-deep-dive --outline      # Gate 1: approve outline
+reach series detail apcore-deep-dive                 # AI-generate per-article outlines
+reach series approve apcore-deep-dive --detail       # Gate 2: approve outlines
+reach series draft apcore-deep-dive --all            # Draft all articles with context
+reach series adapt apcore-deep-dive                  # Batch adapt
+reach series schedule apcore-deep-dive               # Auto-calculate publish dates
+reach series status apcore-deep-dive                 # Progress dashboard
 ```
 
 ## Development
@@ -146,11 +165,12 @@ bun install
 
 # Run tests
 bun run test
+
+# Type check
+bun run lint
 ```
 
 ### Running in Development
-
-Use the `dev` script to run commands directly from TypeScript source (no build step required):
 
 ```bash
 bun dev status                    # bun run src/index.ts status
@@ -160,17 +180,14 @@ bun dev publish --dry-run         # bun run src/index.ts publish --dry-run
 
 ### Building & Using the Binary
 
-Compile to a standalone single-file binary — no Bun or Node.js runtime needed on the target machine:
-
 ```bash
-# Build for current platform
-bun run build                     # outputs: bin/reach
+# Build for current platform (includes man page generation)
+bun run build                     # outputs: bin/reach + bin/reach.1
 
 # Run the compiled binary
 ./bin/reach status
-./bin/reach watch --all -i 15
 
-# Install globally via symlink
+# Install globally
 sudo ln -sf "$PWD/bin/reach" /usr/local/bin/reach
 reach status                      # now works anywhere
 ```
@@ -182,11 +199,19 @@ bun run build:macos               # bin/reach-macos  (macOS ARM)
 bun run build:win                 # bin/reach.exe    (Windows x64)
 ```
 
-## VSCode Extension & Mobile
-- **VSCode**: Core logic is fully compatible with the `VSCode Extension` TS environment, allowing direct invocation of compiled binaries via `Sidecar`.
-- **Claude/Gemini**: Native support for the `MCP (Model Context Protocol)`, allowing LLMs to directly manipulate your content pipeline. MCP tools include `draft`, `adapt`, `schedule`, `publish`, `status`, and `go`.
-- **Mobile Future**: File processing logic layers can be reused later via `React Native`.
+## Integrations
 
+- **MCP Server**: `reach mcp` exposes all 27 commands as MCP tools for AI agent integration (Claude, Cursor, etc.)
+- **VSCode Extension**: Core logic compatible with VSCode Extension via Sidecar binary invocation.
+- **apcore Ecosystem**: Built on `apcore-js` (module registry), `apcore-mcp` (MCP bridge), `apcore-cli` (CLI generation).
+
+## Documentation
+
+Full documentation available at the [docs site](https://aiperceivable.github.io/reachforge) or in the `docs/` directory:
+
+- [User Manual](docs/user-manual.md)
+- [PRD](docs/reachforge/prd.md) | [SRS](docs/reachforge/srs.md) | [Tech Design](docs/reachforge/tech-design.md)
+- [Feature Specs](docs/features/overview.md)
 
 ## License
 

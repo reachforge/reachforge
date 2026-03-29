@@ -1,5 +1,3 @@
-> **DEPRECATED**: This document describes the original 6-stage pipeline architecture. The pipeline has been simplified to 3 stages (`01_drafts → 02_adapted → 03_published`). See [Pipeline Simplification Tech Design](../pipeline-simplification/tech-design.md) for the current architecture.
-
 # Product Requirements Document: reachforge
 
 | Field        | Value                                      |
@@ -16,9 +14,9 @@
 
 Today, independent developers and content creators face a fragmented, manual workflow when distributing content across platforms. A single blog post destined for Dev.to, X (Twitter), and WeChat requires separate rewrites, separate logins, separate formatting, and separate scheduling. The result: creators either under-distribute (limiting reach) or spend hours on repetitive adaptation work that adds no creative value.
 
-**reachforge** is an AI-native Social Influence Engine that eliminates this friction. It transforms a single raw idea into platform-optimized, publication-ready assets through a six-stage file-based pipeline. Users drop an idea into an inbox folder; AI generates a long-form draft; AI adapts that draft for each target platform; the user schedules it; and reach publishes automatically via direct APIs or SaaS bridges. No database, no complex setup --- directories are states, filenames are timestamps, YAML files are metadata.
+**reachforge** is an AI-native Social Influence Engine that eliminates this friction. It transforms a single raw idea into platform-optimized, publication-ready assets through a three-stage file-based pipeline (`01_drafts → 02_adapted → 03_published`). AI generates a long-form draft; AI adapts that draft for each target platform; and reach publishes automatically via direct APIs or SaaS bridges. No database, no complex setup --- directories are states, YAML files are metadata.
 
-reachforge is part of the **aiperceivable** ecosystem (alongside apcore and apflow), designed for developers who think in files and terminals. The MVP targets two publishing paths --- native API integration with Dev.to and SaaS-bridged publishing to X via Postiz --- to validate the hybrid distribution architecture before expanding to additional platforms.
+reachforge is part of the **aiperceivable** ecosystem (built on apcore, apcore-mcp, and apcore-cli), designed for developers who think in files and terminals. The MVP targets two publishing paths --- native API integration with Dev.to and SaaS-bridged publishing to X via Postiz --- to validate the hybrid distribution architecture before expanding to additional platforms.
 
 ---
 
@@ -137,12 +135,12 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 
 ### Strategic Positioning within aiperceivable
 - **apcore**: The foundational framework providing module registration, lifecycle management, and MCP server infrastructure.
-- **apflow**: Workflow orchestration and task automation.
-- **reachforge**: The user-facing content engine that leverages apcore for modularity and apflow for automation. reachforge is the flagship product that demonstrates the aiperceivable ecosystem's value.
+- **apcore-cli**: CLI framework for module-driven command generation.
+- **reachforge**: The user-facing content engine that leverages apcore for module registration, apcore-mcp for AI agent integration, and apcore-cli for CLI generation. reachforge is the flagship product that demonstrates the aiperceivable ecosystem's value.
 
 ### Strategy Phases
 1. **Validate** (v0.2): Prove the pipeline works end-to-end with real publishing to Dev.to + X.
-2. **Expand** (v0.3-0.4): Add platforms (Hashnode, GitHub, LinkedIn), improve AI quality, add media support.
+2. **Expand** (v0.3-0.4): Add platforms (Hashnode, GitHub, Ghost, WordPress, Telegraph, Write.as, Reddit), improve AI quality, add media support, series management, and article update capability.
 3. **Automate** (v0.5+): Watcher daemon, MCP-driven agentic workflows, CI/CD integration.
 4. **Distribute** (v1.0): VS Code extension, desktop app, potential SaaS offering.
 
@@ -161,8 +159,8 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 | **Extensibility**        | apcore module system + MCP means AI agents can operate the pipeline  |
 
 ### Moat Analysis (Honest Assessment)
-- **Weak moat**: The six-stage pipeline and CLI wrapper are straightforward to replicate. AI adaptation prompts can be copied.
-- **Medium moat**: Integration with apcore/apflow ecosystem creates switching costs for users invested in aiperceivable. MCP server support creates value for AI agent users.
+- **Weak moat**: The three-stage pipeline and CLI wrapper are straightforward to replicate. AI adaptation prompts can be copied.
+- **Medium moat**: Integration with apcore ecosystem (apcore-js, apcore-mcp, apcore-cli) creates switching costs for users invested in aiperceivable. MCP server support creates value for AI agent users.
 - **Potential moat**: If reachforge accumulates platform-specific prompt tuning, publishing heuristics, and a library of successful adaptation patterns, these become a knowledge moat. Community contributions to provider plugins would also strengthen defensibility.
 - **Honest conclusion**: reachforge's moat is currently thin. The primary defense is execution speed and developer experience quality, not technological barriers.
 
@@ -171,7 +169,7 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 ## 8. User Stories & Use Cases
 
 ### US-001: First-Time Pipeline Run
-> As Alex, I want to drop a markdown file into `01_inbox`, run three commands (`draft`, `adapt`, `publish`), and see my content live on Dev.to and X, so that I can validate the tool works end-to-end in under 10 minutes.
+> As Alex, I want to run `reach go` with a prompt, or use `draft`, `adapt`, and `publish` commands, and see my content live on Dev.to and X, so that I can validate the tool works end-to-end in under 10 minutes.
 
 ### US-002: Scheduled Multi-Platform Publish
 > As Mei, I want to schedule an adapted article for next Tuesday and have reachforge automatically publish to all configured platforms on that date, so that I do not need to remember to publish manually.
@@ -198,7 +196,7 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 ### P0 --- Must Have for MVP (v0.2)
 
 #### FEAT-001: File-Based Pipeline Core
-- **Description**: Six-directory state machine (`01_inbox` through `06_sent`). Directories are auto-created. Folder names are unique IDs. Metadata stored in `meta.yaml`.
+- **Description**: Three-directory state machine (`01_drafts → 02_adapted → 03_published`). Directories are auto-created. Metadata stored in `meta.yaml` at the project root.
 - **Status**: Implemented.
 - **Acceptance Criteria**:
   - Running any command auto-initializes the directory structure.
@@ -209,7 +207,7 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 - **Description**: Visual overview of pipeline state --- item counts per stage, items due for publishing today.
 - **Status**: Implemented (basic version).
 - **Acceptance Criteria**:
-  - Output shows all 6 stages with item counts.
+  - Output shows all 3 stages with item counts.
   - Items due today are highlighted.
   - Runs in under 500ms for pipelines with up to 100 items.
 
@@ -222,27 +220,27 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
   - Rollback is possible (move items backward in pipeline).
 
 #### FEAT-004: AI Draft Generator (`draft`)
-- **Description**: Reads raw material from `01_inbox`, calls Gemini to generate a long-form article, saves to `02_drafts`.
+- **Description**: Accepts a prompt, file, or directory as input, calls an LLM (Gemini, Claude, or Codex) to generate a long-form article, saves to `01_drafts`.
 - **Status**: Implemented.
 - **Acceptance Criteria**:
-  - Supports both file and directory inputs in `01_inbox`.
-  - Generated draft is saved as `draft.md` with accompanying `meta.yaml`.
+  - Supports prompt string, file, and directory inputs.
+  - Generated draft is saved as `{article}.md` in `01_drafts/` with metadata tracked in `meta.yaml`.
   - Error handling for missing API key, empty input, API failures.
 
 #### FEAT-005: AI Platform Adapter (`adapt`)
-- **Description**: Reads master draft from `03_master`, generates platform-specific versions for X, WeChat, and Zhihu. Saves to `04_adapted/[article]/platform_versions/`.
-- **Status**: Implemented (basic prompts).
+- **Description**: Reads draft from `01_drafts`, generates platform-specific versions. Saves to `02_adapted/{article}.{platform}.md`. Adapt is additive: running for a new platform does not remove existing adaptations.
+- **Status**: Implemented.
 - **Acceptance Criteria**:
   - Generates distinct, platform-appropriate content for each target.
   - X output is thread-formatted (under 280 chars per tweet).
-  - Platform list is configurable via `meta.yaml` or CLI flags.
+  - Platform list is configurable via `meta.yaml` or CLI flags (`-p`).
   - Existing adaptations are not overwritten without `--force` flag.
 
 #### FEAT-006: Native Provider System (Dev.to)
 - **Description**: Direct API integration to publish articles to Dev.to using API key authentication.
 - **Status**: Not implemented (currently mock).
 - **Acceptance Criteria**:
-  - User configures Dev.to API key via `.env` or `credentials.yaml`.
+  - User configures Dev.to API key via `config.yaml` or environment variables.
   - `publish` command sends adapted content to Dev.to API.
   - Response includes the live URL, stored in `receipt.yaml`.
   - Handles API errors gracefully (rate limits, auth failures, validation errors).
@@ -252,19 +250,32 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 - **Description**: Integration with Postiz Cloud API to publish to X (Twitter), bypassing OAuth complexity.
 - **Status**: Not implemented (currently mock).
 - **Acceptance Criteria**:
-  - User configures Postiz API key via `.env` or `credentials.yaml`.
+  - User configures Postiz API key via `config.yaml` or environment variables.
   - `publish` command sends adapted X thread content to Postiz.
   - Response includes the live X post URL, stored in `receipt.yaml`.
   - Handles Postiz API errors and rate limits.
 
 ### P1 --- Important, Can Ship Without
 
-#### FEAT-006b: Native Provider System (Hashnode, GitHub)
-- **Description**: Extend native provider system to support Hashnode Articles API and GitHub Discussions/README publishing.
+#### FEAT-006b: Native Provider System (Hashnode, GitHub, and Beyond)
+- **Description**: Extend native provider system to support Hashnode Articles API, GitHub Discussions/README publishing, and additional platforms including Ghost, WordPress, Telegraph, Write.as, and Reddit.
 - **Acceptance Criteria**:
   - Hashnode: publish articles via GraphQL API with API key auth.
   - GitHub: create discussions or update repository files via GitHub API.
+  - Additional providers follow the same plugin interface.
   - Provider selection is configurable per-article in `meta.yaml`.
+
+#### FEAT-016: Series Management
+- **Description**: Group related articles into named series. Series metadata is tracked per-platform and passed to platform APIs that support series/collections (e.g., Dev.to series).
+- **Acceptance Criteria**:
+  - Articles can be assigned to a series via CLI flag or metadata.
+  - Series information is included when publishing to platforms that support it.
+
+#### FEAT-017: Article Update Capability
+- **Description**: Re-publish updated content to platforms where the article was previously published, using stored platform-specific IDs from prior publish receipts.
+- **Acceptance Criteria**:
+  - `reach publish` detects previously published articles and issues an update (PUT/PATCH) instead of a create (POST).
+  - Platform-specific article IDs are stored in `meta.yaml` after initial publish.
 
 #### FEAT-008: Media Asset Manager
 - **Description**: Two-stage upload pipeline for images and media files. Stage 1: collect media references in content. Stage 2: upload to platform-specific CDNs and replace URLs.
@@ -275,7 +286,7 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
   - Caches upload results in `.upload_cache.yaml` to avoid re-uploads.
 
 #### FEAT-009: Watcher Mode (`watch`)
-- **Description**: Background daemon that periodically checks `05_scheduled` for due items and auto-publishes them.
+- **Description**: Background daemon that periodically checks `02_adapted` for scheduled, due items and auto-publishes them.
 - **Status**: Implemented (basic interval-based check).
 - **Acceptance Criteria**:
   - Configurable check interval (default: 60 minutes).
@@ -308,7 +319,7 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
   - Compatible with Claude Desktop and other MCP clients.
 
 #### FEAT-013: Analytics & Receipts Dashboard
-- **Description**: Aggregate `receipt.yaml` data from `06_sent` to show publishing history, success rates, and platform-level metrics.
+- **Description**: Aggregate publishing data from `03_published` to show publishing history, success rates, and platform-level metrics.
 - **Acceptance Criteria**:
   - `reach analytics` command shows total publishes by platform, success/failure rates.
   - Supports date range filtering.
@@ -339,7 +350,7 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 - **NFR-004**: Compiled binary size must remain under 50MB.
 
 ### Security
-- **NFR-005**: API keys (Gemini, Dev.to, Postiz) must never be committed to version control. Keys are stored in `.env` (gitignored) or `credentials.yaml` (gitignored).
+- **NFR-005**: API keys (Gemini, Dev.to, Postiz) must never be committed to version control. Keys are stored in `config.yaml` (global `~/.reach/config.yaml` or workspace `.reach/config.yaml`).
 - **NFR-006**: No telemetry or data collection. All content remains local to the user's filesystem.
 - **NFR-007**: MCP server must validate tool inputs via Zod schemas to prevent injection.
 
@@ -349,7 +360,7 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 - **NFR-010**: MCP server must be compatible with the MCP specification for stdio and SSE transports.
 
 ### Reliability
-- **NFR-011**: Publishing failures must not cause data loss. Failed items remain in `05_scheduled` with error details appended to `meta.yaml`.
+- **NFR-011**: Publishing failures must not cause data loss. Failed items remain in `02_adapted` with error details appended to `meta.yaml`.
 - **NFR-012**: All file operations must be idempotent. Re-running a command on already-processed content must not create duplicates.
 
 ---
@@ -360,12 +371,12 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 
 | Metric                                  | Target                  | Measurement Method                      |
 |-----------------------------------------|-------------------------|-----------------------------------------|
-| End-to-end pipeline completion rate     | >= 90%                  | Items that reach `06_sent` / items entering `01_inbox` |
+| End-to-end pipeline completion rate     | >= 90%                  | Items that reach `03_published` / items entering `01_drafts` |
 | Time from idea to multi-platform publish| < 10 minutes            | Manual timing of full pipeline run      |
 | Dev.to publish success rate             | >= 95%                  | `receipt.yaml` success entries          |
 | X publish success rate (via Postiz)     | >= 90%                  | `receipt.yaml` success entries          |
 | User can complete first run without docs| Yes                     | Usability test with 3 developers       |
-| Total active pipelines (dogfooding)     | >= 20 articles          | Count of items in `06_sent`             |
+| Total active pipelines (dogfooding)     | >= 20 articles          | Count of items in `03_published`        |
 
 ### Growth Metrics (v0.3+)
 
@@ -381,7 +392,7 @@ reachforge does not compete head-to-head with Buffer or Hootsuite. It occupies a
 ## 12. "What If We Don't Build This?" Analysis
 
 ### If reachforge is not built:
-1. **The aiperceivable ecosystem lacks a flagship user-facing product.** apcore and apflow are infrastructure; without reachforge, there is no demonstration of their value to end users.
+1. **The aiperceivable ecosystem lacks a flagship user-facing product.** apcore-js, apcore-mcp, and apcore-cli are infrastructure; without reachforge, there is no demonstration of their value to end users.
 2. **Developers continue with manual cross-posting.** The distribution tax persists. This is the status quo and is survivable --- people have lived with it for years.
 3. **The MCP/agentic content workflow opportunity goes unexplored.** No existing tool provides MCP-based content pipeline control. This is a genuine first-mover opportunity in the AI agent ecosystem, but the window is time-limited as the MCP ecosystem matures.
 4. **Competitors may fill the gap.** Postiz is open source and actively developed. If they add AI generation and adaptation features, the reachforge value proposition narrows significantly.

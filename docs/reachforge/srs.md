@@ -1,4 +1,4 @@
-> **DEPRECATED**: This document describes the original 6-stage pipeline architecture. The pipeline has been simplified to 3 stages (`01_drafts → 02_adapted → 03_published`). See [Pipeline Simplification Tech Design](../pipeline-simplification/tech-design.md) for the current architecture.
+> **Note**: This document describes the original 6-stage pipeline architecture. The current implementation uses a simplified 3-stage pipeline (`01_drafts → 02_adapted → 03_published`). Stage references such as `01_inbox`, `02_drafts`, `03_master`, `04_adapted`, `05_scheduled`, and `06_sent` correspond to the original design; the current architecture consolidates these into three stages with scheduling handled via metadata.
 
 # Software Requirements Specification: reachforge
 
@@ -77,7 +77,7 @@ reachforge is a component within the **aiperceivable** ecosystem:
 
 - **apcore-js**: Provides module registration, lifecycle management, and the foundational runtime. reachforge registers all pipeline operations as apcore modules.
 - **apcore-mcp**: Provides MCP server infrastructure. reachforge uses this to expose pipeline operations as AI-agent-callable tools.
-- **apflow** (future): Workflow orchestration that may automate multi-step reachforge pipelines.
+- **apcore-cli**: CLI framework that auto-generates commands from apcore module registrations.
 
 reachforge operates entirely on the local filesystem. It requires no database, no cloud account (beyond API keys for target platforms and Gemini), and no persistent server process (except in watcher/MCP modes).
 

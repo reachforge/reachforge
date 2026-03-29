@@ -1,0 +1,27 @@
+<svg width="256" height="256" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- The Folder / Forge (State & Files) -->
+  <!-- Shifted left to make room for the 6-stage ripple -->
+  <path d="M1 5.5C1 4.67157 1.67157 4 2.5 4H6.5L8.5 6H13.5C14.3284 6 15 6.67157 15 7.5V16.5C15 17.3284 14.3284 18 13.5 18H2.5C1.67157 18 1 17.3284 1 16.5V5.5Z" fill="#2D3748" />
+  
+  <!-- The AI Core (Blinking Cursor inside the folder) -->
+  <rect x="3.5" y="10" width="3.5" height="1.2" rx="0.5" fill="#63B3ED">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite" />
+  </rect>
+
+  <!-- The 6-Stage Ripple (Representing Reach & 6-step pipeline) -->
+  <!-- Arcs start from the edge of the folder and radiate outward -->
+  <g stroke="#63B3ED" stroke-width="1.2" stroke-linecap="round">
+    <!-- Stage 1 (Inbox) -->
+    <path d="M17.5 12C17.5 11.2 17.2 10.5 16.8 9.8" opacity="1.0" />
+    <!-- Stage 2 (Draft) -->
+    <path d="M18.8 13C18.8 11.5 18.3 10.2 17.6 9" opacity="0.85" />
+    <!-- Stage 3 (Adapted) -->
+    <path d="M20.1 14C20.1 11.8 19.4 9.9 18.4 8.2" opacity="0.7" />
+    <!-- Stage 4 (Scheduled) -->
+    <path d="M21.4 15C21.4 12.1 20.5 9.6 19.2 7.4" opacity="0.55" />
+    <!-- Stage 5 (Published) -->
+    <path d="M22.7 16C22.7 12.4 21.6 9.3 20 6.6" opacity="0.4" />
+    <!-- Stage 6 (Influence/Reach) -->
+    <path d="M24 17C24 12.7 22.7 9 20.8 5.8" opacity="0.25" />
+  </g>
+</svg>
