@@ -6,7 +6,7 @@ import * as readline from 'readline';
 import chalk from 'chalk';
 import { APCore } from 'apcore-js';
 import { serve } from 'apcore-mcp';
-import { GroupedModuleGroup } from 'apcore-cli';
+import { GroupedModuleGroup, setVerboseHelp, setDocsUrl, configureManHelp } from 'apcore-cli';
 
 import { PipelineEngine } from './core/pipeline.js';
 import { ConfigManager } from './core/config.js';
@@ -375,10 +375,13 @@ apcore.register('reach.mcp', {
 // Auto-generate CLI commands from the apcore registry using GroupedModuleGroup.
 // This eliminates manual .command().option().action() duplication.
 
+const REACH_VERSION = '0.2.0';
+const REACH_DESCRIPTION = 'ReachForge: The Social Influence Engine';
+
 program
   .name('reach')
-  .description('ReachForge: The Social Influence Engine')
-  .version('ReachForge 0.2.0')
+  .description(REACH_DESCRIPTION)
+  .version(`ReachForge ${REACH_VERSION}`)
   .option('-w, --workspace <path>', 'Workspace root directory')
   .option('-P, --project <name>', 'Project name within workspace')
   .option('--json', 'Output in JSON format')
@@ -395,6 +398,10 @@ program.addHelpText('beforeAll', () => {
   }
   return '';
 });
+
+// --help --man: generate full roff man page (provided by apcore-cli)
+// TODO: add docsUrl when docs site is deployed
+configureManHelp(program, 'reach', REACH_VERSION, REACH_DESCRIPTION);
 
 // Adapter: bridge apcore-js Registry/Executor to apcore-cli's expected interface.
 // apcore-js 0.14 uses list()/get(), apcore-cli 0.3 expects listModules()/getModule().
@@ -419,6 +426,13 @@ const executorAdapter: CliExecutor = {
     return apcore.executor.call(moduleId, input) as Promise<unknown>;
   },
 };
+
+// Pre-parse --verbose so apcore-cli hides/shows built-in options accordingly.
+setVerboseHelp(process.argv.includes('--verbose'));
+// setDocsUrl controls the docs link in per-command help footers (read by buildModuleCommand).
+// configureManHelp above receives the same URL separately for the man page SEE ALSO section.
+// TODO: enable when docs site is deployed
+// setDocsUrl('https://reachforge.dev/docs');
 
 // Auto-wire module commands from apcore registry
 const moduleGroup = new GroupedModuleGroup(registryAdapter, executorAdapter);

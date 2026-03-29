@@ -6,7 +6,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "mkdir -p bin && bun build ./src/index.ts --compile --outfile bin/reach",
+    "build": "mkdir -p bin && bun build ./src/index.ts --compile --outfile bin/reach && bun run src/index.ts --help --man > bin/reach.1",
     "build:macos": "bun build ./src/index.ts --compile --target bun-darwin-arm64 --outfile bin/reach-macos",
     "build:win": "bun build ./src/index.ts --compile --target bun-windows-x64 --outfile bin/reach.exe",
     "lint": "tsc --noEmit",
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "apcore-cli": ">=0.3.1",
+    "apcore-cli": ">=0.4.0",
     "apcore-js": ">=0.14.0",
     "apcore-mcp": ">=0.11.0",
     "apcore-toolkit": ">=0.4.0",
@@ -37,11 +37,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/aiperceivable/reachforge.git"
+    "url": "https://github.com/reachforge/reachforge.git"
   },
-  "homepage": "https://aiperceivable.com",
+  "homepage": "https://github.com/reachforge",
   "bugs": {
-    "url": "https://github.com/aiperceivable/reachforge/issues"
+    "url": "https://github.com/reachforge/reachforge/issues"
   },
   "apdev": {
     "base_package": "reachforge"
