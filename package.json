@@ -16,7 +16,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "apcore-cli": ">=0.4.0",
-    "apcore-js": ">=0.14.0",
+    "apcore-js": ">=0.14.1",
     "apcore-mcp": ">=0.11.0",
     "apcore-toolkit": ">=0.4.0",
     "chalk": "^5.3.0",
