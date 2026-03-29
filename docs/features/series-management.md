@@ -16,25 +16,25 @@ Series management organizes multiple articles into a cohesive campaign through a
 ### Workflow
 
 ```
-series init "topic"                    # Scaffold series.yaml template
+series init --topic "topic"             # Scaffold series.yaml template
     ↓
-series outline <name>                  # AI generates master outline (series overview + article titles/synopses)
+series outline --name <name>           # AI generates master outline (series overview + article titles/synopses)
     ↓
 User reviews & edits series.yaml       # Manual review
     ↓
-series approve <name> --outline        # Gate 1: Lock outline
+series approve --name <name> --outline # Gate 1: Lock outline
     ↓
-series detail <name>                   # AI generates per-article detailed outlines
+series detail --name <name>            # AI generates per-article detailed outlines
     ↓
 User reviews & edits each outline      # Manual review
     ↓
-series approve <name> --detail         # Gate 2: Lock outlines
+series approve --name <name> --detail  # Gate 2: Lock outlines
     ↓
-series draft <name> [--all]            # Generate content based on approved outlines
+series draft --name <name> [--all]     # Generate content based on approved outlines
     ↓
-series adapt <name>                    # Batch adapt for platforms
+series adapt --name <name>             # Batch adapt for platforms
     ↓
-series schedule <name>                 # Auto-calculate publish dates
+series schedule --name <name>          # Auto-calculate publish dates
     ↓
 Normal pipeline: reach publish         # Publish as usual
 ```
@@ -79,7 +79,7 @@ Each command checks its prerequisite status. Failure message:
 ```
 ❌ Cannot run "series detail" — outline has not been approved yet.
    Review the outline in series/apcore-deep-dive.yaml, then run:
-   reach series approve apcore-deep-dive --outline
+   reach series approve --name apcore-deep-dive --outline
 ```
 
 ---
@@ -195,12 +195,12 @@ project/
 
 ## 4. Commands (Phase 1)
 
-### `reach series init <topic>`
+### `reach series init --topic <topic>`
 
 Scaffold a new series definition file. No LLM involved.
 
 ```bash
-reach series init "deep dive into apcore"
+reach series init --topic "deep dive into apcore"
 # Creates: series/deep-dive-into-apcore.yaml with status: planned
 ```
 
@@ -208,12 +208,12 @@ The generated file has placeholder fields for the user to fill in (or leave for 
 
 ---
 
-### `reach series outline <name>`
+### `reach series outline --name <name>`
 
 AI generates master outline + article titles/synopses. Writes to series.yaml.
 
 ```bash
-reach series outline apcore-deep-dive
+reach series outline --name apcore-deep-dive
 ```
 
 **Prerequisite:** `status = planned`
@@ -223,13 +223,13 @@ User reviews the generated outline in series.yaml, edits as needed.
 
 ---
 
-### `reach series approve <name> --outline|--detail`
+### `reach series approve --name <name> --outline|--detail`
 
 Approve the current stage.
 
 ```bash
-reach series approve apcore-deep-dive --outline   # Gate 1
-reach series approve apcore-deep-dive --detail     # Gate 2
+reach series approve --name apcore-deep-dive --outline   # Gate 1
+reach series approve --name apcore-deep-dive --detail     # Gate 2
 ```
 
 **`--outline`:** Requires `status = outlined`. Sets `status = outline_approved`, records `outline_approved_at`.
@@ -237,12 +237,12 @@ reach series approve apcore-deep-dive --detail     # Gate 2
 
 ---
 
-### `reach series detail <name>`
+### `reach series detail --name <name>`
 
 AI generates per-article detailed outlines based on the approved master outline.
 
 ```bash
-reach series detail apcore-deep-dive
+reach series detail --name apcore-deep-dive
 ```
 
 **Prerequisite:** `status = outline_approved`
@@ -252,13 +252,13 @@ User reviews each article's outline, edits as needed.
 
 ---
 
-### `reach series draft <name> [--all]`
+### `reach series draft --name <name> [--all]`
 
 Generate article content based on approved outlines.
 
 ```bash
-reach series draft apcore-deep-dive        # Draft next unwritten article
-reach series draft apcore-deep-dive --all  # Draft all unwritten articles sequentially
+reach series draft --name apcore-deep-dive        # Draft next unwritten article
+reach series draft --name apcore-deep-dive --all  # Draft all unwritten articles sequentially
 ```
 
 **Prerequisite:** `status = detail_approved` (or `drafting` for subsequent articles)
@@ -283,25 +283,25 @@ Sets `status = drafting` on first draft, `status = completed` when all articles 
 
 ---
 
-### `reach series adapt <name> [-p platforms]`
+### `reach series adapt --name <name> [--platforms <list>]`
 
 Batch-adapt all drafted articles.
 
 ```bash
-reach series adapt apcore-deep-dive
-reach series adapt apcore-deep-dive -p devto,hashnode
+reach series adapt --name apcore-deep-dive
+reach series adapt --name apcore-deep-dive --platforms devto,hashnode
 ```
 
 Iterates articles in order. Calls `adaptCommand(engine, slug, { platforms })` for each article in `01_drafts/` not yet in `02_adapted/`. Platform resolution: CLI flag > series-level `platforms` > project.yaml > auto-detect.
 
 ---
 
-### `reach series schedule <name> [--dry-run]`
+### `reach series schedule --name <name> [--dryRun]`
 
 Auto-calculate and apply schedule dates.
 
 ```bash
-reach series schedule apcore-deep-dive
+reach series schedule --name apcore-deep-dive
 # apcore-intro:         2026-04-01 (start)
 # apcore-architecture:  2026-04-08 (start + 7d)
 # apcore-integration:   2026-04-15 (start + 14d)
@@ -314,16 +314,16 @@ Rules:
 - Only schedules articles in `02_adapted/` (not yet scheduled/published)
 - Skips already-published articles
 - Per-article `schedule` field in series.yaml overrides calculated date
-- `--dry-run` previews without applying
+- `--dryRun` previews without applying
 
 ---
 
-### `reach series status <name>`
+### `reach series status --name <name>`
 
 Series progress dashboard.
 
 ```bash
-reach series status apcore-deep-dive
+reach series status --name apcore-deep-dive
 
 # Series: Deep Dive into APCore (5 articles)
 # Status: detail_approved
@@ -379,9 +379,9 @@ Series is purely an organizational layer. Every operation maps to existing comma
 
 | Series Command | Underlying Pipeline Commands |
 |----------------|------------------------------|
-| `series draft` | `reach draft <prompt> --name <slug>` (with context-enriched prompt) |
-| `series adapt` | `reach adapt <slug>` for each article |
-| `series schedule` | `reach schedule <slug> <date>` for each article |
+| `series draft` | `reach draft --source <prompt> --name <slug>` (with context-enriched prompt) |
+| `series adapt` | `reach adapt --article <slug>` for each article |
+| `series schedule` | `reach schedule --article <slug> --date <date>` for each article |
 | `series status` | `reach status` data + series.yaml ordering |
 
 Individual articles remain fully manageable with standard pipeline commands.

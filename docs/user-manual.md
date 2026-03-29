@@ -65,37 +65,37 @@ bun run build:win      # Windows x64
 
 ```bash
 # 1. Create a workspace
-reach init ~/my-workspace
+reach init --path ~/my-workspace
 cd ~/my-workspace
 
 # 2. Create a project (one project can hold multiple articles)
-reach new product-launch
+reach new --name product-launch
 cd product-launch
 
 # 3. Generate drafts directly from prompts, files, or directories
-reach draft "Why AI pair programming changes everything"
-reach draft ./notes/ai-pairing.md --name ai-pairing
-reach draft ./research-folder/
+reach draft --source "Why AI pair programming changes everything"
+reach draft --source ./notes/ai-pairing.md --name ai-pairing
+reach draft --source ./research-folder/
 
 # 4. Refine interactively
-reach refine ai-pairing -f "make the intro more concise"
+reach refine --article ai-pairing --feedback "make the intro more concise"
 
 # 5. Adapt for different platforms per article
-reach adapt ai-pairing --platforms x,devto
+reach adapt --article ai-pairing --platforms x,devto
 
 # 6. Schedule independently
-reach schedule ai-pairing 2026-04-01T09:00
+reach schedule --article ai-pairing --date 2026-04-01T09:00
 
 # 7. Publish all due articles
 reach publish
 
 # 8. Check status
 reach status                    # Dashboard: all articles across stages
-reach status ai-pairing         # Detail view for one article
+reach status --article ai-pairing         # Detail view for one article
 
 # Or do it all in one shot:
-reach go "write about apcore framework"                # Full auto: draft -> adapt -> publish
-reach go "write about apcore" --name teaser            # Explicit article name
+reach go --prompt "write about apcore framework"                # Full auto: draft -> adapt -> publish
+reach go --prompt "write about apcore" --name teaser            # Explicit article name
 ```
 
 ---
@@ -164,39 +164,39 @@ Assets are stored once and never duplicated when articles move between stages. D
 
 ---
 
-### `reach init [path]`
+### `reach init [--path <path>]`
 
 Initialize a new workspace.
 
 ```bash
 reach init                    # Interactive -- defaults to ~/reach-workspace
-reach init ~/my-workspace     # Explicit path
+reach init --path ~/my-workspace     # Explicit path
 ```
 
 Creates the `.reach/config.yaml` directory structure. Edit `config.yaml` to add API keys for the platforms you want to publish to.
 
 ---
 
-### `reach new <project-name>`
+### `reach new --name <project-name>`
 
 Create a new project in the current workspace.
 
 ```bash
-reach new my-blog
+reach new --name my-blog
 ```
 
 Scaffolds the three stage directories (`01_drafts`, `02_adapted`, `03_published`), a `project.yaml`, and the `assets/` library with `images/`, `videos/`, and `audio/` subdirectories.
 
 ---
 
-### `reach status [article]`
+### `reach status [--article <article>]`
 
 Show pipeline dashboard or detail for a specific article.
 
 ```bash
-reach status                 # Dashboard: all articles across stages
-reach status teaser          # Detail view for one article (status, stage, platforms, schedule)
-reach status --all           # All projects in workspace
+reach status                        # Dashboard: all articles across stages
+reach status --article teaser       # Detail view for one article (status, stage, platforms, schedule)
+reach status --all                  # All projects in workspace
 ```
 
 Without an article name, shows per-stage item counts and articles due today. With an article name, shows that article's status, current stage, platform results, and schedule.
@@ -213,22 +213,23 @@ reach workspace
 
 ---
 
-### `reach draft <input>`
+### `reach draft --source <input>`
 
 Generate an AI draft from a prompt string, file path, or directory.
 
 ```bash
-reach draft "Why AI pair programming changes everything"    # From prompt string
-reach draft ./notes/my-idea.md                              # From file
-reach draft ./research-folder/                              # From directory
-reach draft "AI tips" --name ai-tips                        # Explicit article name
+reach draft --source "Why AI pair programming changes everything"    # From prompt string
+reach draft --source ./notes/my-idea.md                              # From file
+reach draft --source ./research-folder/                              # From directory
+reach draft --source "AI tips" --name ai-tips                        # Explicit article name
 ```
 
 | Option | Description |
 |--------|-------------|
+| `--source <input>` | Prompt string, file path, or directory path |
 | `--name <slug>` | Explicit article name (default: auto-generated slug from input) |
 
-- **Input:** A prompt string, a file path, or a directory path.
+- **Input:** A prompt string, a file path, or a directory path (provided via `--source`).
   - If directory: reads `main.md` > `index.md` > first `.md` > first `.txt`.
 - **Output:** `01_drafts/{article}.md` (flat file). Metadata updated in project-root `meta.yaml`.
 - **LLM adapter:** Controlled by `REACHFORGE_DRAFT_ADAPTER` or `REACHFORGE_LLM_ADAPTER`.
@@ -266,18 +267,19 @@ reach asset list --subdir images    # Only images
 
 ---
 
-### `reach refine <article>`
+### `reach refine --article <article>`
 
 Interactively refine a draft article with AI feedback.
 
 ```bash
-reach refine my-idea                                    # Interactive multi-turn session
-reach refine my-idea -f "make the intro more concise"   # Single-turn, non-interactive
+reach refine --article my-idea                                    # Interactive multi-turn session
+reach refine --article my-idea --feedback "make the intro more concise"   # Single-turn, non-interactive
 ```
 
 | Option | Description |
 |--------|-------------|
-| `-f, --feedback <text>` | Non-interactive single refinement turn -- applies the feedback, saves, and exits |
+| `--article <name>` | Article to refine |
+| `--feedback <text>` | Non-interactive single refinement turn -- applies the feedback, saves, and exits |
 
 **Interactive mode** opens a session with these commands:
 
@@ -293,51 +295,54 @@ reach refine my-idea -f "make the intro more concise"   # Single-turn, non-inter
 
 - Sessions are persisted in `.reach/sessions/` and automatically resumed.
 - Works on articles in `01_drafts` only.
-- `--feedback` mode is useful for scripting and piping (e.g., `reach refine my-idea -f "fix typos" --json`).
+- `--feedback` mode is useful for scripting and piping (e.g., `reach refine --article my-idea --feedback "fix typos" --json`).
 
 ---
 
-### `reach adapt <article>`
+### `reach adapt --article <article>`
 
 Generate platform-specific versions from a draft article.
 
 ```bash
-reach adapt my-idea                              # Default platforms
-reach adapt my-idea --platforms x,devto,hashnode  # Specific platforms
-reach adapt my-idea --force                       # Overwrite existing
+reach adapt --article my-idea                              # Default platforms
+reach adapt --article my-idea --platforms x,devto,hashnode  # Specific platforms
+reach adapt --article my-idea --force                       # Overwrite existing
 ```
 
 | Option | Description |
 |--------|-------------|
-| `-p, --platforms <list>` | Comma-separated platform names |
-| `-f, --force` | Overwrite existing platform versions |
+| `--article <name>` | Article to adapt |
+| `--platforms <list>` | Comma-separated platform names |
+| `--force` | Overwrite existing platform versions |
 
 - **Input:** `01_drafts/{article}.md`.
 - **Output:** `02_adapted/{article}.{platform}.md` per platform (e.g., `teaser.x.md`, `teaser.devto.md`).
 - **Default platforms:** `x`, `wechat`, `zhihu`.
 - Adapts all platforms in parallel.
-- **Additive:** running `reach adapt article -p devto` after a previous `reach adapt article -p x` adds devto without removing x. Platform metadata is merged, not overwritten.
+- **Additive:** running `reach adapt --article article --platforms devto` after a previous `reach adapt --article article --platforms x` adds devto without removing x. Platform metadata is merged, not overwritten.
 - If adaptation fails for some platforms, successfully adapted ones are still saved. Retry failed platforms by running adapt again.
 
 **Supported platforms:** `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`.
 
 ---
 
-### `reach schedule <article> [date]`
+### `reach schedule --article <article> [--date <date>]`
 
 Set an article's schedule date in metadata. Files remain in `02_adapted/`.
 
 ```bash
-reach schedule my-idea 2026-04-01           # Date only (publishes anytime on that day)
-reach schedule my-idea 2026-04-01T14:30      # Date + time (publishes after 14:30)
-reach schedule my-idea                       # Defaults to today (publish immediately on next `reach publish`)
-reach schedule my-idea --clear               # Unschedule (revert to adapted status)
-reach schedule my-idea 2026-04-01 --dry-run
+reach schedule --article my-idea --date 2026-04-01           # Date only (publishes anytime on that day)
+reach schedule --article my-idea --date 2026-04-01T14:30      # Date + time (publishes after 14:30)
+reach schedule --article my-idea                               # Defaults to today (publish immediately on next `reach publish`)
+reach schedule --article my-idea --clear                       # Unschedule (revert to adapted status)
+reach schedule --article my-idea --date 2026-04-01 --dryRun
 ```
 
 | Option | Description |
 |--------|-------------|
-| `-n, --dry-run` | Preview what would be scheduled |
+| `--article <name>` | Article to schedule |
+| `--date <date>` | Schedule date (defaults to today if omitted) |
+| `--dryRun` | Preview what would be scheduled |
 | `--clear` | Unschedule: revert status to `adapted` and remove the schedule date |
 
 - **Date formats:** `YYYY-MM-DD`, `YYYY-MM-DDTHH:MM`, or `YYYY-MM-DDTHH:MM:SS`. Defaults to today if omitted.
@@ -351,22 +356,23 @@ reach schedule my-idea 2026-04-01 --dry-run
 Publish all scheduled content that is due (schedule date <= now).
 
 ```bash
-reach publish                                # Publish all due scheduled articles
-reach publish my-article                     # Publish specific article (any adapted/scheduled)
-reach publish my-article --force             # Publish even if scheduled for a future date
-reach publish --dry-run
+reach publish                                        # Publish all due scheduled articles
+reach publish --article my-article                   # Publish specific article (any adapted/scheduled)
+reach publish --article my-article --force           # Publish even if scheduled for a future date
+reach publish --dryRun
 reach publish --draft
 ```
 
 | Option | Description |
 |--------|-------------|
+| `--article <name>` | Specific article to publish |
 | `--force` | Publish even if article is scheduled for a future date |
-| `-n, --dry-run` | Preview without publishing |
-| `-d, --draft` | Publish as draft (overrides `published` frontmatter field) |
+| `--dryRun` | Preview without publishing |
+| `--draft` | Publish as draft (overrides `published` frontmatter field) |
 
-**Batch mode** (`reach publish` without article): Finds articles with `status: scheduled` whose schedule time <= now.
+**Batch mode** (`reach publish` without `--article`): Finds articles with `status: scheduled` whose schedule time <= now.
 
-**Single-article mode** (`reach publish <article>`): Publishes the specified article directly. If the article is scheduled for a future date, requires `--force` to proceed.
+**Single-article mode** (`reach publish --article <article>`): Publishes the specified article directly. If the article is scheduled for a future date, requires `--force` to proceed.
 
 **Publishing pipeline:**
 
@@ -383,33 +389,34 @@ reach publish --draft
 
 ---
 
-### `reach publish <article>` / `reach publish <file>`
+### `reach publish --article <article>` / `reach publish --article <file>`
 
 Publish a specific article or an external file directly.
 
 ```bash
-reach publish my-idea                              # Publish a pipeline article
-reach publish ./external-post.md -p devto          # Publish external file to platform(s)
-reach publish ./external-post.md -p devto --track  # Import to pipeline first, then publish
+reach publish --article my-idea                              # Publish a pipeline article
+reach publish --article ./external-post.md --platforms devto          # Publish external file to platform(s)
+reach publish --article ./external-post.md --platforms devto --track  # Import to pipeline first, then publish
 ```
 
 | Option | Description |
 |--------|-------------|
-| `-p, --platforms <list>` | Comma-separated platform names |
+| `--article <name>` | Article name or external file path |
+| `--platforms <list>` | Comma-separated platform names |
 | `--track` | Import external file into `02_adapted/` and track through the pipeline |
-| `-n, --dry-run` | Preview without publishing |
-| `-d, --draft` | Publish as draft on supported platforms |
+| `--dryRun` | Preview without publishing |
+| `--draft` | Publish as draft on supported platforms |
 
 When using `--track` with an external file, the file is first imported into `02_adapted/`, then published through the normal pipeline and archived to `03_published/`.
 
 ---
 
-### `reach rollback <article>`
+### `reach rollback --article <article>`
 
 Move an article back one pipeline stage.
 
 ```bash
-reach rollback my-idea
+reach rollback --article my-idea
 ```
 
 Moves the article's files to the previous stage:
@@ -440,24 +447,25 @@ Aggregates publish results from `meta.yaml` for articles in `03_published/` and 
 
 ---
 
-### `reach go <prompt>`
+### `reach go --prompt <prompt>`
 
 Full auto pipeline: create content from a prompt, draft, adapt, and publish -- all in one command.
 
 ```bash
-reach go "write about apcore framework"                    # Immediate: full pipeline -> publish now
-reach go "write about apcore" --name teaser                # Explicit article name
-reach go "write about apcore framework" -s 2026-04-01      # Deferred: schedule for later
-reach go "compare Bun vs Node.js" --dry-run                # Full pipeline but skip actual publishing
-reach go "AI pair programming tips" --draft                 # Publish as draft on supported platforms
+reach go --prompt "write about apcore framework"                    # Immediate: full pipeline -> publish now
+reach go --prompt "write about apcore" --name teaser                # Explicit article name
+reach go --prompt "write about apcore framework" --schedule 2026-04-01      # Deferred: schedule for later
+reach go --prompt "compare Bun vs Node.js" --dryRun                # Full pipeline but skip actual publishing
+reach go --prompt "AI pair programming tips" --draft                 # Publish as draft on supported platforms
 ```
 
 | Option | Description |
 |--------|-------------|
+| `--prompt <text>` | Content prompt |
 | `--name <name>` | Explicit article name (default: auto-generated slug from prompt) |
-| `-s, --schedule <date>` | Schedule for a future date (YYYY-MM-DD) instead of publishing immediately |
-| `-n, --dry-run` | Run full pipeline but skip actual publishing |
-| `-d, --draft` | Publish as draft on supported platforms |
+| `--schedule <date>` | Schedule for a future date (YYYY-MM-DD) instead of publishing immediately |
+| `--dryRun` | Run full pipeline but skip actual publishing |
+| `--draft` | Publish as draft on supported platforms |
 
 If `--name` is omitted, a URL-safe slug is auto-generated from the prompt. If the slug already exists, `-2`, `-3` etc. is appended.
 
@@ -543,7 +551,7 @@ All configuration -- API keys, LLM settings, MCP auth -- lives in `config.yaml`.
 | Gemini API mode | `GEMINI_API_KEY` | Error: `LLMNotConfiguredError` |
 | MCP server auth | `MCP_AUTH_KEY` | MCP server runs without authentication |
 
-> **Important:** When a platform API key is missing, `reach publish` silently uses a mock provider -- the receipt shows "success" but no content is actually published. Always use `reach publish --dry-run` first to preview, and check `reach analytics` to verify real publishing results.
+> **Important:** When a platform API key is missing, `reach publish` silently uses a mock provider -- the receipt shows "success" but no content is actually published. Always use `reach publish --dryRun` first to preview, and check `reach analytics` to verify real publishing results.
 
 ### Workspace Configuration (`config.yaml`)
 
@@ -870,10 +878,10 @@ If a session becomes stale or the adapter changed, reachforge automatically arch
 
 ### Validation failures
 
-Use `--dry-run` to preview issues before publishing:
+Use `--dryRun` to preview issues before publishing:
 
 ```bash
-reach publish --dry-run
+reach publish --dryRun
 ```
 
 Common validation issues:

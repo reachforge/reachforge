@@ -78,9 +78,9 @@ reach platforms                   # Shows which platforms have API keys
 
 ```bash
 # Publish a markdown file directly
-reach publish ./my-article.md -p devto
-reach publish ./my-article.md -p devto,hashnode
-reach publish ./my-article.md -p devto --cover ./cover.png
+reach publish --article ./my-article.md --platforms devto
+reach publish --article ./my-article.md --platforms devto,hashnode
+reach publish --article ./my-article.md --platforms devto --cover ./cover.png
 ```
 
 That's it. Write markdown, publish to any platform. No project setup needed.
@@ -109,18 +109,18 @@ For AI-powered content generation, install an LLM CLI (Claude, Gemini, or Codex)
 
 ```bash
 # Create a workspace & project
-reach init ~/reach-workspace && cd ~/reach-workspace
-reach new my-project && cd my-project
+reach init --path ~/reach-workspace && cd ~/reach-workspace
+reach new --name my-project && cd my-project
 
 # AI pipeline: draft → adapt → publish
-reach draft "write about API standardization"    # AI generates draft
-reach adapt my-article -p devto,hashnode         # AI adapts for platforms
-reach publish my-article                         # Publish to all adapted platforms
-reach update my-article                          # Update after edits
+reach draft --source "write about API standardization"       # AI generates draft
+reach adapt --article my-article --platforms devto,hashnode   # AI adapts for platforms
+reach publish --article my-article                           # Publish to all adapted platforms
+reach update --article my-article                            # Update after edits
 
 # Or one-shot
-reach go "write about apcore framework"          # Draft → adapt → publish in one command
-reach go "write about apcore" -s 2026-04-01      # With scheduled date
+reach go --prompt "write about apcore framework"             # Draft → adapt → publish
+reach go --prompt "write about apcore" --schedule 2026-04-01  # With scheduled date
 ```
 
 ### Series Management
@@ -128,15 +128,15 @@ reach go "write about apcore" -s 2026-04-01      # With scheduled date
 Multi-article campaigns with gate-controlled quality:
 
 ```bash
-reach series init "deep dive into apcore"           # Scaffold series
-reach series outline apcore-deep-dive                # AI-generate master outline
-reach series approve apcore-deep-dive --outline      # Approve outline
-reach series detail apcore-deep-dive                 # AI-generate per-article outlines
-reach series approve apcore-deep-dive --detail       # Approve outlines
-reach series draft apcore-deep-dive --all            # Draft all articles
-reach series adapt apcore-deep-dive                  # Batch adapt
-reach series schedule apcore-deep-dive               # Auto-schedule
-reach series status apcore-deep-dive                 # Progress dashboard
+reach series init --topic "deep dive into apcore"              # Scaffold series
+reach series outline --name apcore-deep-dive                   # AI-generate master outline
+reach series approve --name apcore-deep-dive --outline         # Approve outline
+reach series detail --name apcore-deep-dive                    # AI-generate per-article outlines
+reach series approve --name apcore-deep-dive --detail          # Approve outlines
+reach series draft --name apcore-deep-dive --all               # Draft all articles
+reach series adapt --name apcore-deep-dive --platforms devto    # Batch adapt
+reach series schedule --name apcore-deep-dive                  # Auto-schedule
+reach series status --name apcore-deep-dive                    # Progress dashboard
 ```
 
 ## Development

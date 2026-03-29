@@ -13,21 +13,21 @@
 
 ## Summary
 
-New command `reach update <article>` that pushes content changes to already-published platforms using their update APIs. Reads updated content from `02_adapted/` (preferred) or `03_published/`, resolves stored `article_id` from meta.yaml, and calls each provider's `update()` method. Includes MCP tool integration, CLI registration, and help text.
+New command `reach update --article <article>` that pushes content changes to already-published platforms using their update APIs. Reads updated content from `02_adapted/` (preferred) or `03_published/`, resolves stored `article_id` from meta.yaml, and calls each provider's `update()` method. Includes MCP tool integration, CLI registration, and help text.
 
 ---
 
 ## 1. CLI Signature
 
 ```
-reach update <article> [-p, --platforms <list>] [-n, --dry-run] [--json] [--force] [--cover <path>]
+reach update --article <article> [--platforms <list>] [--dryRun] [--json] [--force] [--cover <path>]
 ```
 
-| Argument/Option | Type | Required | Default | Description |
-|-----------------|------|----------|---------|-------------|
-| `<article>` | string | Yes | — | Pipeline article name (slug from meta.yaml) |
-| `-p, --platforms` | string | No | All published platforms | Comma-separated platform filter |
-| `-n, --dry-run` | boolean | No | false | Preview without calling APIs |
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `--article` | string | Yes | — | Pipeline article name (slug from meta.yaml) |
+| `--platforms` | string | No | All published platforms | Comma-separated platform filter |
+| `--dryRun` | boolean | No | false | Preview without calling APIs |
 | `--json` | boolean | No | false | JSON output envelope |
 | `--force` | boolean | No | false | Skip platforms missing `article_id` instead of erroring |
 | `--cover` | string | No | — | Cover image path or URL |
@@ -79,7 +79,7 @@ export async function updateCommand(
   if (articleMeta.status !== 'published') {
     throw new ReachforgeError(
       `Article "${article}" has not been published yet (status: ${articleMeta.status})`,
-      'Publish first with: reach publish ' + article,
+      'Publish first with: reach publish --article ' + article,
     );
   }
 
@@ -133,7 +133,7 @@ export async function updateCommand(
     if (!content) {
       throw new ReachforgeError(
         `No content found for "${article}" on platform "${platform}"`,
-        `Expected file: ${article}.${platform}.md in 02_adapted/ or 03_published/. Run 'reach adapt ${article}' first.`,
+        `Expected file: ${article}.${platform}.md in 02_adapted/ or 03_published/. Run 'reach adapt --article ${article}' first.`,
       );
     }
     contentByPlatform[platform] = content;
@@ -294,7 +294,7 @@ async function readContentForUpdate(
 
 This supports both user workflow paths:
 - **Path A (quick edit)**: User directly edits `02_adapted/article.devto.md` -> content is read from `02_adapted/`.
-- **Path B (full pipeline)**: User edits draft -> runs `reach adapt article` -> adapted files land in `02_adapted/` -> content is read from there.
+- **Path B (full pipeline)**: User edits draft -> runs `reach adapt --article article` -> adapted files land in `02_adapted/` -> content is read from there.
 
 ---
 
@@ -335,16 +335,17 @@ function printUpdateSummary(
 
 ```typescript
 program
-  .command('update <article>')
+  .command('update')
   .description('Update a published article on its platforms')
-  .option('-p, --platforms <list>', 'Comma-separated platform filter')
-  .option('-n, --dry-run', 'Preview without executing')
+  .option('--article <name>', 'Article name (slug from meta.yaml)')
+  .option('--platforms <list>', 'Comma-separated platform filter')
+  .option('--dryRun', 'Preview without executing')
   .option('--force', 'Skip platforms without article_id')
   .option('--json', 'JSON output')
   .option('--cover <path>', 'Cover image path or URL')
-  .action(async (article, opts) => {
+  .action(async (opts) => {
     const engine = await resolveEngine();
-    await updateCommand(engine, { article, ...opts, config });
+    await updateCommand(engine, { ...opts, config });
   });
 ```
 
@@ -392,16 +393,16 @@ Add to the `schemaMap` in `MCP_TOOL_DEFINITIONS`:
 Add to the "Pipeline" group:
 
 ```
-reach update <article>              # Update published article on platforms
+reach update --article <article>     # Update published article on platforms
 ```
 
 Add to the detailed `--help --all` output:
 
 ```
 UPDATE
-  reach update <article>              Update a published article on its platforms
-    -p, --platforms <list>            Comma-separated platform filter
-    -n, --dry-run                     Preview without executing
+  reach update --article <article>    Update a published article on its platforms
+    --platforms <list>                Comma-separated platform filter
+    --dryRun                          Preview without executing
     --force                           Skip platforms without article_id
     --json                            JSON output
     --cover <path>                    Cover image path or URL
@@ -444,10 +445,10 @@ Error envelope (article not found):
 | # | Condition | Message | Hint |
 |---|-----------|---------|------|
 | E1 | Article not in meta.yaml | `Article "X" not found in meta.yaml` | `Check the article name with: reach status` |
-| E2 | Article not published | `Article "X" has not been published yet (status: adapted)` | `Publish first with: reach publish X` |
+| E2 | Article not published | `Article "X" has not been published yet (status: adapted)` | `Publish first with: reach publish --article X` |
 | E3 | No platforms with article_id (no --force) | `N platform(s) lack article_id: devto, hashnode` | `Use --force to skip them, or manually add article_id to meta.yaml` |
 | E4 | No updatable platforms at all | `No updatable platforms for "X"` | Lists reasons |
-| E5 | Content file missing | `No content found for "X" on platform "devto"` | `Run 'reach adapt X' first` |
+| E5 | Content file missing | `No content found for "X" on platform "devto"` | `Run 'reach adapt --article X' first` |
 | E6 | Provider lacks update() | Warning: `Platform "x" does not support updates. Skipping.` | (non-fatal, continues) |
 | E7 | API failure | Per-platform failure in results | Other platforms continue |
 | E8 | No engine (outside project) | `No project context` | `Run from inside a project directory` |
@@ -525,7 +526,7 @@ describe('updateCommand()', () => {
 
   it('dry run does not call provider', async () => {
     // Setup: article with article_id
-    // Run with --dry-run
+    // Run with --dryRun
     // Verify: provider.update() never called
   });
 
@@ -554,7 +555,7 @@ describe('update integration', () => {
   it('publish then update roundtrip', async () => {
     // 1. Publish article (mock provider captures article_id)
     // 2. Edit content in 02_adapted/
-    // 3. Run reach update article
+    // 3. Run reach update --article article
     // 4. Verify mock provider.update() called with correct content and article_id
     // 5. Verify meta.yaml updated_at is set
   });
