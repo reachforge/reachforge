@@ -400,8 +400,7 @@ program.addHelpText('beforeAll', () => {
 });
 
 // --help --man: generate full roff man page (provided by apcore-cli)
-// TODO: add docsUrl when docs site is deployed
-configureManHelp(program, 'reach', REACH_VERSION, REACH_DESCRIPTION);
+configureManHelp(program, 'reach', REACH_VERSION, REACH_DESCRIPTION, 'https://reachforge.github.io/reachforge/');
 
 // Adapter: bridge apcore-js Registry/Executor to apcore-cli's expected interface.
 // apcore-js 0.14 uses list()/get(), apcore-cli 0.3 expects listModules()/getModule().
@@ -429,10 +428,7 @@ const executorAdapter: CliExecutor = {
 
 // Pre-parse --verbose so apcore-cli hides/shows built-in options accordingly.
 setVerboseHelp(process.argv.includes('--verbose'));
-// setDocsUrl controls the docs link in per-command help footers (read by buildModuleCommand).
-// configureManHelp above receives the same URL separately for the man page SEE ALSO section.
-// TODO: enable when docs site is deployed
-// setDocsUrl('https://reachforge.dev/docs');
+setDocsUrl('https://reachforge.github.io/reachforge/');
 
 // Auto-wire module commands from apcore registry
 const moduleGroup = new GroupedModuleGroup(registryAdapter, executorAdapter);

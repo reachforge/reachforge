@@ -1,8 +1,8 @@
 site_name: ReachForge
 site_description: "The Social Influence Engine — AI-powered content publishing CLI"
-site_url: https://aiperceivable.github.io/reachforge
-repo_url: https://github.com/aiperceivable/reachforge
-repo_name: aiperceivable/reachforge
+site_url: https://reachforge.github.io/reachforge/
+repo_url: https://github.com/reachforge/reachforge
+repo_name: reachforge/reachforge
 
 theme:
   name: material
