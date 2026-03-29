@@ -70,7 +70,7 @@ describe('writeArticleMeta', () => {
   });
 
   it('merges partial updates', async () => {
-    await mm.writeArticleMeta('teaser', { status: 'inbox', notes: 'hello' });
+    await mm.writeArticleMeta('teaser', { status: 'inbox' as any, notes: 'hello' });
     await mm.writeArticleMeta('teaser', { status: 'drafted' });
     const result = await mm.readArticleMeta('teaser');
     expect(result?.status).toBe('drafted');
