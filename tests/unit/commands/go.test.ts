@@ -104,8 +104,8 @@ afterEach(async () => {
   await fs.remove(tmpDir);
 });
 
-// Fake config with a postiz key so adapt auto-detects the 'x' platform
-const testConfig = { postizApiKey: 'test-key' };
+// Fake config with postiz key + integration ID so adapt auto-detects the 'x' platform
+const testConfig = { postizApiKey: 'test-key', postizIntegrations: { x: 'test-integration-id' } };
 
 describe('goCommand', () => {
   test('immediate mode: full pipeline reaches adapted or published', async () => {

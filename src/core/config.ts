@@ -16,28 +16,44 @@ export class ConfigManager {
    */
   static async load(workspaceRoot?: string): Promise<ConfigManager> {
     const merged: Record<string, string | undefined> = {};
+    let postizIntegrations: Record<string, string> | undefined;
 
     // Layer 3: global ~/.reach/config.yaml
     const globalDir = path.join(os.homedir(), WORKSPACE_CONFIG_DIR);
     const globalConfig = await readConfigFromDir(globalDir);
     if (globalConfig) {
       ConfigManager.mergeWorkspaceConfig(globalConfig, merged);
+      if (globalConfig.postiz_integrations) {
+        postizIntegrations = { ...globalConfig.postiz_integrations };
+      }
     }
 
-    // Layer 2: workspace .reach/config.yaml
+    // Layer 2: workspace .reach/config.yaml (overrides global for overlapping keys)
     if (workspaceRoot) {
       const wsConfig = await readWorkspaceConfig(workspaceRoot);
       if (wsConfig) {
         ConfigManager.mergeWorkspaceConfig(wsConfig, merged);
+        if (wsConfig.postiz_integrations) {
+          postizIntegrations = { ...(postizIntegrations ?? {}), ...wsConfig.postiz_integrations };
+        }
       }
     }
 
     // Layer 1 (highest): environment variables
     const env = process.env;
+
+    // POSTIZ_INTEGRATIONS env var accepts JSON: '{"x":"abc-123","linkedin":"def-456"}'
+    const envPostizIntegrations: Record<string, string> | undefined = env.POSTIZ_INTEGRATIONS
+      ? (() => { try { return JSON.parse(env.POSTIZ_INTEGRATIONS!); } catch { return undefined; } })()
+      : undefined;
+
     const config: ReachforgeConfig = {
       geminiApiKey: env.GEMINI_API_KEY || merged.gemini_api_key,
       devtoApiKey: env.DEVTO_API_KEY || merged.devto_api_key,
       postizApiKey: env.POSTIZ_API_KEY || merged.postiz_api_key,
+      postizIntegrations: envPostizIntegrations ?? postizIntegrations,
+      postizBaseUrl: env.POSTIZ_BASE_URL || merged.postiz_base_url,
+      postizWhoCanReply: env.POSTIZ_WHO_CAN_REPLY || merged.postiz_who_can_reply,
       hashnodeApiKey: env.HASHNODE_API_KEY || merged.hashnode_api_key,
       hashnodePublicationId: env.HASHNODE_PUBLICATION_ID || merged.hashnode_publication_id,
       githubToken: env.GITHUB_TOKEN || merged.github_token,
@@ -92,7 +108,8 @@ export class ConfigManager {
 
   private static mergeWorkspaceConfig(wc: WorkspaceConfig, merged: Record<string, string | undefined>): void {
     const fields = [
-      'devto_api_key', 'postiz_api_key', 'hashnode_api_key', 'hashnode_publication_id',
+      'devto_api_key', 'postiz_api_key', 'postiz_base_url', 'postiz_who_can_reply',
+      'hashnode_api_key', 'hashnode_publication_id',
       'github_token', 'github_owner', 'github_repo', 'github_discussion_category',
       'gemini_api_key', 'llm_adapter', 'draft_adapter', 'adapt_adapter',
       'llm_model', 'claude_command', 'gemini_command', 'codex_command', 'mcp_auth_key',
@@ -104,5 +121,6 @@ export class ConfigManager {
         merged[field] = String(val);
       }
     }
+    // postiz_integrations is a Record — handled separately in load()
   }
 }

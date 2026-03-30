@@ -98,8 +98,8 @@ describe('PLATFORM_PROMPTS', () => {
     expect(PLATFORM_PROMPTS.x).toContain('280');
   });
 
-  test('x prompt specifies --- delimiter', () => {
-    expect(PLATFORM_PROMPTS.x).toContain('---');
+  test('x prompt specifies thread-break delimiter', () => {
+    expect(PLATFORM_PROMPTS.x).toContain('<!-- thread-break -->');
   });
 });
 

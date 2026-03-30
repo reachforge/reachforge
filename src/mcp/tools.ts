@@ -34,6 +34,7 @@ export const PublishToolSchema = z.object({
   force: z.boolean().optional().describe('If true, publish even if article is scheduled for a future date'),
   dryRun: z.boolean().optional().describe('If true, preview what would be published without actually sending to platforms'),
   cover: z.string().optional().describe('Cover image path or URL. Uploaded to platform CDN at publish time'),
+  provider: z.string().optional().describe('Preferred provider ID when multiple providers are configured for the same platform (e.g., "postiz")'),
 });
 
 export const UpdateToolSchema = z.object({
@@ -42,6 +43,7 @@ export const UpdateToolSchema = z.object({
   dryRun: z.boolean().optional().describe('If true, preview what would be updated without calling APIs'),
   force: z.boolean().optional().describe('If true, skip platforms without article_id instead of erroring'),
   cover: z.string().optional().describe('Cover image path or URL'),
+  provider: z.string().optional().describe('Preferred provider ID when multiple providers are configured for the same platform'),
 });
 
 export const RollbackToolSchema = z.object({
@@ -73,6 +75,7 @@ export const GoToolSchema = z.object({
   dryRun: z.boolean().optional().describe('If true, run the full pipeline but skip the actual publish step'),
   draft: z.boolean().optional().describe('If true, publish as draft on platforms that support it'),
   cover: z.string().optional().describe('Cover image path or URL'),
+  provider: z.string().optional().describe('Preferred provider ID when multiple providers are configured for the same platform'),
 });
 
 // Series tools

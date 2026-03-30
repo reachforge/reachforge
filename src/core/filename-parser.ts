@@ -11,7 +11,8 @@ export const PLATFORM_IDS = [
 
 export type PlatformId = typeof PLATFORM_IDS[number];
 
-export const PLATFORM_ID_REGEX = /^[a-z0-9]+$/;
+/** Matches a single platform key: lowercase alpha/digits, with optional _suffix for named accounts. */
+export const PLATFORM_ID_REGEX = /^[a-z][a-z0-9]*(_[a-z0-9]+)*$/;
 
 export const ADAPTED_STAGES: PipelineStage[] = ['02_adapted', '03_published'];
 
@@ -23,6 +24,30 @@ export interface ParsedFilename {
 }
 
 // --- Functions ---
+
+/**
+ * Extract the base platform from a (possibly named) platform key.
+ *   'x'           → 'x'
+ *   'x_company'   → 'x'
+ *   'linkedin'    → 'linkedin'
+ *   'x_my_brand'  → 'x'   (first segment before any underscore)
+ */
+export function basePlatform(platformKey: string): string {
+  const idx = platformKey.indexOf('_');
+  return idx === -1 ? platformKey : platformKey.slice(0, idx);
+}
+
+/**
+ * Returns true if the candidate string is a valid platform key:
+ *   - A known static platform ID (e.g. 'x', 'linkedin')
+ *   - OR a named slot where the prefix is a known platform (e.g. 'x_company', 'linkedin_brand')
+ */
+export function isValidPlatformKey(candidate: string): boolean {
+  if (!PLATFORM_ID_REGEX.test(candidate)) return false;
+  if ((PLATFORM_IDS as readonly string[]).includes(candidate)) return true;
+  const base = basePlatform(candidate);
+  return (PLATFORM_IDS as readonly string[]).includes(base);
+}
 
 export function isAdaptedStage(stage: PipelineStage): boolean {
   return ADAPTED_STAGES.includes(stage);
@@ -48,10 +73,7 @@ export function parseArticleFilename(filename: string, stage: PipelineStage): Pa
   }
 
   const candidatePlatform = stem.slice(lastDotIndex + 1);
-  if (
-    PLATFORM_ID_REGEX.test(candidatePlatform) &&
-    (PLATFORM_IDS as readonly string[]).includes(candidatePlatform)
-  ) {
+  if (isValidPlatformKey(candidatePlatform)) {
     return {
       article: stem.slice(0, lastDotIndex),
       platform: candidatePlatform,
@@ -69,7 +91,7 @@ export function buildArticleFilename(article: string, platform: string | null): 
   if (!PLATFORM_ID_REGEX.test(platform)) {
     throw new ReachforgeError(
       `Invalid platform ID: "${platform}"`,
-      'Platform ID must be lowercase alphanumeric (e.g., "devto", "x")',
+      'Platform ID must be lowercase alphanumeric with optional _suffix (e.g., "devto", "x_company")',
     );
   }
 

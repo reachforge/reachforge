@@ -50,6 +50,8 @@ export interface GoOptions {
   cover?: string;
   json?: boolean;
   config?: ReachforgeConfig;
+  /** Preferred provider ID when multiple providers are registered for the same platform. */
+  provider?: string;
 }
 
 const STEPS = [
@@ -119,6 +121,7 @@ export async function goCommand(
         draft: options.draft,
         cover: options.cover,
         config: options.config,
+        provider: options.provider,
       });
     }
   } catch (err) {

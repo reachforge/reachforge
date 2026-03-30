@@ -4,6 +4,7 @@ import yaml from 'js-yaml';
 import { z } from 'zod';
 import { TEMPLATES_DIR } from './constants.js';
 import { DEFAULT_DRAFT_PROMPT, PLATFORM_PROMPTS } from '../llm/types.js';
+import { basePlatform } from './filename-parser.js';
 
 export const TemplateFileSchema = z.object({
   name: z.string().min(1),
@@ -88,8 +89,10 @@ export class TemplateResolver {
       };
     }
 
-    // 3. Fall back to built-in
-    const builtIn = PLATFORM_PROMPTS[platform] ?? `Adapt this article for the ${platform} platform.`;
+    // 3. Fall back to built-in (try exact key, then base platform, then generic)
+    const builtIn = PLATFORM_PROMPTS[platform]
+      ?? PLATFORM_PROMPTS[basePlatform(platform)]
+      ?? `Adapt this article for the ${platform} platform.`;
     return { prompt: builtIn, source: 'built-in' };
   }
 

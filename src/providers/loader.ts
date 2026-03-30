@@ -2,7 +2,7 @@ import type { PlatformProvider } from './types.js';
 import type { ReachforgeConfig } from '../types/index.js';
 import { MockProvider } from './mock.js';
 import { DevtoProvider } from './devto.js';
-import { PostizProvider } from './postiz.js';
+import { PostizProvider, type PostizWhoCanReply } from './postiz.js';
 import { HashnodeProvider } from './hashnode.js';
 import { GitHubProvider } from './github.js';
 import { GhostProvider } from './ghost.js';
@@ -11,6 +11,7 @@ import { TelegraphProvider } from './telegraph.js';
 import { WriteasProvider } from './writeas.js';
 import { RedditProvider } from './reddit.js';
 import { PLATFORM_IDS } from '../core/filename-parser.js';
+import { ReachforgeError } from '../types/index.js';
 
 /** Human-readable display names for all known platforms. */
 const PLATFORM_DISPLAY_NAMES: Record<string, string> = {
@@ -45,18 +46,28 @@ const PLATFORM_DEFAULT_LANGUAGES: Record<string, string> = {
 
 export class ProviderLoader {
   private providers: Map<string, PlatformProvider> = new Map();
+  /** Tracks platforms where multiple providers are registered (conflict). */
+  private conflicts: Map<string, PlatformProvider[]> = new Map();
 
   constructor(config: ReachforgeConfig) {
     this.loadProviders(config);
   }
 
   private loadProviders(config: ReachforgeConfig): void {
-    if (config.devtoApiKey) {
-      this.register(new DevtoProvider(config.devtoApiKey));
+    // Postiz: registered first so native providers (if added later) take priority
+    if (config.postizApiKey && config.postizIntegrations) {
+      for (const [platformKey, integrationId] of Object.entries(config.postizIntegrations)) {
+        this.register(new PostizProvider(config.postizApiKey, integrationId, {
+          platform: platformKey,
+          baseUrl: config.postizBaseUrl,
+          whoCanReply: config.postizWhoCanReply as PostizWhoCanReply | undefined,
+        }));
+      }
     }
 
-    if (config.postizApiKey) {
-      this.register(new PostizProvider(config.postizApiKey));
+    // Native providers registered after Postiz — they win on conflict
+    if (config.devtoApiKey) {
+      this.register(new DevtoProvider(config.devtoApiKey));
     }
 
     if (config.hashnodeApiKey && config.hashnodePublicationId) {
@@ -98,16 +109,58 @@ export class ProviderLoader {
 
   private register(provider: PlatformProvider): void {
     for (const platform of provider.platforms) {
+      if (this.providers.has(platform)) {
+        // Track conflict; the new provider overwrites in the primary map (last = highest priority)
+        const existing = this.conflicts.get(platform) ?? [this.providers.get(platform)!];
+        this.conflicts.set(platform, [...existing, provider]);
+      }
       this.providers.set(platform, provider);
     }
   }
 
+  /**
+   * Resolve the provider for a platform, with conflict handling.
+   *
+   * - No conflict → returns the registered provider (or undefined if none)
+   * - Conflict + preferredProviderId → returns the matching provider
+   * - Conflict + no preference → throws with a helpful --provider hint
+   */
+  resolveProvider(platform: string, preferredProviderId?: string): PlatformProvider | undefined {
+    const conflictList = this.conflicts.get(platform);
+    if (conflictList) {
+      const allProviders = conflictList; // includes all registered (last in conflictList = current in providers map)
+      if (preferredProviderId) {
+        const match = allProviders.find(p => p.id === preferredProviderId);
+        if (!match) {
+          throw new ReachforgeError(
+            `Provider "${preferredProviderId}" is not registered for platform "${platform}"`,
+            `Available: ${[...new Set(allProviders.map(p => p.id))].join(', ')}`,
+          );
+        }
+        return match;
+      }
+      const ids = [...new Set(allProviders.map(p => p.id))].join(', ');
+      throw new ReachforgeError(
+        `Multiple providers configured for "${platform}": ${ids}`,
+        `Use --provider <id> to specify which to use (e.g. --provider postiz)`,
+      );
+    }
+    return this.providers.get(platform);
+  }
+
+  /** Like resolveProvider but falls back to MockProvider when none registered. */
+  resolveProviderOrMock(platform: string, preferredProviderId?: string): PlatformProvider {
+    return this.resolveProvider(platform, preferredProviderId) ?? new MockProvider();
+  }
+
+  /** @deprecated Use resolveProvider instead. */
   getProvider(platform: string): PlatformProvider | undefined {
     return this.providers.get(platform);
   }
 
+  /** @deprecated Use resolveProviderOrMock instead. */
   getProviderOrMock(platform: string): PlatformProvider {
-    return this.providers.get(platform) || new MockProvider();
+    return this.providers.get(platform) ?? new MockProvider();
   }
 
   listRegistered(): string[] {
@@ -120,15 +173,35 @@ export class ProviderLoader {
     return this.providers.has(platform);
   }
 
-  listPlatforms(): Array<{ platform: string; provider: string; configured: boolean }> {
-    return PLATFORM_IDS.map(platform => {
+  hasConflict(platform: string): boolean {
+    return this.conflicts.has(platform);
+  }
+
+  listPlatforms(): Array<{ platform: string; provider: string; configured: boolean; conflict?: boolean }> {
+    // Static well-known list
+    const rows: Array<{ platform: string; provider: string; configured: boolean; conflict?: boolean }> = PLATFORM_IDS.map(platform => {
       const provider = this.providers.get(platform);
       return {
         platform,
         provider: provider?.name ?? PLATFORM_DISPLAY_NAMES[platform] ?? platform,
         configured: this.providers.has(platform),
+        ...(this.conflicts.has(platform) ? { conflict: true } : {}),
       };
     });
+
+    // Dynamically registered named slots (e.g. x_company) not in static list
+    for (const [platform, provider] of this.providers.entries()) {
+      if (!(PLATFORM_IDS as readonly string[]).includes(platform)) {
+        rows.push({
+          platform,
+          provider: provider.name,
+          configured: true,
+          ...(this.conflicts.has(platform) ? { conflict: true } : {}),
+        });
+      }
+    }
+
+    return rows;
   }
 
   /**

@@ -40,6 +40,16 @@ export interface ReachforgeConfig {
   geminiApiKey?: string;
   devtoApiKey?: string;
   postizApiKey?: string;
+  /**
+   * Map of platform key → Postiz integration ID.
+   * Single account:   { x: 'abc-123' }
+   * Named accounts:   { x_company: 'abc-123', x_personal: 'def-456', linkedin: 'ghi-789' }
+   */
+  postizIntegrations?: Record<string, string>;
+  /** Base URL for self-hosted Postiz instances. Defaults to https://api.postiz.com */
+  postizBaseUrl?: string;
+  /** Who can reply to X posts published via Postiz. Default: 'everyone'. */
+  postizWhoCanReply?: string;
   hashnodeApiKey?: string;
   hashnodePublicationId?: string;
   githubToken?: string;

@@ -1,4 +1,5 @@
 import type { ValidationResult } from '../providers/types.js';
+import { basePlatform } from '../core/filename-parser.js';
 import { validateXContent } from './x.js';
 import { validateDevtoContent } from './devto.js';
 import { validateHashnodeContent } from './hashnode.js';
@@ -35,7 +36,8 @@ export function validateContent(
   let allValid = true;
 
   for (const [platform, content] of Object.entries(contentByPlatform)) {
-    const validator = VALIDATORS[platform];
+    // Try exact match first, then fall back to base platform (e.g. 'x_company' → 'x')
+    const validator = VALIDATORS[platform] ?? VALIDATORS[basePlatform(platform)];
     if (validator) {
       results[platform] = validator(content);
       if (!results[platform].valid) allValid = false;

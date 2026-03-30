@@ -370,10 +370,10 @@ describe('E2E: Content format conversion', () => {
 
     // Patch ProviderLoader to return a provider with contentFormat='html'
     const { ProviderLoader } = await import('../../src/providers/loader.js');
-    const origGetProviderOrMock = ProviderLoader.prototype.getProviderOrMock;
+    const origGetProviderOrMock = ProviderLoader.prototype.resolveProviderOrMock;
     let capturedContent = '';
 
-    ProviderLoader.prototype.getProviderOrMock = function () {
+    ProviderLoader.prototype.resolveProviderOrMock = function () {
       return {
         id: 'mock-html', name: 'Mock HTML', platforms: ['x'],
         contentFormat: 'html' as const,
@@ -389,7 +389,7 @@ describe('E2E: Content format conversion', () => {
     await publishCommand(engine);
 
     // Restore
-    ProviderLoader.prototype.getProviderOrMock = origGetProviderOrMock;
+    ProviderLoader.prototype.resolveProviderOrMock = origGetProviderOrMock;
 
     // The content should have been converted to HTML
     expect(capturedContent).toContain('<h1>Hello</h1>');
@@ -417,10 +417,10 @@ describe('E2E: Asset reference resolution in publish', () => {
 
     // Capture the content sent to provider
     const { ProviderLoader } = await import('../../src/providers/loader.js');
-    const origGetProviderOrMock = ProviderLoader.prototype.getProviderOrMock;
+    const origGetProviderOrMock = ProviderLoader.prototype.resolveProviderOrMock;
     let capturedContent = '';
 
-    ProviderLoader.prototype.getProviderOrMock = function () {
+    ProviderLoader.prototype.resolveProviderOrMock = function () {
       return {
         id: 'mock-asset', name: 'Mock Asset', platforms: ['wechat'],
         contentFormat: 'markdown' as const,
@@ -436,7 +436,7 @@ describe('E2E: Asset reference resolution in publish', () => {
     await publishCommand(engine);
 
     // Restore
-    ProviderLoader.prototype.getProviderOrMock = origGetProviderOrMock;
+    ProviderLoader.prototype.resolveProviderOrMock = origGetProviderOrMock;
 
     // @assets/ should be resolved to absolute path
     expect(capturedContent).not.toContain('@assets/');
@@ -461,10 +461,10 @@ describe('E2E: Asset reference resolution in publish', () => {
 
     // Capture content sent to provider to verify media processing ran
     const { ProviderLoader } = await import('../../src/providers/loader.js');
-    const origGetProviderOrMock = ProviderLoader.prototype.getProviderOrMock;
+    const origGetProviderOrMock = ProviderLoader.prototype.resolveProviderOrMock;
     let capturedContent = '';
 
-    ProviderLoader.prototype.getProviderOrMock = function () {
+    ProviderLoader.prototype.resolveProviderOrMock = function () {
       return {
         id: 'mock-devto', name: 'Mock DevTo', platforms: ['devto'],
         contentFormat: 'markdown' as const,
@@ -480,7 +480,7 @@ describe('E2E: Asset reference resolution in publish', () => {
     await publishCommand(engine);
 
     // Restore
-    ProviderLoader.prototype.getProviderOrMock = origGetProviderOrMock;
+    ProviderLoader.prototype.resolveProviderOrMock = origGetProviderOrMock;
 
     // The article should have been published (moved to 03_published)
     expect(await fs.pathExists(path.join(tmpDir, '03_published', 'media-test.devto.md'))).toBe(true);

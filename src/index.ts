@@ -251,16 +251,58 @@ apcore.register('reach.platforms', {
   ...meta('reach.platforms'),
   execute: async () => {
     const { ProviderLoader } = await import('./providers/loader.js');
+    const { PostizProvider } = await import('./providers/postiz.js');
     const configManager = await getGlobalConfig();
-    const loader = new ProviderLoader(configManager.getConfig());
+    const config = configManager.getConfig();
+    const loader = new ProviderLoader(config);
     const platforms = loader.listPlatforms();
     console.log(chalk.bold('\nPublishing Platforms\n'));
     for (const p of platforms) {
-      const status = p.configured
-        ? chalk.green('✓ configured')
-        : chalk.gray('✗ not configured');
-      console.log(`  ${chalk.cyan(p.platform.padEnd(12))} ${p.provider.padEnd(24)} ${status}`);
+      let status: string;
+      if (p.conflict) {
+        status = chalk.yellow('⚠ conflict — use --provider to specify');
+      } else {
+        status = p.configured
+          ? chalk.green('✓ configured')
+          : chalk.gray('✗ not configured');
+      }
+      console.log(`  ${chalk.cyan(p.platform.padEnd(14))} ${p.provider.padEnd(28)} ${status}`);
     }
+
+    // When Postiz API key is set, list available integrations to help configure postiz_integrations
+    if (config.postizApiKey) {
+      console.log();
+      console.log(chalk.bold('  Postiz Integrations'));
+      try {
+        const integrations = await PostizProvider.listIntegrations(
+          config.postizApiKey,
+          config.postizBaseUrl,
+        );
+        if (integrations.length === 0) {
+          console.log(chalk.dim('  No integrations found. Connect accounts at your Postiz dashboard.'));
+        } else {
+          const activeIds = new Set(Object.values(config.postizIntegrations ?? {}));
+          for (const intg of integrations) {
+            const active = activeIds.has(intg.id) ? chalk.green(' ← active') : '';
+            const disabled = intg.disabled ? chalk.red(' (disabled)') : '';
+            const handle = intg.identifier ? chalk.dim(` ${intg.identifier}`) : '';
+            console.log(
+              `  ${chalk.cyan(intg.type.padEnd(12))} ${intg.id.padEnd(26)}${handle}${active}${disabled}`,
+            );
+          }
+          if (!config.postizIntegrations) {
+            console.log(chalk.yellow('\n  → Add postiz_integrations to config.yaml to activate publishing.'));
+            console.log(chalk.dim('    Example:'));
+            console.log(chalk.dim('      postiz_integrations:'));
+            console.log(chalk.dim('        x: <integration-id>'));
+          }
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(chalk.red(`  Failed to fetch integrations: ${msg}`));
+      }
+    }
+
     console.log();
   },
 });

@@ -24,6 +24,8 @@ export interface PublishOptions {
   cover?: string;
   json?: boolean;
   config?: ReachforgeConfig;
+  /** Preferred provider ID when multiple providers are registered for the same platform. */
+  provider?: string;
 }
 
 export function getCredentialsForPlatform(platform: string, config: ReachforgeConfig): Record<string, string> {
@@ -197,7 +199,7 @@ async function publishContentToPlatforms(
       continue;
     }
 
-    const provider = loader.getProviderOrMock(platform);
+    const provider = loader.resolveProviderOrMock(platform, options.provider);
 
     if (!options.json) {
       if (provider.id === 'mock') {

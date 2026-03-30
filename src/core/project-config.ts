@@ -27,6 +27,17 @@ export const WorkspaceConfigSchema = z.object({
   // Platform API keys
   devto_api_key: z.string().optional(),
   postiz_api_key: z.string().optional(),
+  /**
+   * Map of platform key → Postiz integration ID.
+   * Example:
+   *   postiz_integrations:
+   *     x: abc-123
+   *     x_company: def-456
+   *     linkedin: ghi-789
+   */
+  postiz_integrations: z.record(z.string(), z.string()).optional(),
+  postiz_base_url: z.string().url().optional(),
+  postiz_who_can_reply: z.enum(['everyone', 'following', 'mentionedUsers', 'subscribers', 'verified']).optional(),
   hashnode_api_key: z.string().optional(),
   hashnode_publication_id: z.string().optional(),
   github_token: z.string().optional(),

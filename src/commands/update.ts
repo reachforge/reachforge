@@ -20,6 +20,8 @@ export interface UpdateOptions {
   cover?: string;
   json?: boolean;
   config?: ReachforgeConfig;
+  /** Preferred provider ID when multiple providers are registered for the same platform. */
+  provider?: string;
 }
 
 async function readContentForUpdate(
@@ -161,7 +163,7 @@ export async function updateCommand(
   let uploadCache = null;
 
   for (const { platform, articleId } of updatable) {
-    const provider = loader.getProviderOrMock(platform);
+    const provider = loader.resolveProviderOrMock(platform, options.provider);
 
     if (typeof provider.update !== 'function') {
       if (!options.json) console.log(chalk.yellow(`  Platform "${platform}" does not support updates. Skipping.`));
