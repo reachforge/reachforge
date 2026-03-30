@@ -89,7 +89,10 @@ export class HashnodeProvider implements PlatformProvider {
               title,
               contentMarkdown: body.trim(),
               publicationId: this.publicationId,
-              tags: (meta.tags ?? []).map(name => ({ name, slug: name.toLowerCase().replace(/\s+/g, '-') })),
+              tags: (meta.tags ?? []).map(name => ({
+              name,
+              slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'tag',
+            })),
               ...(meta.coverImage ? { coverImageOptions: { coverImageURL: meta.coverImage } } : {}),
             },
           },
@@ -129,7 +132,10 @@ export class HashnodeProvider implements PlatformProvider {
               id: articleId,
               title,
               contentMarkdown: body.trim(),
-              tags: (meta.tags ?? []).map(name => ({ name, slug: name.toLowerCase().replace(/\s+/g, '-') })),
+              tags: (meta.tags ?? []).map(name => ({
+              name,
+              slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'tag',
+            })),
               ...(meta.coverImage ? { coverImageOptions: { coverImageURL: meta.coverImage } } : {}),
             },
           },

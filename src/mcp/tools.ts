@@ -24,6 +24,7 @@ export const ScheduleToolSchema = z.object({
   article: z.string().min(1).describe('Name of the article in 02_adapted to schedule'),
   date: z.string().optional().describe('Publish date/time: YYYY-MM-DD, YYYY-MM-DDTHH:MM, or YYYY-MM-DDTHH:MM:SS. Defaults to today (immediate on next publish)'),
   clear: z.boolean().optional().describe('If true, unschedule the article (revert status to adapted, remove schedule date)'),
+  dryRun: z.boolean().optional().describe('If true, preview what would be scheduled without applying changes'),
 });
 
 export const PublishToolSchema = z.object({

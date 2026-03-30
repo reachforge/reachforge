@@ -118,6 +118,12 @@ export class SeriesManager {
     }
 
     const startDate = new Date(schedule.start);
+    if (isNaN(startDate.getTime())) {
+      throw new ReachforgeError(
+        `Series schedule has invalid start date: "${schedule.start}"`,
+        'Use ISO format: schedule: { start: "YYYY-MM-DD", interval: "7d" }',
+      );
+    }
     const intervalDays = this.parseIntervalDays(schedule.interval);
     const result = new Map<string, string>();
 

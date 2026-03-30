@@ -128,7 +128,8 @@ export async function adaptCommand(
       else succeeded.push(platforms[i]);
     } else {
       failures.push(platforms[i]);
-      if (!options.json) console.log(chalk.red(`  ✘ ${platforms[i]}: ${s.reason?.message ?? 'Unknown error'}`));
+      const errMsg = s.reason instanceof Error ? s.reason.message : String(s.reason ?? 'Unknown error');
+      if (!options.json) console.log(chalk.red(`  ✘ ${platforms[i]}: ${errMsg}`));
     }
   }
 

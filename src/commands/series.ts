@@ -375,9 +375,11 @@ export async function seriesAdaptCommand(
       continue;
     }
 
-    // Check if already adapted
+    // Skip already-adapted articles only when no explicit platform list is given.
+    // When platforms are specified, delegate to adaptCommand (which is additive) so
+    // users can add new platforms to articles that were previously adapted.
     const meta = await engine.metadata.readArticleMeta(article.slug);
-    if (meta?.status === 'adapted' || meta?.status === 'scheduled' || meta?.status === 'published') {
+    if (!options.platforms && (meta?.status === 'adapted' || meta?.status === 'scheduled' || meta?.status === 'published')) {
       skipped.push(article.slug);
       continue;
     }

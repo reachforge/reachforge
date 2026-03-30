@@ -11,6 +11,14 @@ reach publish --article ./file.md --platforms devto --cover ./cover.png  # With 
 reach go --prompt "write about X"                            # One-shot: prompt → published
 reach status                                                 # Pipeline dashboard
 reach platforms                                              # Show configured platforms
+reach analytics                                              # Publishing stats (optional --from/--to)
+reach asset add --file ./img.png                             # Register asset to library
+reach asset list                                             # List registered assets
+reach watch --interval 60                                    # Auto-publish daemon
+reach init                                                   # Initialize workspace
+reach new --name my-project                                  # Create project in workspace
+reach workspace                                              # Show workspace info
+reach mcp                                                    # Start MCP server for AI agents
 ```
 
 ## Pipeline Steps
@@ -45,7 +53,7 @@ Workflow: init → outline → approve → detail → approve → draft → adap
 
 ## Key Options
 
-- `--platforms <list>` — comma-separated platforms (devto, hashnode, ghost, wordpress, telegraph, writeas, reddit, x, github, wechat, zhihu)
+- `--platforms <list>` — comma-separated platforms with real API providers: devto, hashnode, ghost, wordpress, telegraph, writeas, reddit, x (via Postiz), github; mock-only (no real provider): wechat, zhihu, linkedin, medium
 - `--name <slug>` — explicit article name for `draft` and `go` (default: auto-generated)
 - `--force` — publish even if scheduled for future / skip platforms without article_id
 - `--clear` — unschedule an article (revert status to adapted)
@@ -55,7 +63,36 @@ Workflow: init → outline → approve → detail → approve → draft → adap
 - `--json` — JSON output envelope
 - `--verbose` — show all options in help (including apcore built-in options)
 
-Adapt is additive: `reach adapt --article X --platforms devto` after a previous adapt for x adds devto without removing x.
+Adapt is additive: `reach adapt --article X --platforms devto` after a previous adapt for x adds devto without removing x. `reach series adapt` is also additive when `--platforms` is specified — it re-runs adapt on already-adapted articles to add new platforms.
+
+## Asset Management
+
+```
+reach asset add --file ./cover.png              # Register image to asset library
+reach asset add --file ./video.mp4 --subdir videos  # Register with explicit subdir
+reach asset list                                # List all assets
+reach asset list --subdir images                # Filter by type
+```
+
+Assets are stored in `assets/{images,videos,audio}/` and referenced in articles via `@assets/filename`.
+
+## Analytics & Automation
+
+```
+reach analytics                                 # Publishing stats (all time)
+reach analytics --from 2026-01-01 --to 2026-03-31  # Date range
+reach watch                                     # Start auto-publish daemon (default: 60 min)
+reach watch --interval 30                       # Custom interval in minutes
+reach watch --list                              # List running daemons
+reach watch --stop my-project                   # Stop a daemon
+```
+
+## MCP Server
+
+```
+reach mcp                                       # Start MCP server (stdio, default)
+reach mcp --transport sse --port 8000           # SSE transport for remote agents
+```
 
 ## Project Structure
 
@@ -105,4 +142,4 @@ Built on the apcore ecosystem:
 - `apcore-mcp` — MCP server bridge (AI agent integration)
 - `apcore-cli` — CLI generation via GroupedModuleGroup (schema → Commander.js commands)
 
-All 27 commands registered once via `apcore.register()`, auto-wired to CLI and MCP.
+All 33 commands registered once via `apcore.register()`, auto-wired to CLI and MCP.

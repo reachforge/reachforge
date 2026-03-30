@@ -57,7 +57,9 @@ export async function refineCommand(
     ));
     // Archive old session
     const oldPath = sessionManager.getSessionPath(safeName, 'draft');
-    await fs.copy(oldPath, oldPath + '.bak').catch(() => {});
+    await fs.copy(oldPath, oldPath + '.bak').catch(() => {
+      console.warn('Warning: Could not backup old session file — continuing without backup.');
+    });
     await sessionManager.delete(safeName, 'draft');
     session = null;
   }

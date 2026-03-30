@@ -43,10 +43,8 @@ export class MediaManager {
 
   detectLocalImages(content: string, projectDir: string): MediaReference[] {
     const results: MediaReference[] = [];
-    const regex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-    let match: RegExpExecArray | null;
 
-    while ((match = regex.exec(content)) !== null) {
+    for (const match of content.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g)) {
       const alt = match[1];
       const rawPath = match[2];
 
@@ -149,6 +147,12 @@ export class MediaManager {
 
     if (!token || !owner || !repo) {
       console.warn(`GitHub image upload requires token, github_owner, and github_repo; skipping.`);
+      return null;
+    }
+
+    // Validate owner and repo to prevent SSRF via path traversal or special characters
+    if (!/^[a-zA-Z0-9_.-]+$/.test(owner) || !/^[a-zA-Z0-9_.-]+$/.test(repo)) {
+      console.warn(`GitHub image upload skipped: invalid owner "${owner}" or repo "${repo}" (must be alphanumeric, dots, hyphens, underscores).`);
       return null;
     }
 

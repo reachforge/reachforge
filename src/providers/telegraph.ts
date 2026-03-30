@@ -160,20 +160,17 @@ export function htmlToTelegraphNodes(html: string): TelegraphNode[] {
 
   function parseAttrs(attrStr: string): Record<string, string> | undefined {
     const attrs: Record<string, string> = {};
-    const ATTR_RE = /(\w+)="([^"]*)"/g;
-    let m: RegExpExecArray | null;
-    while ((m = ATTR_RE.exec(attrStr)) !== null) {
+    for (const m of attrStr.matchAll(/(\w+)="([^"]*)"/g)) {
       attrs[m[1]] = m[2];
     }
     return Object.keys(attrs).length > 0 ? attrs : undefined;
   }
 
-  let match: RegExpExecArray | null;
-  while ((match = TOKEN_RE.exec(html)) !== null) {
+  for (const match of html.matchAll(TOKEN_RE)) {
     // Add text before this tag
     const text = html.slice(lastIndex, match.index).trim();
     if (text) addToParent(decodeHtmlEntities(text));
-    lastIndex = TOKEN_RE.lastIndex;
+    lastIndex = match.index! + match[0].length;
 
     const isClose = match[1] === '/';
     let tag = match[2].toLowerCase();

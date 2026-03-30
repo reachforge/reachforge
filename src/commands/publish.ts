@@ -9,7 +9,7 @@ import { validateContent } from '../validators/runner.js';
 import { markdownToHtml } from '../utils/markdown.js';
 import { AssetManager } from '../core/asset-manager.js';
 import { MediaManager } from '../utils/media.js';
-import { jsonSuccess } from '../core/json-output.js';
+import { jsonSuccess, jsonError } from '../core/json-output.js';
 import { parseArticleFilename, buildArticleFilename } from '../core/filename-parser.js';
 import { readProjectConfig } from '../core/project-config.js';
 import type { PlatformPublishStatus, ArticleMeta } from '../types/schemas.js';
@@ -373,8 +373,14 @@ async function publishExternalFile(
   // Validate
   const validation = validateContent(contentByPlatform);
   if (!validation.allValid) {
+    const validationErrors = Object.entries(validation.results)
+      .filter(([, r]) => !r.valid)
+      .flatMap(([platform, r]) => r.errors.map(e => `${platform}: ${e}`));
     if (options.json) {
-      process.stdout.write(jsonSuccess('publish', { published: [], failed: [], skipped: [basename] }));
+      process.stdout.write(jsonError('publish', {
+        message: `Validation failed: ${validationErrors.join('; ')}`,
+        code: 'VALIDATION_ERROR',
+      }));
       return;
     }
     console.log(chalk.red(`  ❌ Validation failed:`));

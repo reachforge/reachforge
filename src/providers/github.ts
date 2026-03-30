@@ -43,16 +43,18 @@ export class GitHubProvider implements PlatformProvider {
 
     try {
       // Step 1: Resolve repo and category IDs
+      // Use GraphQL variables (not string interpolation) to prevent injection.
       const repoRes = await httpRequest(GITHUB_GQL_URL, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          query: `query {
-            repository(owner: "${this.config.owner}", name: "${this.config.repo}") {
+          query: `query GetRepo($owner: String!, $name: String!) {
+            repository(owner: $owner, name: $name) {
               id
               discussionCategories(first: 10) { nodes { id name } }
             }
           }`,
+          variables: { owner: this.config.owner, name: this.config.repo },
         }),
       });
 
