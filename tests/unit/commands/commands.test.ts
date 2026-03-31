@@ -19,7 +19,6 @@ vi.mock('../../../src/llm/factory.js', () => ({
       resolver: { resolve: vi.fn().mockResolvedValue([]) },
     }),
   },
-  LLMFactory: { create: vi.fn(), createFromApiKey: vi.fn() },
 }));
 
 function mockSuccess(content: string) {

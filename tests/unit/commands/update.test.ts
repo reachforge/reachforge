@@ -13,7 +13,6 @@ vi.mock('../../../src/llm/factory.js', () => ({
       resolver: { resolve: vi.fn().mockResolvedValue([]) },
     }),
   },
-  LLMFactory: { create: vi.fn(), createFromApiKey: vi.fn() },
 }));
 
 const { updateCommand } = await import('../../../src/commands/update.js');

@@ -1,9 +1,7 @@
 import { fileURLToPath } from 'url';
 import * as path from 'path';
-import type { LLMProvider, CLIAdapter } from './types.js';
-import { GeminiProvider } from './gemini.js';
-import { LLMNotConfiguredError, AdapterNotFoundError } from '../types/index.js';
-import type { ConfigManager } from '../core/config.js';
+import type { CLIAdapter } from './types.js';
+import { AdapterNotFoundError } from '../types/index.js';
 import { ClaudeAdapter } from './adapters/claude.js';
 import { GeminiAdapter } from './adapters/gemini.js';
 import { CodexAdapter } from './adapters/codex.js';
@@ -22,24 +20,6 @@ const _builtInSkillsDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../skills',
 );
-
-/** @deprecated Use AdapterFactory instead */
-export class LLMFactory {
-  static create(config: ConfigManager): LLMProvider {
-    const fullConfig = config.getConfig();
-    const model = config.getLLMModel();
-
-    if (fullConfig.geminiApiKey) {
-      return new GeminiProvider(fullConfig.geminiApiKey, model);
-    }
-
-    throw new LLMNotConfiguredError('Gemini');
-  }
-
-  static createFromApiKey(apiKey: string, model?: string): LLMProvider {
-    return new GeminiProvider(apiKey, model);
-  }
-}
 
 export class AdapterFactory {
   static create(
