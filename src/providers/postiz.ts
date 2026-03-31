@@ -167,7 +167,7 @@ export class PostizProvider implements PlatformProvider {
 
   /**
    * List all social integrations connected to this Postiz account.
-   * Use this to discover integration IDs for the postizIntegrationId config.
+   * Use this to discover integration IDs for the postiz_integrations config.
    *
    * @example
    *   const integrations = await PostizProvider.listIntegrations(apiKey);

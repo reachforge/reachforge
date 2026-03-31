@@ -13,11 +13,16 @@ import { RedditProvider } from './reddit.js';
 import { PLATFORM_IDS } from '../core/filename-parser.js';
 import { ReachforgeError } from '../types/index.js';
 
+const VALID_WHO_CAN_REPLY = new Set<string>(['everyone', 'following', 'mentionedUsers', 'subscribers', 'verified']);
+function isValidWhoCanReply(val?: string): val is PostizWhoCanReply {
+  return val !== undefined && VALID_WHO_CAN_REPLY.has(val);
+}
+
 /** Human-readable display names for all known platforms. */
 const PLATFORM_DISPLAY_NAMES: Record<string, string> = {
   devto: 'Dev.to (Forem)',
   hashnode: 'Hashnode',
-  x: 'X/Twitter (via Postiz)',
+  x: 'X/Twitter',
   github: 'GitHub Discussions',
   wechat: 'WeChat',
   zhihu: 'Zhihu',
@@ -60,7 +65,7 @@ export class ProviderLoader {
         this.register(new PostizProvider(config.postizApiKey, integrationId, {
           platform: platformKey,
           baseUrl: config.postizBaseUrl,
-          whoCanReply: config.postizWhoCanReply as PostizWhoCanReply | undefined,
+          whoCanReply: isValidWhoCanReply(config.postizWhoCanReply) ? config.postizWhoCanReply : undefined,
         }));
       }
     }

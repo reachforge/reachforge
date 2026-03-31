@@ -297,6 +297,36 @@ describe('PostizProvider', () => {
     expect(postizLinkedIn.validate(longPost).valid).toBe(true);
   });
 
+  test('listIntegrations parses array response', async () => {
+    const mockData = [
+      { id: 'abc', name: 'Twitter', identifier: '@handle', type: 'x', disabled: false },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, status: 200, text: async () => JSON.stringify(mockData),
+    }));
+    const result = await PostizProvider.listIntegrations('key', 'https://mock.postiz.dev');
+    expect(result).toEqual(mockData);
+    vi.unstubAllGlobals();
+  });
+
+  test('listIntegrations parses wrapped response', async () => {
+    const entries = [{ id: 'def', name: 'LinkedIn', identifier: '@company', type: 'linkedin', disabled: false }];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, status: 200, text: async () => JSON.stringify({ integrations: entries }),
+    }));
+    const result = await PostizProvider.listIntegrations('key', 'https://mock.postiz.dev');
+    expect(result).toEqual(entries);
+    vi.unstubAllGlobals();
+  });
+
+  test('listIntegrations throws on API error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false, status: 401, text: async () => 'Unauthorized',
+    }));
+    await expect(PostizProvider.listIntegrations('bad-key', 'https://mock.postiz.dev'))
+      .rejects.toThrow('Failed to list integrations');
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('HashnodeProvider', () => {
@@ -610,7 +640,7 @@ describe('ProviderLoader', () => {
   test('returns MockProvider when no real provider available', () => {
     const config: ReachforgeConfig = {};
     const loader = new ProviderLoader(config);
-    const provider = loader.getProviderOrMock('x');
+    const provider = loader.resolveProviderOrMock('x');
     expect(provider.id).toBe('mock');
   });
 
@@ -657,23 +687,46 @@ describe('ProviderLoader', () => {
     expect(platforms).toContain('linkedin');
   });
 
-  test('resolveProvider throws with --provider hint on conflict', () => {
-    // Simulate conflict by registering two providers for same platform
-    // (In practice this happens when native X + Postiz X both configured)
+  test('resolveProvider returns provider when no conflict', () => {
     const config: ReachforgeConfig = {
       postizApiKey: 'key',
       postizIntegrations: { x: 'postiz-id' },
-      // devto has no conflict, just testing the mechanism
     };
     const loader = new ProviderLoader(config);
-    // No conflict here, resolveProvider returns normally
     expect(loader.resolveProvider('x')).toBeDefined();
     expect(loader.resolveProvider('missing')).toBeUndefined();
+  });
+
+  test('resolveProvider throws with --provider hint on conflict', () => {
+    // devto has Postiz integration AND native DevtoProvider → conflict
+    const config: ReachforgeConfig = {
+      postizApiKey: 'key',
+      postizIntegrations: { devto: 'postiz-devto-id' },
+      devtoApiKey: 'native-key',
+    };
+    const loader = new ProviderLoader(config);
+    expect(loader.hasConflict('devto')).toBe(true);
+    expect(() => loader.resolveProvider('devto')).toThrow('Multiple providers');
+  });
+
+  test('resolveProvider resolves conflict with explicit provider ID', () => {
+    const config: ReachforgeConfig = {
+      postizApiKey: 'key',
+      postizIntegrations: { devto: 'postiz-devto-id' },
+      devtoApiKey: 'native-key',
+    };
+    const loader = new ProviderLoader(config);
+    const devto = loader.resolveProvider('devto', 'devto');
+    expect(devto).toBeDefined();
+    expect(devto!.id).toBe('devto');
+    const postiz = loader.resolveProvider('devto', 'postiz');
+    expect(postiz).toBeDefined();
+    expect(postiz!.id).toBe('postiz');
   });
 
   test('returns undefined for unregistered platform', () => {
     const config: ReachforgeConfig = {};
     const loader = new ProviderLoader(config);
-    expect(loader.getProvider('linkedin')).toBeUndefined();
+    expect(loader.resolveProvider('linkedin')).toBeUndefined();
   });
 });

@@ -1,13 +1,12 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "reachforge",
       "dependencies": {
         "@google/generative-ai": "^0.24.1",
         "apcore-cli": ">=0.4.0",
-        "apcore-js": ">=0.14.0",
+        "apcore-js": ">=0.14.1",
         "apcore-mcp": ">=0.11.0",
         "apcore-toolkit": ">=0.4.0",
         "chalk": "^5.3.0",
@@ -173,7 +172,7 @@
 
     "apcore-cli": ["apcore-cli@0.4.0", "", { "dependencies": { "ajv": "^8.12.0", "commander": "^12.0.0", "js-yaml": "^4.1.0" }, "peerDependencies": { "apcore-js": ">=0.14.0", "apcore-toolkit": ">=0.4.0" }, "optionalPeers": ["apcore-toolkit"], "bin": { "apcore-cli": "dist/bin/apcore-cli.js" } }, "sha512-E+fbyzPfiMeB/cvljlW+TTc+/CnR1MKf6Y2L0eC7RQxr3u57cRm7biwSykXCDtpqe+ffjQGIoSN22KuYwIWB0Q=="],
 
-    "apcore-js": ["apcore-js@0.14.0", "", { "dependencies": { "@sinclair/typebox": "^0.34.0", "js-yaml": "^4.1.0", "uuid": "^9.0.0" } }, "sha512-MKjOc9+T7l+fDBPlHwUpS+egDQvTPqyQ8L5O7f5gSl/rYjXGz1zj8U4ITeX/0EqYLxfXHpqYKgOFRkNEnBj1aQ=="],
+    "apcore-js": ["apcore-js@0.15.0", "", { "dependencies": { "@sinclair/typebox": "^0.34.0", "js-yaml": "^4.1.0", "uuid": "^9.0.0" } }, "sha512-JUznOW81uqiIZ/nZUb7NItYP40PHPOX/H11LXDFvHwKCaPZ3c/vSSwiYzcehIREyZlI4DawaES7CfkOu45E3tw=="],
 
     "apcore-mcp": ["apcore-mcp@0.11.0", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.26.0", "apcore-js": ">=0.14.0", "jsonwebtoken": "^9.0.3", "mcp-embedded-ui": ">=0.3.2" }, "bin": { "apcore-mcp": "dist/cli.js" } }, "sha512-8gG0Jh169Eto2E+gmFlCpyiCMDXx/UmL7n3O+/t1nHACm826FhMLm8WNZVWoCPkRH6a93KonNyZKLVgyoX6Bgg=="],
 
@@ -498,6 +497,10 @@
     "zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.1", "", { "peerDependencies": { "zod": "^3.25 || ^4" } }, "sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA=="],
+
+    "apcore-mcp/apcore-js": ["apcore-js@0.14.0", "", { "dependencies": { "@sinclair/typebox": "^0.34.0", "js-yaml": "^4.1.0", "uuid": "^9.0.0" } }, "sha512-MKjOc9+T7l+fDBPlHwUpS+egDQvTPqyQ8L5O7f5gSl/rYjXGz1zj8U4ITeX/0EqYLxfXHpqYKgOFRkNEnBj1aQ=="],
+
+    "apcore-toolkit/apcore-js": ["apcore-js@0.14.0", "", { "dependencies": { "@sinclair/typebox": "^0.34.0", "js-yaml": "^4.1.0", "uuid": "^9.0.0" } }, "sha512-MKjOc9+T7l+fDBPlHwUpS+egDQvTPqyQ8L5O7f5gSl/rYjXGz1zj8U4ITeX/0EqYLxfXHpqYKgOFRkNEnBj1aQ=="],
 
     "apdev-js/commander": ["commander@13.1.0", "", {}, "sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw=="],
   }

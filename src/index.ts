@@ -138,40 +138,40 @@ function meta(moduleId: string) {
 
 apcore.register('reach.status', {
   ...meta('reach.status'),
-  execute: async (inputs?: { article?: string }) => {
+  execute: async (inputs?: { article?: string; json?: boolean }) => {
     const engine = await getEngine();
-    await statusCommand(engine, { article: inputs?.article });
+    await statusCommand(engine, { article: inputs?.article, json: inputs?.json });
   },
 });
 
 apcore.register('reach.draft', {
   ...meta('reach.draft'),
-  execute: async (inputs: { source: string; name?: string; cover?: string }) => {
+  execute: async (inputs: { source: string; name?: string; cover?: string; json?: boolean }) => {
     const engine = await getEngine();
-    await draftCommand(engine, inputs.source, { name: inputs.name, cover: inputs.cover });
+    await draftCommand(engine, inputs.source, { name: inputs.name, cover: inputs.cover, json: inputs.json });
   },
 });
 
 apcore.register('reach.adapt', {
   ...meta('reach.adapt'),
-  execute: async (inputs: { article: string; platforms?: string; lang?: string; force?: boolean }) => {
+  execute: async (inputs: { article: string; platforms?: string; lang?: string; force?: boolean; json?: boolean }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig().catch(() => getGlobalConfig())]);
-    await adaptCommand(engine, inputs.article, { platforms: inputs.platforms, lang: inputs.lang, force: inputs.force, config: config.getConfig() });
+    await adaptCommand(engine, inputs.article, { platforms: inputs.platforms, lang: inputs.lang, force: inputs.force, json: inputs.json, config: config.getConfig() });
   },
 });
 
 apcore.register('reach.schedule', {
   ...meta('reach.schedule'),
-  execute: async (inputs: { article: string; date?: string; clear?: boolean }) => {
+  execute: async (inputs: { article: string; date?: string; clear?: boolean; json?: boolean }) => {
     const engine = await getEngine();
     const resolvedDate = inputs.date || new Date().toISOString().split('T')[0];
-    await scheduleCommand(engine, inputs.article, resolvedDate, { clear: inputs.clear });
+    await scheduleCommand(engine, inputs.article, resolvedDate, { clear: inputs.clear, json: inputs.json });
   },
 });
 
 apcore.register('reach.publish', {
   ...meta('reach.publish'),
-  execute: async (inputs?: { article?: string; platforms?: string; track?: boolean; dryRun?: boolean; cover?: string }) => {
+  execute: async (inputs?: { article?: string; platforms?: string; track?: boolean; dryRun?: boolean; draft?: boolean; cover?: string; provider?: string }) => {
     const { isExternalFile } = await import('./commands/publish.js');
     const isExternal = inputs?.article && isExternalFile(inputs.article);
     let engine: PipelineEngine | null = null;
@@ -185,7 +185,7 @@ apcore.register('reach.publish', {
 
 apcore.register('reach.go', {
   ...meta('reach.go'),
-  execute: async (inputs: { prompt: string; name?: string; schedule?: string; dryRun?: boolean; draft?: boolean; cover?: string }) => {
+  execute: async (inputs: { prompt: string; name?: string; schedule?: string; dryRun?: boolean; draft?: boolean; cover?: string; provider?: string }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig()]);
     await goCommand(engine, inputs.prompt, { ...inputs, config: config.getConfig() });
   },
@@ -193,31 +193,31 @@ apcore.register('reach.go', {
 
 apcore.register('reach.refine', {
   ...meta('reach.refine'),
-  execute: async (inputs: { article: string; feedback: string }) => {
+  execute: async (inputs: { article: string; feedback: string; json?: boolean }) => {
     const engine = await getEngine();
-    await refineCommand(engine, inputs.article, { feedback: inputs.feedback });
+    await refineCommand(engine, inputs.article, { feedback: inputs.feedback, json: inputs.json });
   },
 });
 
 apcore.register('reach.rollback', {
   ...meta('reach.rollback'),
-  execute: async (inputs: { article: string }) => {
+  execute: async (inputs: { article: string; json?: boolean }) => {
     const engine = await getEngine();
-    await rollbackCommand(engine, inputs.article);
+    await rollbackCommand(engine, inputs.article, { json: inputs.json });
   },
 });
 
 apcore.register('reach.refresh', {
   ...meta('reach.refresh'),
-  execute: async (inputs: { article: string }) => {
+  execute: async (inputs: { article: string; json?: boolean }) => {
     const engine = await getEngine();
-    await refreshCommand(engine, inputs.article);
+    await refreshCommand(engine, inputs.article, { json: inputs.json });
   },
 });
 
 apcore.register('reach.update', {
   ...meta('reach.update'),
-  execute: async (inputs: { article: string; platforms?: string; dryRun?: boolean; force?: boolean; cover?: string }) => {
+  execute: async (inputs: { article: string; platforms?: string; dryRun?: boolean; force?: boolean; cover?: string; provider?: string }) => {
     const [engine, config] = await Promise.all([getEngine(), getConfig().catch(() => getGlobalConfig())]);
     await updateCommand(engine, { ...inputs, config: config.getConfig() });
   },
@@ -249,13 +249,26 @@ apcore.register('reach.analytics', {
 
 apcore.register('reach.platforms', {
   ...meta('reach.platforms'),
-  execute: async () => {
+  execute: async (inputs: { json?: boolean }) => {
     const { ProviderLoader } = await import('./providers/loader.js');
     const { PostizProvider } = await import('./providers/postiz.js');
     const configManager = await getGlobalConfig();
     const config = configManager.getConfig();
     const loader = new ProviderLoader(config);
     const platforms = loader.listPlatforms();
+
+    if (inputs.json) {
+      process.stdout.write(jsonSuccess('platforms', {
+        platforms: platforms.map(p => ({
+          platform: p.platform,
+          provider: p.provider,
+          configured: p.configured,
+          ...(p.conflict ? { conflict: true } : {}),
+        })),
+      }));
+      return;
+    }
+
     console.log(chalk.bold('\nPublishing Platforms\n'));
     for (const p of platforms) {
       let status: string;
@@ -375,24 +388,24 @@ apcore.register('reach.series.status', {
 // System modules
 apcore.register('reach.new', {
   ...meta('reach.new'),
-  execute: async (inputs: { name: string }) => {
+  execute: async (inputs: { name: string; json?: boolean }) => {
     const ctx = await getContext();
-    await newProjectCommand(inputs.name, ctx);
+    await newProjectCommand(inputs.name, ctx, { json: inputs.json });
   },
 });
 
 apcore.register('reach.init', {
   ...meta('reach.init'),
-  execute: async (inputs: { path?: string }) => {
-    await initCommand(inputs.path);
+  execute: async (inputs: { path?: string; json?: boolean }) => {
+    await initCommand(inputs.path, { json: inputs.json });
   },
 });
 
 apcore.register('reach.workspace', {
   ...meta('reach.workspace'),
-  execute: async () => {
+  execute: async (inputs: { json?: boolean }) => {
     const ctx = await getContext();
-    await workspaceInfoCommand(ctx);
+    await workspaceInfoCommand(ctx, { json: inputs.json });
   },
 });
 

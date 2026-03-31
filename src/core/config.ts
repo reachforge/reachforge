@@ -44,7 +44,10 @@ export class ConfigManager {
 
     // POSTIZ_INTEGRATIONS env var accepts JSON: '{"x":"abc-123","linkedin":"def-456"}'
     const envPostizIntegrations: Record<string, string> | undefined = env.POSTIZ_INTEGRATIONS
-      ? (() => { try { return JSON.parse(env.POSTIZ_INTEGRATIONS!); } catch { return undefined; } })()
+      ? (() => {
+          try { return JSON.parse(env.POSTIZ_INTEGRATIONS!); }
+          catch { console.warn('Warning: POSTIZ_INTEGRATIONS env var contains invalid JSON — ignoring.'); return undefined; }
+        })()
       : undefined;
 
     const config: ReachforgeConfig = {
@@ -111,8 +114,13 @@ export class ConfigManager {
       'devto_api_key', 'postiz_api_key', 'postiz_base_url', 'postiz_who_can_reply',
       'hashnode_api_key', 'hashnode_publication_id',
       'github_token', 'github_owner', 'github_repo', 'github_discussion_category',
+      'ghost_url', 'ghost_admin_api_key',
+      'wordpress_url', 'wordpress_username', 'wordpress_app_password',
+      'telegraph_access_token',
+      'writeas_access_token', 'writeas_url',
+      'reddit_client_id', 'reddit_client_secret', 'reddit_username', 'reddit_password', 'reddit_subreddit',
       'gemini_api_key', 'llm_adapter', 'draft_adapter', 'adapt_adapter',
-      'llm_model', 'claude_command', 'gemini_command', 'codex_command', 'mcp_auth_key',
+      'llm_model', 'llm_timeout', 'claude_command', 'gemini_command', 'codex_command', 'mcp_auth_key',
     ] as const;
 
     for (const field of fields) {

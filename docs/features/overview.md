@@ -17,7 +17,7 @@ reachforge is decomposed into 14 functional components across 9 source directori
 | # | Component | Directory | Feature Spec | Priority | Status |
 |---|-----------|-----------|-------------|----------|--------|
 | 1 | Pipeline Core | `src/core/` | [pipeline-core.md](pipeline-core.md) | P0 | Implemented |
-| 2 | CLI Commands | `src/commands/` | [cli-commands.md](cli-commands.md) | P0 | Implemented (14 commands) |
+| 2 | CLI Commands | `src/commands/` | [cli-commands.md](cli-commands.md) | P0 | Implemented (27 modules via apcore) |
 | 3 | LLM Provider | `src/llm/` | [llm-provider.md](llm-provider.md) | P0 | **SUPERSEDED** by Adapter Layer |
 | 3a | CLI Adapter Core | `src/llm/adapters/`, `src/llm/parsers/` | [cli-adapter-core.md](cli-adapter-core.md) | P0 | Implemented |
 | 3b | Session Manager | `src/llm/session.ts` | [session-manager.md](session-manager.md) | P0 | Implemented |
@@ -28,7 +28,7 @@ reachforge is decomposed into 14 functional components across 9 source directori
 | 6 | Media Manager | `src/utils/media.ts` | [media-manager.md](media-manager.md) | P1 | Implemented (detect, upload, cache, CDN replace) |
 | 6a | Asset Library | `src/core/asset-manager.ts` | — | P1 | Implemented (@assets/ registry + reference resolution) |
 | 7 | Watcher Daemon | `src/commands/watch.ts` | [watcher-daemon.md](watcher-daemon.md) | P1 | Implemented |
-| 8 | MCP Server | `src/mcp/` | [mcp-server.md](mcp-server.md) | P2 | Implemented (22 tools, stdio + SSE) |
+| 8 | MCP Server | `src/mcp/` | [mcp-server.md](mcp-server.md) | P2 | Implemented (27 tools, stdio + SSE) |
 | 9 | Plugin System | `src/providers/loader.ts` | [plugin-system.md](plugin-system.md) | P1 | Implemented |
 | 10 | Shared Types | `src/types/` | (Defined across all specs) | P0 | Implemented |
 | 11 | Workspace Management | `src/core/workspace.ts` | — | P0 | Implemented (multi-project workspaces) |

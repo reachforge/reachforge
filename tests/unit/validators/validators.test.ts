@@ -11,7 +11,7 @@ describe('validateXContent', () => {
   });
 
   test('passes for thread with all segments under 280', () => {
-    const thread = 'First tweet.\n---\nSecond tweet.\n---\nThird tweet.';
+    const thread = 'First tweet.\n<!-- thread-break -->\nSecond tweet.\n<!-- thread-break -->\nThird tweet.';
     expect(validateXContent(thread).valid).toBe(true);
   });
 
@@ -27,14 +27,14 @@ describe('validateXContent', () => {
   });
 
   test('fails when second segment too long', () => {
-    const thread = `Short first\n---\n${'a'.repeat(300)}`;
+    const thread = `Short first\n<!-- thread-break -->\n${'a'.repeat(300)}`;
     const result = validateXContent(thread);
     expect(result.valid).toBe(false);
     expect(result.errors[0]).toContain('segment 2');
   });
 
   test('ignores empty segments', () => {
-    expect(validateXContent('Tweet\n---\n---\nAnother').valid).toBe(true);
+    expect(validateXContent('Tweet\n<!-- thread-break -->\n<!-- thread-break -->\nAnother').valid).toBe(true);
   });
 
   test('fails for empty content', () => {

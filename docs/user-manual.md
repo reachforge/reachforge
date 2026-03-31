@@ -2,7 +2,7 @@
 
 **ReachForge -- The Social Influence Engine for AI-Native Content**
 
-Version 0.3.0
+Version 0.2.0
 
 ---
 
@@ -115,7 +115,7 @@ Each project contains three stage directories. Content flows left to right:
 | `03_published` | Published archive | `{article}.{platform}.md` (results in `meta.yaml`) |
 | `assets` | Shared media library | `images/`, `videos/`, `audio/`, `.asset-registry.yaml` |
 
-**Platform IDs:** `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`
+**Platform IDs:** `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`, `ghost`, `wordpress`, `telegraph`, `writeas`
 
 All article metadata is stored in a single `meta.yaml` at the project root, indexed by article name.
 
@@ -196,7 +196,6 @@ Show pipeline dashboard or detail for a specific article.
 ```bash
 reach status                        # Dashboard: all articles across stages
 reach status --article teaser       # Detail view for one article (status, stage, platforms, schedule)
-reach status --all                  # All projects in workspace
 ```
 
 Without an article name, shows per-stage item counts and articles due today. With an article name, shows that article's status, current stage, platform results, and schedule.
@@ -236,14 +235,14 @@ reach draft --source "AI tips" --name ai-tips                        # Explicit 
 
 ---
 
-### `reach asset add <file>`
+### `reach asset add --file <path>`
 
 Register a media file into the project's shared asset library.
 
 ```bash
-reach asset add ./hero-image.png              # Auto-detects subdir (images)
-reach asset add ./demo.mp4                     # Auto-detects (videos)
-reach asset add ./podcast.mp3 --subdir audio   # Explicit subdir
+reach asset add --file ./hero-image.png              # Auto-detects subdir (images)
+reach asset add --file ./demo.mp4                     # Auto-detects (videos)
+reach asset add --file ./podcast.mp3 --subdir audio   # Explicit subdir
 ```
 
 | Option | Description |
@@ -317,12 +316,12 @@ reach adapt --article my-idea --force                       # Overwrite existing
 
 - **Input:** `01_drafts/{article}.md`.
 - **Output:** `02_adapted/{article}.{platform}.md` per platform (e.g., `teaser.x.md`, `teaser.devto.md`).
-- **Default platforms:** `x`, `wechat`, `zhihu`.
+- **Default platforms:** Auto-detected from configured API keys in config.yaml, or from project.yaml `platforms` list. If none found, `--platforms` is required.
 - Adapts all platforms in parallel.
 - **Additive:** running `reach adapt --article article --platforms devto` after a previous `reach adapt --article article --platforms x` adds devto without removing x. Platform metadata is merged, not overwritten.
 - If adaptation fails for some platforms, successfully adapted ones are still saved. Retry failed platforms by running adapt again.
 
-**Supported platforms:** `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`.
+**Supported platforms:** `x`, `devto`, `hashnode`, `wechat`, `zhihu`, `github`, `linkedin`, `medium`, `reddit`, `ghost`, `wordpress`, `telegraph`, `writeas`.
 
 ---
 
@@ -335,14 +334,14 @@ reach schedule --article my-idea --date 2026-04-01           # Date only (publis
 reach schedule --article my-idea --date 2026-04-01T14:30      # Date + time (publishes after 14:30)
 reach schedule --article my-idea                               # Defaults to today (publish immediately on next `reach publish`)
 reach schedule --article my-idea --clear                       # Unschedule (revert to adapted status)
-reach schedule --article my-idea --date 2026-04-01 --dryRun
+reach schedule --article my-idea --date 2026-04-01 --dry-run
 ```
 
 | Option | Description |
 |--------|-------------|
 | `--article <name>` | Article to schedule |
 | `--date <date>` | Schedule date (defaults to today if omitted) |
-| `--dryRun` | Preview what would be scheduled |
+| `--dry-run` | Preview what would be scheduled |
 | `--clear` | Unschedule: revert status to `adapted` and remove the schedule date |
 
 - **Date formats:** `YYYY-MM-DD`, `YYYY-MM-DDTHH:MM`, or `YYYY-MM-DDTHH:MM:SS`. Defaults to today if omitted.
@@ -359,7 +358,7 @@ Publish all scheduled content that is due (schedule date <= now).
 reach publish                                        # Publish all due scheduled articles
 reach publish --article my-article                   # Publish specific article (any adapted/scheduled)
 reach publish --article my-article --force           # Publish even if scheduled for a future date
-reach publish --dryRun
+reach publish --dry-run
 reach publish --draft
 ```
 
@@ -367,7 +366,7 @@ reach publish --draft
 |--------|-------------|
 | `--article <name>` | Specific article to publish |
 | `--force` | Publish even if article is scheduled for a future date |
-| `--dryRun` | Preview without publishing |
+| `--dry-run` | Preview without publishing |
 | `--draft` | Publish as draft (overrides `published` frontmatter field) |
 
 **Batch mode** (`reach publish` without `--article`): Finds articles with `status: scheduled` whose schedule time <= now.
@@ -404,7 +403,7 @@ reach publish --article ./external-post.md --platforms devto --track  # Import t
 | `--article <name>` | Article name or external file path |
 | `--platforms <list>` | Comma-separated platform names |
 | `--track` | Import external file into `02_adapted/` and track through the pipeline |
-| `--dryRun` | Preview without publishing |
+| `--dry-run` | Preview without publishing |
 | `--draft` | Publish as draft on supported platforms |
 
 When using `--track` with an external file, the file is first imported into `02_adapted/`, then published through the normal pipeline and archived to `03_published/`.
@@ -455,7 +454,7 @@ Full auto pipeline: create content from a prompt, draft, adapt, and publish -- a
 reach go --prompt "write about apcore framework"                    # Immediate: full pipeline -> publish now
 reach go --prompt "write about apcore" --name teaser                # Explicit article name
 reach go --prompt "write about apcore framework" --schedule 2026-04-01      # Deferred: schedule for later
-reach go --prompt "compare Bun vs Node.js" --dryRun                # Full pipeline but skip actual publishing
+reach go --prompt "compare Bun vs Node.js" --dry-run                # Full pipeline but skip actual publishing
 reach go --prompt "AI pair programming tips" --draft                 # Publish as draft on supported platforms
 ```
 
@@ -464,7 +463,7 @@ reach go --prompt "AI pair programming tips" --draft                 # Publish a
 | `--prompt <text>` | Content prompt |
 | `--name <name>` | Explicit article name (default: auto-generated slug from prompt) |
 | `--schedule <date>` | Schedule for a future date (YYYY-MM-DD) instead of publishing immediately |
-| `--dryRun` | Run full pipeline but skip actual publishing |
+| `--dry-run` | Run full pipeline but skip actual publishing |
 | `--draft` | Publish as draft on supported platforms |
 
 If `--name` is omitted, a URL-safe slug is auto-generated from the prompt. If the slug already exists, `-2`, `-3` etc. is appended.
@@ -551,7 +550,7 @@ All configuration -- API keys, LLM settings, MCP auth -- lives in `config.yaml`.
 | Gemini API mode | `GEMINI_API_KEY` | Error: `LLMNotConfiguredError` |
 | MCP server auth | `MCP_AUTH_KEY` | MCP server runs without authentication |
 
-> **Important:** When a platform API key is missing, `reach publish` silently uses a mock provider -- the receipt shows "success" but no content is actually published. Always use `reach publish --dryRun` first to preview, and check `reach analytics` to verify real publishing results.
+> **Important:** When a platform API key is missing, `reach publish` silently uses a mock provider -- the receipt shows "success" but no content is actually published. Always use `reach publish --dry-run` first to preview, and check `reach analytics` to verify real publishing results.
 
 ### Workspace Configuration (`config.yaml`)
 
@@ -560,21 +559,41 @@ Created by `reach init`, located at `{workspace}/.reach/config.yaml` (or `~/.rea
 ```yaml
 # .reach/config.yaml
 default_workspace: ~/my-workspace
-credentials:
-  DEVTO_API_KEY: your-key
-  HASHNODE_API_KEY: your-key
-  HASHNODE_PUBLICATION_ID: your-publication-id
-  GITHUB_TOKEN: your-token
-  GITHUB_OWNER: your-username
-  GITHUB_REPO: your-repo
-  POSTIZ_API_KEY: your-key
-  MCP_AUTH_KEY: your-key
+
+# Platform API keys (flat snake_case keys)
+devto_api_key: your-key
+hashnode_api_key: your-key
+hashnode_publication_id: your-publication-id
+github_token: your-token
+github_owner: your-username
+github_repo: your-repo
+ghost_url: https://your-ghost-site.com
+ghost_admin_api_key: your-key
+wordpress_url: https://your-wp-site.com
+wordpress_username: admin
+wordpress_app_password: your-app-password
+telegraph_access_token: your-token
+writeas_access_token: your-token
+reddit_client_id: your-id
+reddit_client_secret: your-secret
+reddit_username: your-user
+reddit_password: your-pass
+
+# Postiz (multi-platform social publishing)
+postiz_api_key: your-key
+postiz_integrations:
+  x: integration-id-for-x
+  linkedin: integration-id-for-linkedin
+
+# MCP auth
+mcp_auth_key: your-key
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `default_workspace` | string (optional) | Default workspace path, used as fallback when no workspace is found via directory traversal |
-| `credentials` | key-value map (optional) | API keys and secrets; keys are variable names, values are the corresponding secrets |
+| `*_api_key`, etc. | string (optional) | Platform API keys and secrets as flat snake_case keys |
+| `postiz_integrations` | map (optional) | Map of platform key → Postiz integration ID (e.g., `x: abc-123`, `x_company: def-456`) |
 
 ### LLM Settings
 
@@ -591,20 +610,21 @@ credentials:
 
 ### Platform API Keys
 
-These can be set as environment variables or placed in `config.yaml` under the `credentials` section:
+These can be set as flat keys in `config.yaml` or as environment variables:
 
 ```yaml
-# In config.yaml
-credentials:
-  DEVTO_API_KEY: your-key
-  HASHNODE_API_KEY: your-key
-  HASHNODE_PUBLICATION_ID: your-publication-id
-  GITHUB_TOKEN: your-token
-  GITHUB_OWNER: your-username
-  GITHUB_REPO: your-repo
-  GITHUB_DISCUSSION_CATEGORY: General
-  POSTIZ_API_KEY: your-key
-  MCP_AUTH_KEY: your-key
+# In config.yaml (flat snake_case keys)
+devto_api_key: your-key
+hashnode_api_key: your-key
+hashnode_publication_id: your-publication-id
+github_token: your-token
+github_owner: your-username
+github_repo: your-repo
+github_discussion_category: General
+postiz_api_key: your-key
+postiz_integrations:
+  x: your-integration-id
+mcp_auth_key: your-key
 ```
 
 Or as environment variables:
@@ -680,7 +700,12 @@ Tokens: 1234 in / 5678 out ($0.02)
 | Dev.to | `DevtoProvider` | REST | Markdown with YAML frontmatter |
 | Hashnode | `HashnodeProvider` | GraphQL | Markdown with H1 title |
 | GitHub | `GitHubProvider` | GraphQL | Markdown with H1 title |
-| X | `PostizProvider` | REST (Postiz SaaS) | Markdown thread (`---` delimited) |
+| X/LinkedIn | `PostizProvider` | REST (Postiz) | Plaintext (`<!-- thread-break -->` delimited for X) |
+| Ghost | `GhostProvider` | REST (Admin API) | HTML (converted from Markdown) |
+| WordPress | `WordPressProvider` | REST (WP REST API) | HTML (converted from Markdown) |
+| Telegraph | `TelegraphProvider` | REST | Telegraph node format (converted from HTML) |
+| Write.as | `WriteasProvider` | REST | Markdown |
+| Reddit | `RedditProvider` | OAuth2 REST | Markdown |
 
 ### Content Validation Rules
 
@@ -809,19 +834,28 @@ reach mcp --transport sse --port 8001
 
 ### Available MCP Tools
 
-| Tool | Input | Description |
-|------|-------|-------------|
+| Tool | Key Inputs | Description |
+|------|------------|-------------|
 | `reach_status` | `article?: string` | Pipeline dashboard or single-article detail |
-| `reach_draft` | `input: string`, `name?: string` | Generate draft from prompt, file, or directory |
-| `reach_adapt` | `article: string`, `platforms?: string`, `force?: boolean` | Adapt for platforms |
-| `reach_schedule` | `article: string`, `date?: string` | Schedule for publishing (date defaults to today) |
-| `reach_publish` | `dryRun?: boolean` | Publish all due articles |
+| `reach_draft` | `source: string`, `name?: string`, `cover?: string` | Generate draft from prompt, file, or directory |
+| `reach_adapt` | `article: string`, `platforms?: string`, `lang?: string`, `force?: boolean` | Adapt for platforms |
+| `reach_schedule` | `article: string`, `date?: string`, `clear?: boolean`, `dryRun?: boolean` | Schedule for publishing |
+| `reach_publish` | `article?: string`, `platforms?: string`, `draft?: boolean`, `dryRun?: boolean`, `provider?: string` | Publish articles |
+| `reach_update` | `article: string`, `platforms?: string`, `dryRun?: boolean`, `provider?: string` | Update published articles |
 | `reach_rollback` | `article: string` | Roll back one stage |
+| `reach_refresh` | `article: string` | Copy published/adapted article back to drafts |
 | `reach_refine` | `article: string`, `feedback: string` | Refine a draft with AI feedback |
-| `reach_go` | `prompt: string`, `name?: string`, `schedule?: string`, `dryRun?: boolean`, `draft?: boolean` | Full auto pipeline from prompt to publish |
+| `reach_go` | `prompt: string`, `name?: string`, `schedule?: string`, `dryRun?: boolean`, `provider?: string` | Full auto pipeline |
+| `reach_platforms` | _(none)_ | List configured platforms and providers |
 | `reach_asset_add` | `file: string`, `subdir?: string` | Register media asset |
 | `reach_asset_list` | `subdir?: string` | List registered assets |
 | `reach_analytics` | `from?: string`, `to?: string` | Publishing success metrics |
+| `reach_series_*` | _(varies)_ | 8 series management tools (init, outline, approve, detail, draft, adapt, schedule, status) |
+| `reach_init` | _(none)_ | Initialize workspace |
+| `reach_new` | `name: string` | Create new project |
+| `reach_workspace` | _(none)_ | Show workspace info |
+| `reach_watch` | `interval?: number`, `list?: boolean`, `stop?: string` | Auto-publish daemon |
+| `reach_mcp` | `transport?: string`, `port?: number` | Start MCP server |
 
 ---
 
@@ -878,10 +912,10 @@ If a session becomes stale or the adapter changed, reachforge automatically arch
 
 ### Validation failures
 
-Use `--dryRun` to preview issues before publishing:
+Use `--dry-run` to preview issues before publishing:
 
 ```bash
-reach publish --dryRun
+reach publish --dry-run
 ```
 
 Common validation issues:

@@ -33,6 +33,7 @@ export const PublishToolSchema = z.object({
   track: z.boolean().optional().describe('If true, track external file in pipeline (import to 02_adapted, then publish). Requires project context'),
   force: z.boolean().optional().describe('If true, publish even if article is scheduled for a future date'),
   dryRun: z.boolean().optional().describe('If true, preview what would be published without actually sending to platforms'),
+  draft: z.boolean().optional().describe('If true, publish as draft on platforms that support it (e.g., Dev.to)'),
   cover: z.string().optional().describe('Cover image path or URL. Uploaded to platform CDN at publish time'),
   provider: z.string().optional().describe('Preferred provider ID when multiple providers are configured for the same platform (e.g., "postiz")'),
 });

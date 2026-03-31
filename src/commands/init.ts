@@ -5,6 +5,7 @@ import fs from 'fs-extra';
 import { WorkspaceResolver } from '../core/workspace.js';
 import { writeWorkspaceConfig, writeConfigToDir, readConfigFromDir } from '../core/project-config.js';
 import { WORKSPACE_CONFIG_DIR, WORKSPACE_CONFIG_FILE, DEFAULT_WORKSPACE_NAME } from '../core/constants.js';
+import { jsonSuccess } from '../core/json-output.js';
 // @ts-ignore — bun embeds this at compile time
 import configTemplate from '../../config.example.yaml' with { type: 'text' };
 
@@ -45,10 +46,14 @@ async function ensureGlobalConfig(defaultWorkspace: string): Promise<boolean> {
  * `reach init`          → init global + default workspace ~/reach-workspace
  * `reach init <path>`   → init global + workspace at <path>
  */
-export async function initCommand(targetPath?: string): Promise<void> {
+export async function initCommand(targetPath?: string, options: { json?: boolean } = {}): Promise<void> {
   const wsRoot = path.resolve(targetPath || path.join(os.homedir(), DEFAULT_WORKSPACE_NAME));
 
   if (await WorkspaceResolver.isWorkspace(wsRoot)) {
+    if (options.json) {
+      process.stdout.write(jsonSuccess('init', { workspace: wsRoot, created: false }));
+      return;
+    }
     console.log(chalk.yellow(`Workspace already initialized at ${wsRoot}`));
     return;
   }
@@ -65,6 +70,15 @@ export async function initCommand(targetPath?: string): Promise<void> {
   const wsConfigPath = path.join(wsConfigDir, WORKSPACE_CONFIG_FILE);
   if (!await fs.pathExists(wsConfigPath)) {
     await fs.writeFile(wsConfigPath, configTemplate);
+  }
+
+  if (options.json) {
+    process.stdout.write(jsonSuccess('init', {
+      workspace: wsRoot,
+      created: true,
+      configDir: wsConfigDir,
+    }));
+    return;
   }
 
   console.log(chalk.green(`Workspace initialized at ${wsRoot}`));

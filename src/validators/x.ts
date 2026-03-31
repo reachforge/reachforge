@@ -3,9 +3,9 @@ import type { ValidationResult } from '../providers/types.js';
 const MAX_CHARS = 280;
 
 function parseThreadSegments(content: string): string[] {
-  // Try --- delimiter first
-  const dashSegments = content.split(/\n---\n/).map(s => s.trim()).filter(Boolean);
-  if (dashSegments.length > 1) return dashSegments;
+  // Try <!-- thread-break --> delimiter first (canonical format from LLM adapt)
+  const threadBreakSegments = content.split(/^<!--\s*thread-break\s*-->$/m).map(s => s.trim()).filter(Boolean);
+  if (threadBreakSegments.length > 1) return threadBreakSegments;
 
   // Try numbered markers (1/, 2/, etc.)
   const numberedSegments = content.split(/\n\d+\/\s*/).map(s => s.trim()).filter(Boolean);

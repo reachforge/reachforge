@@ -191,7 +191,7 @@ bun run build:win                 # bin/reach.exe    (Windows x64)
 
 ## Documentation
 
-Full documentation available at the [docs site](https://aiperceivable.github.io/reachforge) or in the `docs/` directory:
+Full documentation available at the [docs site](https://reachforge.github.io/reachforge) or in the `docs/` directory:
 
 - [User Manual](docs/user-manual.md)
 - [PRD](docs/reachforge/prd.md) | [SRS](docs/reachforge/srs.md) | [Tech Design](docs/reachforge/tech-design.md)

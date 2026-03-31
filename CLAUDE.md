@@ -53,7 +53,8 @@ Workflow: init → outline → approve → detail → approve → draft → adap
 
 ## Key Options
 
-- `--platforms <list>` — comma-separated platforms with real API providers: devto, hashnode, ghost, wordpress, telegraph, writeas, reddit, x (via Postiz), github; mock-only (no real provider): wechat, zhihu, linkedin, medium
+- `--platforms <list>` — comma-separated platforms with real API providers: devto, hashnode, ghost, wordpress, telegraph, writeas, reddit, x/linkedin (via Postiz), github; mock-only (no real provider): wechat, zhihu, medium
+- `--provider <id>` — specify provider when multiple are configured for the same platform (e.g. `--provider postiz`)
 - `--name <slug>` — explicit article name for `draft` and `go` (default: auto-generated)
 - `--force` — publish even if scheduled for future / skip platforms without article_id
 - `--clear` — unschedule an article (revert status to adapted)
@@ -142,4 +143,4 @@ Built on the apcore ecosystem:
 - `apcore-mcp` — MCP server bridge (AI agent integration)
 - `apcore-cli` — CLI generation via GroupedModuleGroup (schema → Commander.js commands)
 
-All 33 commands registered once via `apcore.register()`, auto-wired to CLI and MCP.
+All 27 commands registered once via `apcore.register()`, auto-wired to CLI and MCP.
