@@ -13,7 +13,7 @@ import { ConfigManager } from './core/config.js';
 import { WorkspaceResolver } from './core/workspace.js';
 import type { WorkspaceContext } from './core/workspace.js';
 import { DEFAULT_WORKSPACE_NAME } from './core/constants.js';
-import { jsonError, errorToCode, errorToHint } from './core/json-output.js';
+import { jsonSuccess, jsonError, errorToCode, errorToHint } from './core/json-output.js';
 import { configureGroupedHelp, buildFullReference } from './help.js';
 
 import { statusCommand } from './commands/status.js';

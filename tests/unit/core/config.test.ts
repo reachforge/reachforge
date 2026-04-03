@@ -32,12 +32,16 @@ afterEach(async () => {
   delete process.env.REACHFORGE_LLM_MODEL;
 });
 
+/** Write global config in namespace format. */
 async function writeGlobalConfig(data: Record<string, unknown>): Promise<void> {
   const dir = path.join(fakeHome, WORKSPACE_CONFIG_DIR);
   await fs.ensureDir(dir);
-  await fs.writeFile(path.join(dir, 'config.yaml'), yaml.dump(data));
+  // Wrap into namespace mode if flat keys provided
+  const content = data.apcore !== undefined ? data : { apcore: {}, reach: data };
+  await fs.writeFile(path.join(dir, 'config.yaml'), yaml.dump(content));
 }
 
+/** Write workspace config — supports both flat and namespaced formats. */
 async function writeWorkspaceConfig(wsRoot: string, data: Record<string, unknown>): Promise<void> {
   const dir = path.join(wsRoot, WORKSPACE_CONFIG_DIR);
   await fs.ensureDir(dir);
@@ -101,5 +105,34 @@ describe('ConfigManager.load', () => {
   test('getApiKey returns undefined for unknown service', async () => {
     const config = await ConfigManager.load();
     expect(config.getApiKey('nonexistent')).toBeUndefined();
+  });
+
+  test('exposes underlying apcore Config instance', async () => {
+    await writeGlobalConfig({ devto_api_key: 'test-key' });
+    const config = await ConfigManager.load();
+    const apcoreConfig = config.getApcoreConfig();
+    expect(apcoreConfig).toBeDefined();
+    const reach = apcoreConfig.namespace('reach') as Record<string, unknown>;
+    expect(reach.devto_api_key).toBe('test-key');
+  });
+
+  test('supports namespace-format config files', async () => {
+    // Write config in explicit namespace format
+    await writeGlobalConfig({
+      apcore: {},
+      reach: { devto_api_key: 'ns-key', llm_model: 'ns-model' },
+    });
+    const config = await ConfigManager.load();
+    expect(config.getApiKey('devto')).toBe('ns-key');
+    expect(config.getLLMModel()).toBe('ns-model');
+  });
+
+  test('supports flat workspace config (auto-wrapped)', async () => {
+    await writeGlobalConfig({ devto_api_key: 'global-key' });
+    // Workspace config in flat format (no reach: wrapper)
+    await writeWorkspaceConfig(tmpDir, { devto_api_key: 'ws-flat-key' });
+
+    const config = await ConfigManager.load(tmpDir);
+    expect(config.getApiKey('devto')).toBe('ws-flat-key');
   });
 });
