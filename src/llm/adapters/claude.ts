@@ -66,7 +66,7 @@ export class ClaudeAdapter implements CLIAdapter {
 
       const helloResult = await runCLIProcess({
         command: this.command,
-        args: ['--print', '-', '--output-format', 'stream-json', '--max-turns', '1'],
+        args: ['--print', '-', '--output-format', 'stream-json', '--verbose', '--max-turns', '1'],
         cwd: os.tmpdir(),
         env: { ...process.env } as Record<string, string>,
         stdin: 'Say hello',
